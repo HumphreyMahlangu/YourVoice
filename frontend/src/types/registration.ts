@@ -8,8 +8,6 @@ export type IdDocumentType =
   | 'TEMPORARY_ID_CERTIFICATE'
 
 export interface ElectionRegistrationRequest {
-  southAfricanIdNumber: string
-  idDocumentType: IdDocumentType
   votingDistrictId: string
 }
 

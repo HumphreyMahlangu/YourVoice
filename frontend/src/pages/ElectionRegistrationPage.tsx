@@ -8,18 +8,9 @@ import { useAuth } from '../auth/useAuth'
 import ElectionMetadata from '../components/ElectionMetadata'
 import type { VotingDistrict } from '../types/district'
 import type { Election } from '../types/election'
-import type {
-  ElectionRegistration,
-  IdDocumentType,
-} from '../types/registration'
+import type { ElectionRegistration } from '../types/registration'
 import { formatDateTime, formatEnumLabel } from '../utils/formatters'
 import { getErrorMessage } from '../utils/getErrorMessage'
-
-const documentTypes: IdDocumentType[] = [
-  'GREEN_BARCODED_ID',
-  'SMART_ID_CARD',
-  'TEMPORARY_ID_CERTIFICATE',
-]
 
 interface RegistrationPageData {
   election: Election
@@ -30,9 +21,6 @@ function ElectionRegistrationPage() {
   const { electionId } = useParams<{ electionId: string }>()
   const { session, logout } = useAuth()
   const [pageData, setPageData] = useState<RegistrationPageData | null>(null)
-  const [southAfricanIdNumber, setSouthAfricanIdNumber] = useState('')
-  const [idDocumentType, setIdDocumentType] =
-    useState<IdDocumentType>('SMART_ID_CARD')
   const [votingDistrictId, setVotingDistrictId] = useState('')
   const [registration, setRegistration] =
     useState<ElectionRegistration | null>(null)
@@ -102,10 +90,9 @@ function ElectionRegistrationPage() {
     try {
       const response = await registerForElection(
         electionId,
-        { southAfricanIdNumber, idDocumentType, votingDistrictId },
+        { votingDistrictId },
         session.accessToken,
       )
-      setSouthAfricanIdNumber('')
       setRegistration(response)
     } catch (requestError) {
       if (requestError instanceof ApiError && requestError.status === 401) {
@@ -124,8 +111,6 @@ function ElectionRegistrationPage() {
   }
 
   const electionPath = electionId ? `/elections/${electionId}` : '/elections'
-  const idNumberError = fieldErrors.southAfricanIdNumber
-  const documentTypeError = fieldErrors.idDocumentType
   const districtError = fieldErrors.votingDistrictId
 
   return (
@@ -193,65 +178,11 @@ function ElectionRegistrationPage() {
               )}
 
               <div>
-                <label htmlFor="south-african-id-number">
-                  South African ID number
-                </label>
-                <p id="id-number-help">
-                  Enter all 13 digits. The API stores only a protected hash of
-                  this number.
-                </p>
-                <input
-                  id="south-african-id-number"
-                  name="southAfricanIdNumber"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]{13}"
-                  required
-                  minLength={13}
-                  maxLength={13}
-                  autoComplete="off"
-                  value={southAfricanIdNumber}
-                  aria-invalid={idNumberError ? true : undefined}
-                  aria-describedby={
-                    idNumberError
-                      ? 'id-number-help id-number-error'
-                      : 'id-number-help'
-                  }
-                  onChange={(event) =>
-                    setSouthAfricanIdNumber(event.target.value)
-                  }
-                />
-                {idNumberError && <p id="id-number-error">{idNumberError}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="id-document-type">Identity document type</label>
-                <select
-                  id="id-document-type"
-                  name="idDocumentType"
-                  required
-                  value={idDocumentType}
-                  aria-invalid={documentTypeError ? true : undefined}
-                  aria-describedby={
-                    documentTypeError ? 'document-type-error' : undefined
-                  }
-                  onChange={(event) =>
-                    setIdDocumentType(event.target.value as IdDocumentType)
-                  }
-                >
-                  {documentTypes.map((documentType) => (
-                    <option key={documentType} value={documentType}>
-                      {formatEnumLabel(documentType)}
-                    </option>
-                  ))}
-                </select>
-                {documentTypeError && (
-                  <p id="document-type-error">{documentTypeError}</p>
-                )}
-              </div>
-
-              <div>
                 <label htmlFor="voting-district">Voting district</label>
+                <p id="voting-district-help">
+                  Confirm the district that applies to this election. Your
+                  identity details are taken from your protected voter profile.
+                </p>
                 <select
                   id="voting-district"
                   name="votingDistrictId"
@@ -259,7 +190,9 @@ function ElectionRegistrationPage() {
                   value={votingDistrictId}
                   aria-invalid={districtError ? true : undefined}
                   aria-describedby={
-                    districtError ? 'voting-district-error' : undefined
+                    districtError
+                      ? 'voting-district-help voting-district-error'
+                      : 'voting-district-help'
                   }
                   onChange={(event) =>
                     setVotingDistrictId(event.target.value)

@@ -112,12 +112,12 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
                 Instant.parse("2026-08-01T00:00:00Z"),
                 Instant.parse("2026-08-10T23:59:59Z")
         );
-        String token = registerAccountAndReturnToken("registration.success@example.com");
+        String token = registerAccountAndReturnToken("registration.success@example.com", district);
 
         mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(registrationBody("1001015000083", district)))
+                        .content(registrationBody(district)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.electionId").value(election.getId().toString()))
                 .andExpect(jsonPath("$.electionName").value("2026 Local Government Election"))
@@ -140,60 +140,32 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
                 Instant.parse("2026-07-01T00:00:00Z"),
                 Instant.parse("2026-07-31T23:59:59Z")
         );
-        String token = registerAccountAndReturnToken("registration.closed@example.com");
+        String token = registerAccountAndReturnToken("registration.closed@example.com", district);
 
         mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(registrationBody("1001015000083", district)))
+                        .content(registrationBody(district)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Election registration period is closed"));
-    }
-
-    @Test
-    void registerForElectionRejectsUnderageVoter() throws Exception {
-        VotingDistrict district = createVotingDistrict();
-        Election election = createOpenElection();
-        String token = registerAccountAndReturnToken("registration.underage@example.com");
-
-        mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(registrationBody("1501015000082", district)))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.message").value("Voters must be at least 16 years old to register"));
-    }
-
-    @Test
-    void registerForElectionRejectsNonCitizenIdNumber() throws Exception {
-        VotingDistrict district = createVotingDistrict();
-        Election election = createOpenElection();
-        String token = registerAccountAndReturnToken("registration.noncitizen@example.com");
-
-        mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(registrationBody("1101015000180", district)))
-                .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.message").value("Only South African citizens may register to vote"));
     }
 
     @Test
     void registerForElectionRejectsDuplicateRegistration() throws Exception {
         VotingDistrict district = createVotingDistrict();
         Election election = createOpenElection();
-        String token = registerAccountAndReturnToken("registration.duplicate@example.com");
+        String token = registerAccountAndReturnToken("registration.duplicate@example.com", district);
 
         mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(registrationBody("1001015000083", district)))
+                        .content(registrationBody(district)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(registrationBody("1001015000083", district)))
+                        .content(registrationBody(district)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Voter is already registered for this election"));
     }
@@ -201,12 +173,12 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
     @Test
     void registerForElectionRejectsMalformedElectionIdWithoutMaskingAsUnauthorizedError() throws Exception {
         VotingDistrict district = createVotingDistrict();
-        String token = registerAccountAndReturnToken("registration.bad-election-id@example.com");
+        String token = registerAccountAndReturnToken("registration.bad-election-id@example.com", district);
 
         mockMvc.perform(post("/api/v1/elections/not-a-uuid/registrations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(registrationBody("1001015000083", district)))
+                        .content(registrationBody(district)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Invalid UUID value for 'electionId'"))
                 .andExpect(jsonPath("$.path").value("/api/v1/elections/not-a-uuid/registrations"));
@@ -214,16 +186,18 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
 
     @Test
     void registerForElectionRejectsMalformedVotingDistrictIdWithoutMaskingAsUnauthorizedError() throws Exception {
+        VotingDistrict onboardingDistrict = createVotingDistrict();
         Election election = createOpenElection();
-        String token = registerAccountAndReturnToken("registration.bad-district-id@example.com");
+        String token = registerAccountAndReturnToken(
+                "registration.bad-district-id@example.com",
+                onboardingDistrict
+        );
 
         mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "southAfricanIdNumber": "1001015000083",
-                                  "idDocumentType": "SMART_ID_CARD",
                                   "votingDistrictId": "not-a-uuid"
                                 }
                                 """))
@@ -276,13 +250,17 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
         ));
     }
 
-    private String registerAccountAndReturnToken(String email) throws Exception {
+    private String registerAccountAndReturnToken(String email, VotingDistrict votingDistrict) throws Exception {
         String body = """
                 {
+                  "fullName": "Registration Test Voter",
                   "email": "%s",
-                  "password": "VeryStrongPassword1"
+                  "password": "VeryStrongPassword1",
+                  "southAfricanIdNumber": "1001015000083",
+                  "idDocumentType": "SMART_ID_CARD",
+                  "votingDistrictId": "%s"
                 }
-                """.formatted(email);
+                """.formatted(email, votingDistrict.getId());
 
         MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -293,14 +271,12 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
         return JsonPath.read(result.getResponse().getContentAsString(), "$.accessToken");
     }
 
-    private String registrationBody(String idNumber, VotingDistrict votingDistrict) {
+    private String registrationBody(VotingDistrict votingDistrict) {
         return """
                 {
-                  "southAfricanIdNumber": "%s",
-                  "idDocumentType": "SMART_ID_CARD",
                   "votingDistrictId": "%s"
                 }
-                """.formatted(idNumber, votingDistrict.getId());
+                """.formatted(votingDistrict.getId());
     }
 
     @TestConfiguration
