@@ -1002,7 +1002,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "var requiredVariables = [\"voterEmail\",\"voterPassword\"];",
+                  "var requiredVariables = [\"voterFullName\",\"voterEmail\",\"voterPassword\",\"voterSouthAfricanIdNumber\",\"idDocumentType\",\"votingDistrictId\"];",
                   "var unresolvedStart = String.fromCharCode(123, 123);",
                   "var unresolvedEnd = String.fromCharCode(125, 125);",
                   "var missingVariables = requiredVariables.filter((key) => {",
@@ -1050,7 +1050,7 @@
             "url": "{{baseUrl}}/api/v1/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{voterEmail}}\",\n  \"password\": \"{{voterPassword}}\"\n}"
+              "raw": "{\n  \"fullName\": \"{{voterFullName}}\",\n  \"email\": \"{{voterEmail}}\",\n  \"password\": \"{{voterPassword}}\",\n  \"southAfricanIdNumber\": \"{{voterSouthAfricanIdNumber}}\",\n  \"idDocumentType\": \"{{idDocumentType}}\",\n  \"votingDistrictId\": \"{{votingDistrictId}}\"\n}"
             }
           },
           "response": []
@@ -1231,7 +1231,7 @@
             "url": "{{baseUrl}}/api/v1/elections/{{electionId}}/registrations",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"southAfricanIdNumber\": \"{{voterSouthAfricanIdNumber}}\",\n  \"idDocumentType\": \"{{idDocumentType}}\",\n  \"votingDistrictId\": \"{{votingDistrictId}}\"\n}"
+              "raw": "{\n  \"votingDistrictId\": \"{{votingDistrictId}}\"\n}"
             }
           },
           "response": []

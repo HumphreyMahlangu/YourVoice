@@ -79,9 +79,9 @@ VoteTrust is built around five fundamental principles.
 
 ### Controlled Voter Registration
 
-* Voters create platform accounts before registering for an election.
+* Voter onboarding creates the platform account and voter profile together, collecting the legal name, contact email, South African ID, identity-document type, and voting district once.
 * Election registration is accepted only while the configured registration window is open and the election is in the correct lifecycle state.
-* South African ID numbers are validated and stored as peppered HMAC-SHA-256 hashes rather than plaintext identifiers.
+* South African ID numbers are validated during onboarding and stored as peppered HMAC-SHA-256 hashes rather than plaintext identifiers. Election registration reuses the authenticated voter profile instead of asking for the ID again.
 * Voting-district and contest-scope checks model national, provincial, municipal proportional-representation, and ward eligibility.
 
 ### One Person, One Vote
@@ -149,7 +149,7 @@ The system uses a centralized PostgreSQL ledger. It applies cryptographic chaini
 
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
-| `POST` | `/api/v1/auth/register` | Public | Create a voter account and return a JWT. |
+| `POST` | `/api/v1/auth/register` | Public | Create a voter account and protected voter profile, then return a JWT. |
 | `POST` | `/api/v1/auth/login` | Public | Authenticate an account and return a JWT. |
 | `GET` | `/api/v1/auth/me` | Authenticated | Return the current account. |
 | `POST` | `/api/v1/admin/bootstrap` | Controlled bootstrap | Create the first administrator during a temporary bootstrap window. |
@@ -163,7 +163,7 @@ The system uses a centralized PostgreSQL ledger. It applies cryptographic chaini
 | `GET` | `/api/v1/voting-districts` | Public | List voting districts available during registration. |
 | `GET` | `/api/v1/elections` | Public | List elections. |
 | `GET` | `/api/v1/elections/{electionId}` | Public | Retrieve an election. |
-| `POST` | `/api/v1/elections/{electionId}/registrations` | Authenticated voter | Register during the election registration window. |
+| `POST` | `/api/v1/elections/{electionId}/registrations` | Authenticated voter | Register the existing voter profile during the election registration window and confirm the voting district. |
 | `GET` | `/api/v1/me/registrations` | Authenticated voter | List the current voter's registrations. |
 | `GET` | `/api/v1/elections/{electionId}/contests` | Public | List contests and options for an election. |
 | `POST` | `/api/v1/elections/{electionId}/contests/{contestId}/credentials` | Authenticated voter | Issue a one-time anonymous voting credential after eligibility checks. |

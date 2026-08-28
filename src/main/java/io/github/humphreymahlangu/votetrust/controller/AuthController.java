@@ -63,7 +63,7 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
             summary = "Create a platform account",
-            description = "Creates a voter account with a BCrypt-hashed password and returns a short-lived JWT."
+            description = "Creates a voter account and protected voter profile, then returns a short-lived JWT."
     )
     public AuthResponse register(@Valid @RequestBody RegisterRequest request, HttpServletRequest servletRequest) {
         return authService.register(request, SecurityAuditMetadata.from(servletRequest));

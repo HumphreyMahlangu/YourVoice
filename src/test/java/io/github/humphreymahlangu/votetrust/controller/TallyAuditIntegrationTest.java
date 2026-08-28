@@ -18,6 +18,7 @@ import io.github.humphreymahlangu.votetrust.entity.Election;
 import io.github.humphreymahlangu.votetrust.entity.ElectionRegistration;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
 import io.github.humphreymahlangu.votetrust.entity.ElectionType;
+import io.github.humphreymahlangu.votetrust.entity.IdDocumentType;
 import io.github.humphreymahlangu.votetrust.entity.LedgerState;
 import io.github.humphreymahlangu.votetrust.entity.RegistrationStatus;
 import io.github.humphreymahlangu.votetrust.entity.UserAccount;
@@ -353,7 +354,9 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
         ));
         VoterProfile voterProfile = voterProfileRepository.save(new VoterProfile(
                 account,
+                "Results Test Voter",
                 identityHashService.hashSouthAfricanIdNumber(email),
+                IdDocumentType.SMART_ID_CARD,
                 LocalDate.of(1980, 1, 1),
                 district
         ));

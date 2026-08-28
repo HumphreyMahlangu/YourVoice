@@ -2,6 +2,8 @@ package io.github.humphreymahlangu.votetrust.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -35,8 +37,15 @@ public class VoterProfile {
     @JoinColumn(name = "user_account_id", nullable = false)
     private UserAccount userAccount;
 
+    @Column(name = "full_name", length = 160)
+    private String fullName;
+
     @Column(name = "id_number_hash", nullable = false, length = 64)
     private String idNumberHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "id_document_type", length = 40)
+    private IdDocumentType idDocumentType;
 
     @Column(name = "date_of_birth", nullable = false)
     private LocalDate dateOfBirth;
@@ -58,12 +67,16 @@ public class VoterProfile {
 
     public VoterProfile(
             UserAccount userAccount,
+            String fullName,
             String idNumberHash,
+            IdDocumentType idDocumentType,
             LocalDate dateOfBirth,
             VotingDistrict votingDistrict
     ) {
         this.userAccount = userAccount;
+        this.fullName = fullName;
         this.idNumberHash = idNumberHash;
+        this.idDocumentType = idDocumentType;
         this.dateOfBirth = dateOfBirth;
         this.votingDistrict = votingDistrict;
     }
@@ -76,8 +89,16 @@ public class VoterProfile {
         return userAccount;
     }
 
+    public String getFullName() {
+        return fullName;
+    }
+
     public String getIdNumberHash() {
         return idNumberHash;
+    }
+
+    public IdDocumentType getIdDocumentType() {
+        return idDocumentType;
     }
 
     public LocalDate getDateOfBirth() {

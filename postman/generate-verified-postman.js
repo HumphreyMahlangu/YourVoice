@@ -419,8 +419,22 @@ const collection = {
           method: 'POST',
           url: '{{baseUrl}}/api/v1/auth/register',
           header: jsonHeaders,
-          body: jsonBody({ email: '{{voterEmail}}', password: '{{voterPassword}}' }),
-          prerequest: requireVars(['voterEmail', 'voterPassword']),
+          body: jsonBody({
+            fullName: '{{voterFullName}}',
+            email: '{{voterEmail}}',
+            password: '{{voterPassword}}',
+            southAfricanIdNumber: '{{voterSouthAfricanIdNumber}}',
+            idDocumentType: '{{idDocumentType}}',
+            votingDistrictId: '{{votingDistrictId}}'
+          }),
+          prerequest: requireVars([
+            'voterFullName',
+            'voterEmail',
+            'voterPassword',
+            'voterSouthAfricanIdNumber',
+            'idDocumentType',
+            'votingDistrictId'
+          ]),
           test: [
             ...expectOneOf([201, 409], 'Voter account is created or already exists'),
             'if (pm.response.code === 201) {',
@@ -459,7 +473,7 @@ const collection = {
           method: 'POST',
           url: '{{baseUrl}}/api/v1/elections/{{electionId}}/registrations',
           header: voterJsonHeaders,
-          body: jsonBody({ southAfricanIdNumber: '{{voterSouthAfricanIdNumber}}', idDocumentType: '{{idDocumentType}}', votingDistrictId: '{{votingDistrictId}}' }),
+          body: jsonBody({ votingDistrictId: '{{votingDistrictId}}' }),
           prerequest: registrationStillOpenGuard(),
           test: [
             ...expectOneOf([201, 409], 'Election registration is created or already exists'),
@@ -658,6 +672,7 @@ const environment = {
     { key: 'wardNumber', value: '12', type: 'default', enabled: true },
     { key: 'idDocumentType', value: 'SMART_ID_CARD', type: 'default', enabled: true },
     { key: 'runId', value: '', type: 'default', enabled: true },
+    { key: 'voterFullName', value: 'Verified Postman Voter', type: 'default', enabled: true },
     { key: 'voterEmail', value: '', type: 'default', enabled: true },
     { key: 'voterSouthAfricanIdNumber', value: '', type: 'default', enabled: true },
     { key: 'districtCode', value: '', type: 'default', enabled: true },

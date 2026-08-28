@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
+import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
 import io.github.humphreymahlangu.votetrust.repository.AnonymousVotingCredentialRepository;
 import io.github.humphreymahlangu.votetrust.repository.BallotLedgerEntryRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
@@ -272,12 +273,23 @@ class AdminLifecycleIntegrationTest extends PostgreSqlTestContainerSupport {
     }
 
     private String registerVoterAndReturnToken(String email) throws Exception {
+        VotingDistrict onboardingDistrict = votingDistrictRepository.save(new VotingDistrict(
+                "TEST-ONBOARDING",
+                "Test Onboarding Station",
+                "Western Cape",
+                "City of Cape Town",
+                99
+        ));
         String body = """
                 {
+                  "fullName": "Admin Access Test Voter",
                   "email": "%s",
-                  "password": "VeryStrongPassword1"
+                  "password": "VeryStrongPassword1",
+                  "southAfricanIdNumber": "8001015000086",
+                  "idDocumentType": "SMART_ID_CARD",
+                  "votingDistrictId": "%s"
                 }
-                """.formatted(email);
+                """.formatted(email, onboardingDistrict.getId());
 
         MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

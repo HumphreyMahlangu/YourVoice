@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
+import io.github.humphreymahlangu.votetrust.entity.AccountRole;
 import io.github.humphreymahlangu.votetrust.entity.AnonymousVotingCredential;
 import io.github.humphreymahlangu.votetrust.entity.BallotLedgerEntry;
 import io.github.humphreymahlangu.votetrust.entity.Contest;
@@ -19,6 +20,7 @@ import io.github.humphreymahlangu.votetrust.entity.Election;
 import io.github.humphreymahlangu.votetrust.entity.ElectionRegistration;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
 import io.github.humphreymahlangu.votetrust.entity.ElectionType;
+import io.github.humphreymahlangu.votetrust.entity.IdDocumentType;
 import io.github.humphreymahlangu.votetrust.entity.LedgerState;
 import io.github.humphreymahlangu.votetrust.entity.RegistrationStatus;
 import io.github.humphreymahlangu.votetrust.entity.UserAccount;
@@ -37,6 +39,7 @@ import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
 import io.github.humphreymahlangu.votetrust.repository.VotingRightRepository;
 import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
 import io.github.humphreymahlangu.votetrust.security.IdentityHashService;
+import io.github.humphreymahlangu.votetrust.security.JwtService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -106,6 +109,9 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
 
     @Autowired
     private IdentityHashService identityHashService;
+
+    @Autowired
+    private JwtService jwtService;
 
     @BeforeEach
     void cleanDatabase() {
@@ -413,7 +419,9 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
         UserAccount account = userAccountRepository.findByEmailIgnoreCase(email).orElseThrow();
         VoterProfile voterProfile = voterProfileRepository.save(new VoterProfile(
                 account,
+                "Voting Test Voter",
                 identityHashService.hashSouthAfricanIdNumber(email),
+                IdDocumentType.SMART_ID_CARD,
                 dateOfBirth,
                 district
         ));
@@ -439,7 +447,9 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
         UserAccount account = userAccountRepository.findByEmailIgnoreCase(email).orElseThrow();
         VoterProfile voterProfile = voterProfileRepository.save(new VoterProfile(
                 account,
+                "Voting Test Voter",
                 identityHashService.hashSouthAfricanIdNumber(email),
+                IdDocumentType.SMART_ID_CARD,
                 dateOfBirth,
                 district
         ));
@@ -455,21 +465,14 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
         return new VotingFixture(election, district, contest, options.get(0), options.get(1), jwt);
     }
 
-    private String registerAccountAndReturnToken(String email) throws Exception {
-        String body = """
-                {
-                  "email": "%s",
-                  "password": "VeryStrongPassword1"
-                }
-                """.formatted(email);
-
-        MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        return JsonPath.read(result.getResponse().getContentAsString(), "$.accessToken");
+    private String registerAccountAndReturnToken(String email) {
+        UserAccount account = userAccountRepository.save(new UserAccount(
+                email,
+                "unused-password-hash",
+                AccountRole.VOTER,
+                true
+        ));
+        return jwtService.generateAccessToken(account).token();
     }
 
     private String ballotBody(Contest contest, ContestOption contestOption, String credential) {
