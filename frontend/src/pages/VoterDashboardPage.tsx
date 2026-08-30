@@ -66,7 +66,8 @@ function VoterDashboardPage() {
   }, [logout, session])
 
   return (
-    <section aria-labelledby="dashboard-heading">
+    <section className="page dashboard-page" aria-labelledby="dashboard-heading">
+      <p className="eyebrow">Voter workspace</p>
       <h1 id="dashboard-heading">Voter dashboard</h1>
 
       {isLoading && <p role="status">Loading your voter account...</p>}

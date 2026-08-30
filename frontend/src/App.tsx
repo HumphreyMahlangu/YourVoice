@@ -1,57 +1,106 @@
-import { Link, Outlet } from 'react-router'
+import { NavLink, Outlet } from 'react-router'
 import { useAuth } from './auth/useAuth'
+import BrandMark from './components/BrandMark'
+
+function navigationClass({ isActive }: { isActive: boolean }) {
+  return isActive ? 'nav-link nav-link--active' : 'nav-link'
+}
 
 function App() {
   const { session, logout } = useAuth()
 
   return (
-    <>
-      <header>
-        <nav aria-label="Primary navigation">
-          <ul>
-            <li>
-              <Link to="/">VoteTrust</Link>
-            </li>
-            <li>
-              <Link to="/elections">Elections</Link>
-            </li>
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
+
+      <header className="app-header">
+        <div className="app-header__inner">
+          <NavLink className="brand" to="/" aria-label="VoteTrust home">
+            <BrandMark />
+            <span className="brand__copy">
+              <strong>VoteTrust</strong>
+              <span>Confidence by design</span>
+            </span>
+          </NavLink>
+
+          <nav className="primary-nav" aria-label="Primary navigation">
+            <NavLink className={navigationClass} to="/" end>
+              Overview
+            </NavLink>
+            <NavLink className={navigationClass} to="/elections">
+              Elections
+            </NavLink>
+            {session?.role === 'VOTER' && (
+              <NavLink className={navigationClass} to="/dashboard">
+                My dashboard
+              </NavLink>
+            )}
+            {session?.role === 'ADMIN' && (
+              <>
+                <NavLink className={navigationClass} to="/admin" end>
+                  Admin
+                </NavLink>
+                <NavLink
+                  className={navigationClass}
+                  to="/admin/security-events"
+                >
+                  Security
+                </NavLink>
+              </>
+            )}
+          </nav>
+
+          <div className="account-nav">
             {session ? (
               <>
-                {session.role === 'VOTER' && (
-                  <li>
-                    <Link to="/dashboard">Dashboard</Link>
-                  </li>
-                )}
-                {session.role === 'ADMIN' && (
-                  <li>
-                    <Link to="/admin">Admin dashboard</Link>
-                  </li>
-                )}
-                <li>
-                  <span>Signed in as {session.email}</span>{' '}
-                  <button type="button" onClick={logout}>
-                    Sign out
-                  </button>
-                </li>
+                <div className="account-chip" title={session.email}>
+                  <span className="account-chip__avatar" aria-hidden="true">
+                    {session.email.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="account-chip__copy">
+                    <strong>{session.email}</strong>
+                    <span>{session.role === 'ADMIN' ? 'Administrator' : 'Voter'}</span>
+                  </span>
+                </div>
+                <button className="button button--quiet" type="button" onClick={logout}>
+                  Sign out
+                </button>
               </>
             ) : (
               <>
-                <li>
-                  <Link to="/login">Sign in</Link>
-                </li>
-                <li>
-                  <Link to="/register">Register</Link>
-                </li>
+                <NavLink className="button button--quiet" to="/login">
+                  Sign in
+                </NavLink>
+                <NavLink className="button button--primary" to="/register">
+                  Create account
+                </NavLink>
               </>
             )}
-          </ul>
-        </nav>
+          </div>
+        </div>
       </header>
 
-      <main>
+      <main id="main-content" className="app-main">
         <Outlet />
       </main>
-    </>
+
+      <footer className="app-footer">
+        <div className="app-footer__inner">
+          <div className="app-footer__brand">
+            <BrandMark />
+            <div>
+              <strong>VoteTrust</strong>
+              <p>Transparent participation. Verifiable outcomes.</p>
+            </div>
+          </div>
+          <p className="app-footer__note">
+            Built to keep voter identity and ballot choice separate.
+          </p>
+        </div>
+      </footer>
+    </div>
   )
 }
 

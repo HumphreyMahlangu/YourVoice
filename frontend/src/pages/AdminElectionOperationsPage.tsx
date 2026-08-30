@@ -131,7 +131,7 @@ function AdminElectionOperationsPage() {
     operationsData.election.status !== 'CANCELLED'
 
   return (
-    <section aria-labelledby="election-operations-heading">
+    <section className="page admin-page workflow-page" aria-labelledby="election-operations-heading">
       <Link to="/admin">Back to admin dashboard</Link>
 
       {isLoading && <p role="status">Loading election operations...</p>}

@@ -103,7 +103,7 @@ function AdminElectionBuilderPage() {
     new Date(builderData.election.registrationStartAt).getTime() > Date.now()
 
   return (
-    <section aria-labelledby="election-builder-heading">
+    <section className="page admin-page workflow-page" aria-labelledby="election-builder-heading">
       <Link to="/admin">Back to admin dashboard</Link>
 
       {isLoading && <p role="status">Loading election configuration...</p>}

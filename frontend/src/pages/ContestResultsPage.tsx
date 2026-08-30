@@ -64,7 +64,7 @@ function ContestResultsPage() {
   const electionPath = electionId ? `/elections/${electionId}` : '/elections'
 
   return (
-    <section aria-labelledby="contest-results-heading">
+    <section className="page verification-page" aria-labelledby="contest-results-heading">
       <Link to={electionPath}>Back to election</Link>
 
       {isLoading && <p role="status">Loading final results...</p>}

@@ -27,7 +27,7 @@ function RouteErrorPage() {
 
   return (
     <main>
-      <section aria-labelledby="route-error-heading">
+      <section className="page message-page" aria-labelledby="route-error-heading">
         <h1 id="route-error-heading">Something went wrong</h1>
         <p role="alert">{getRouteErrorMessage(error)}</p>
         <Link to="/">Return to the home page</Link>

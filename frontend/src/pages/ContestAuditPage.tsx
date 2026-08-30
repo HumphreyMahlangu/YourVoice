@@ -62,7 +62,7 @@ function ContestAuditPage() {
       : '/elections'
 
   return (
-    <section aria-labelledby="contest-audit-heading">
+    <section className="page verification-page" aria-labelledby="contest-audit-heading">
       <Link to={resultsPath}>Back to results</Link>
 
       {isLoading && <p role="status">Verifying ledger integrity...</p>}
