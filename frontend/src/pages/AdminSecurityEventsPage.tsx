@@ -64,7 +64,7 @@ function AdminSecurityEventsPage() {
   }, [limit, logout, refreshCount, session])
 
   return (
-    <section aria-labelledby="security-events-heading">
+    <section className="page admin-page verification-page" aria-labelledby="security-events-heading">
       <h1 id="security-events-heading">Security audit events</h1>
       <p>
         Review recent account authentication, administrator bootstrap, and

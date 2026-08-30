@@ -236,7 +236,7 @@ function VotePage() {
     pageData.contest.status === 'OPEN'
 
   return (
-    <section aria-labelledby="vote-heading">
+    <section className="page voting-page" aria-labelledby="vote-heading">
       <Link to={electionPath}>Back to election</Link>
 
       {isLoading && <p role="status">Loading ballot...</p>}

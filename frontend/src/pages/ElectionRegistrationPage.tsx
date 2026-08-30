@@ -114,7 +114,7 @@ function ElectionRegistrationPage() {
   const districtError = fieldErrors.votingDistrictId
 
   return (
-    <section aria-labelledby="election-registration-heading">
+    <section className="page workflow-page" aria-labelledby="election-registration-heading">
       <Link to={electionPath}>Back to election</Link>
       <h1 id="election-registration-heading">Election registration</h1>
 

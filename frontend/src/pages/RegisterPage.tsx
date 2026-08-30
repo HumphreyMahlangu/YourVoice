@@ -113,8 +113,13 @@ function RegisterPage() {
   const votingDistrictError = fieldErrors.votingDistrictId
 
   return (
-    <section aria-labelledby="register-heading">
+    <section className="page auth-page register-page" aria-labelledby="register-heading">
+      <p className="eyebrow">Voter onboarding</p>
       <h1 id="register-heading">Create voter account</h1>
+      <p>
+        Establish your eligibility once. Your identity is kept separate from
+        any ballot you later cast.
+      </p>
 
       {error !== null && (
         <p role="alert">

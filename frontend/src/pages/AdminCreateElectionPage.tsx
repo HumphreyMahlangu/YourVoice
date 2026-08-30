@@ -104,7 +104,7 @@ function AdminCreateElectionPage() {
   const votingEndError = fieldErrors.votingEndAt
 
   return (
-    <section aria-labelledby="create-election-heading">
+    <section className="page admin-page workflow-page" aria-labelledby="create-election-heading">
       <Link to="/admin">Back to admin dashboard</Link>
       <h1 id="create-election-heading">Create election</h1>
       <p>

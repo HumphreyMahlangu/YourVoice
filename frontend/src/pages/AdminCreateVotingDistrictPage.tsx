@@ -73,7 +73,7 @@ function AdminCreateVotingDistrictPage() {
   const wardNumberError = fieldErrors.wardNumber
 
   return (
-    <section aria-labelledby="create-district-heading">
+    <section className="page admin-page workflow-page" aria-labelledby="create-district-heading">
       <Link to="/admin">Back to admin dashboard</Link>
       <h1 id="create-district-heading">Create voting district</h1>
 

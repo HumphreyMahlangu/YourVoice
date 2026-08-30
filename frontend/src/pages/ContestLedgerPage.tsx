@@ -62,7 +62,7 @@ function ContestLedgerPage() {
       : '/elections'
 
   return (
-    <section aria-labelledby="contest-ledger-heading">
+    <section className="page verification-page" aria-labelledby="contest-ledger-heading">
       <Link to={auditPath}>Back to ledger verification</Link>
       <h1 id="contest-ledger-heading">Public contest ledger</h1>
       <p>

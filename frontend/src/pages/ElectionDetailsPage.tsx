@@ -62,7 +62,7 @@ function ElectionDetailsPage() {
   }, [electionId])
 
   return (
-    <section aria-labelledby="election-details-heading">
+    <section className="page detail-page" aria-labelledby="election-details-heading">
       <Link to="/elections">Back to elections</Link>
 
       {isLoading && <p role="status">Loading election details...</p>}

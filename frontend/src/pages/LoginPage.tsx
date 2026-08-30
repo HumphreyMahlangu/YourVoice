@@ -51,8 +51,10 @@ function LoginPage() {
   const passwordError = fieldErrors.password
 
   return (
-    <section aria-labelledby="login-heading">
+    <section className="page auth-page" aria-labelledby="login-heading">
+      <p className="eyebrow">Secure account access</p>
       <h1 id="login-heading">Sign in</h1>
+      <p>Continue to your protected voter or administrator workspace.</p>
 
       {error !== null && (
         <p role="alert">

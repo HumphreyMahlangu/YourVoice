@@ -37,8 +37,10 @@ function ElectionsPage() {
   }, [])
 
   return (
-    <section aria-labelledby="elections-heading">
+    <section className="page directory-page" aria-labelledby="elections-heading">
+      <p className="eyebrow">Public election directory</p>
       <h1 id="elections-heading">Elections</h1>
+      <p>Review election timelines, published contests, and verified outcomes.</p>
 
       {isLoading && <p role="status">Loading elections...</p>}
 
