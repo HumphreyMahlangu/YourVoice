@@ -85,6 +85,19 @@ curl "$baseUrl/swagger-ui.html"
 
 For Postman, set the environment `baseUrl` to the Container App URL.
 
+## Render Backend Deployment
+
+The root `render.yaml` defines a backend-only Render Blueprint with the Dockerized Spring Boot API and a managed PostgreSQL database. It does not deploy or modify the frontend.
+
+Deploy it from the Render dashboard:
+
+1. Push the repository to GitHub with `render.yaml` on the deployment branch.
+2. In Render, choose **New > Blueprint**, connect the repository, and apply the Blueprint.
+3. Wait for `votetrust-db` and `votetrust-api` to finish deploying.
+4. Verify `https://<api-host>/actuator/health/readiness` and `https://<api-host>/swagger-ui.html`.
+
+The Blueprint generates the JWT and pepper secrets. For a controlled first-admin bootstrap, set `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=true` and a strong `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN` on the API service, create the admin, then disable bootstrap and redeploy. Set `VOTETRUST_CORS_ALLOWED_ORIGINS` to the eventual frontend origin before browser clients call the API.
+
 ## Production Hardening Notes
 
 * Keep `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=false` except during a controlled first-admin bootstrap window.
