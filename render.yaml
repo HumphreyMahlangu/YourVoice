@@ -7,8 +7,6 @@ services:
     dockerContext: .
     healthCheckPath: /actuator/health/readiness
     envVars:
-      - key: SERVER_PORT
-        value: ${{PORT}}
       - key: SPRING_DATASOURCE_URL
         value: jdbc:postgresql://${{votetrust-db.host}}:${{votetrust-db.port}}/${{votetrust-db.database}}
       - key: SPRING_DATASOURCE_USERNAME
