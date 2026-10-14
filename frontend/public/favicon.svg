@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
-  <!-- Mirrors the .brand-mark component: asymmetric rounded square in --color-primary-600 with a "V". -->
+  <!-- Mirrors the .brand-mark component: asymmetric rounded square in the primary-600 green with a "Y". -->
   <path fill="#08715d" d="M16 0h16a8 8 0 0 1 8 8v16a16 16 0 0 1-16 16H8a8 8 0 0 1-8-8V16A16 16 0 0 1 16 0z"/>
-  <path fill="#fdfbf6" d="M12.6 11h4.1l3.3 12.2L23.3 11h4.1l-5.4 18h-4z"/>
+  <path fill="#fdfbf6" d="M12.2 11h4.3l3.5 7 3.5-7h4.3l-5.9 10.6V29h-3.8v-7.4z"/>
 </svg>

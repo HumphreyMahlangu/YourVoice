@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Console logging in one of two formats, chosen by votetrust.logging.format (env VOTETRUST_LOG_FORMAT):
+  Console logging in one of two formats, chosen by yourvoice.logging.format (env YOURVOICE_LOG_FORMAT):
   "text" (default) is Spring Boot's console pattern with the request ID; "json" writes one JSON object per line,
   including the MDC request ID, for log aggregation. Only the selected appender is defined, so Logback has no
   unreferenced appender to warn about. LoggingProperties rejects any other value at startup.
 -->
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-    <springProperty scope="context" name="logFormat" source="votetrust.logging.format" defaultValue="text"/>
-    <include resource="votetrust-logging-${logFormat}.xml"/>
+    <springProperty scope="context" name="logFormat" source="yourvoice.logging.format" defaultValue="text"/>
+    <include resource="yourvoice-logging-${logFormat}.xml"/>
 </configuration>

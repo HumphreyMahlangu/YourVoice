@@ -1,11 +1,19 @@
-# CLAUDE.md — VoteTrust (repo: YourVoice)
+# CLAUDE.md — YourVoice
 
-Portfolio project: a secure online-voting **simulation** for South Africa. Code, packages and docs all say
-**VoteTrust**; the GitHub repo is `HumphreyMahlangu/YourVoice`. It isn't a real election system, and the
-code should never imply it is.
+Full-stack portfolio project: a secure online-voting **simulation** for South Africa. The repo is
+`HumphreyMahlangu/YourVoice`. It isn't a real election system, and the code should never imply it is.
+
+**Naming:** the project was called VoteTrust until 2026-10-15 and is now **YourVoice** everywhere (display text,
+`io.github.humphreymahlangu.yourvoice`, `yourvoice.*` properties, `YOURVOICE_*` env vars, `yourvoice.*` metrics).
+A few `votetrust` identifiers remain **on purpose**. Do not rename them:
+- Render service `votetrust-api`, database `votetrust-db` (and its `databaseName`/`user`), and the URL
+  `votetrust-api.onrender.com`: renaming makes Render create a new service, URL and empty database.
+- Hash domain strings `votetrust-ledger-v1/v2`, `votetrust-public-ledger-v1`, `votetrust-ballot-token-v1`,
+  `votetrust-ballot-signing-key-encryption-v1`: stored ledger hashes and encrypted ballot keys depend on them.
+- The local Docker volume `votetrust-postgres-data`, which holds the developer's local database.
 
 - **Backend**: Java 21, Spring Boot 3.3.4, Spring Security (stateless JWT), JPA/Hibernate, Flyway, PostgreSQL 16.
-  Package root: `io.github.humphreymahlangu.votetrust` in `src/main/java`.
+  Package root: `io.github.humphreymahlangu.yourvoice` in `src/main/java`.
 - **Frontend**: `frontend/` (React 19, TypeScript 6, Vite 8, react-router 8, Vitest, oxlint). No UI library, plain CSS.
 - **Deploy**: API + Postgres → Render (`render.yaml`, Docker, auto-deploys after CI passes). Frontend → Vercel
   (`frontend/vercel.json`). There is no other deployment target (Azure was removed on 2026-10-14).
@@ -39,7 +47,7 @@ npm run build    # tsc -b && vite build
 Gate on Maven's exit code (`./mvnw … > log; echo $?`), not on `grep` output.
 
 Required runtime env: `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (plus `SPRING_DATASOURCE_URL`, or
-`_HOST/_PORT/_NAME`), `VOTETRUST_JWT_SECRET`, `VOTETRUST_ID_HASH_PEPPER`, `VOTETRUST_VOTE_CREDENTIAL_PEPPER`.
+`_HOST/_PORT/_NAME`), `YOURVOICE_JWT_SECRET`, `YOURVOICE_ID_HASH_PEPPER`, `YOURVOICE_VOTE_CREDENTIAL_PEPPER`.
 All three secrets must be ≥32 chars and independent of each other. If any is missing, startup fails validation.
 
 **Docker is required for ~half the backend tests.** Testcontainers 1.21.4 is the minimum that works with Docker
@@ -47,7 +55,7 @@ Engine 29, so don't downgrade it. If a shell predates the user's `docker` group 
 `sg docker -c "./mvnw clean verify"`. Integration tests use Testcontainers with
 `@Testcontainers(disabledWithoutDocker = true)`, so without Docker they are *silently skipped*, not failed.
 A green local run without Docker doesn't prove those tests pass. CI sets
-`VOTETRUST_TEST_DATASOURCE_URL/USERNAME/PASSWORD` to use a service Postgres instead of a container.
+`YOURVOICE_TEST_DATASOURCE_URL/USERNAME/PASSWORD` to use a service Postgres instead of a container.
 
 ## Architecture (backend)
 
@@ -83,7 +91,7 @@ Key services: `AuthService` + `AuthTokenService` (refresh tokens), `AdminBootstr
 - **Every controller needs OpenAPI annotations** (`@Tag`, `@ApiResponses`, and `@Operation` with summary and
   description on every GET/POST/PUT/PATCH/DELETE handler; `bearerAuth` where authenticated).
   `OpenApiAnnotationCoverageTest` has a hard-coded controller list, so add new controllers to it.
-- **Metrics** go through `observability/VoteTrustMetrics`. Never tag a metric with a contest option, because
+- **Metrics** go through `observability/YourVoiceMetrics`. Never tag a metric with a contest option, because
   count-over-time per option leaks choices.
 - **Imports:** the codebase mixes ASCII and case-insensitive ordering. Keep a file's existing order and slot new imports in.
 - Frontend conventions are in frontend.md.

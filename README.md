@@ -1,18 +1,25 @@
-# VoteTrust
+# YourVoice
 **A Secure Digital Voting Platform**
-Exploring how modern software engineering, cryptography, and secure system design can improve transparency, accessibility, and trust in digital voting.
+
+[![CI](https://github.com/HumphreyMahlangu/YourVoice/actions/workflows/ci.yml/badge.svg)](https://github.com/HumphreyMahlangu/YourVoice/actions/workflows/ci.yml)
+
+A full-stack web application that explores how modern software engineering, cryptography, and secure system design can improve transparency, accessibility, and trust in digital voting: a React single-page application for voters, administrators, and public observers, backed by a Spring Boot REST API and PostgreSQL.
 
 ## Table of Contents
 * [Overview](#overview)
-* [Why VoteTrust?](#why-votetrust)
+* [Why YourVoice?](#why-yourvoice)
 * [The Problem](#the-problem)
-* [Project Vision](#project-vision)
-* [Project Goals](#project-goals)
+* [Project Vision and Goals](#project-vision-and-goals)
 * [Core Principles](#core-principles)
+* [What You Can Do](#what-you-can-do)
 * [Key Features](#key-features)
 * [Technology Stack](#technology-stack)
-* [System Architecture / Endpoints](#system-architecture--endpoints)
-* [Local Deployment](#local-deployment)
+* [Architecture](#architecture)
+* [Repository Structure](#repository-structure)
+* [Getting Started](#getting-started)
+* [Testing](#testing)
+* [Deployment](#deployment)
+* [REST API](#rest-api)
 * [Project Status](#project-status)
 * [Roadmap](#roadmap)
 * [About the Developer](#about-the-developer)
@@ -20,267 +27,311 @@ Exploring how modern software engineering, cryptography, and secure system desig
 * [License](#license)
 
 ## Overview
-VoteTrust is a backend-focused software engineering project that explores how secure digital voting systems can be designed using modern technologies.
-The project investigates the use of secure authentication, cryptography, audit logging, and distributed ledger concepts to build a voting platform that prioritizes integrity, transparency, privacy, and accessibility.
-Rather than attempting to replace existing election systems, VoteTrust serves as a technical exploration of the challenges involved in designing a secure digital voting platform while following modern software engineering best practices.
-The primary objective is to demonstrate robust backend architecture, secure application development, and thoughtful system design.
+YourVoice is a full-stack software engineering project that explores how a secure digital voting system can be designed end to end, from the browser to the database.
 
-## Why VoteTrust?
+The **frontend** is a React and TypeScript single-page application where voters register, vote, and verify results, administrators run elections, and anyone can audit a closed contest. Security-critical work happens in the browser too: ballot tokens are blinded with the contest's public key before they leave the voter's device, and the public ledger is re-verified locally.
+
+The **backend** is a Spring Boot REST API that handles authentication, eligibility, the automatic election lifecycle, blind signing, ballot recording in tamper-evident hash chains, tallying, and auditing, all on PostgreSQL.
+
+Rather than attempting to replace existing election systems, YourVoice is a technical exploration of the challenges involved in designing a secure digital voting platform while following modern software engineering best practices.
+
+## Why YourVoice?
 Digital technology has transformed how people bank, communicate, study, shop, and access government services. However, voting remains a largely physical process in many parts of the world.
+
 While in-person voting plays an important role in maintaining election integrity, practical barriers such as long queues, travel requirements, accessibility challenges, and time constraints may discourage participation for some eligible voters.
-VoteTrust was created to explore an important engineering question:
-How can modern software technologies improve accessibility to voting while preserving security, privacy, transparency, and public trust?
+
+YourVoice was created to explore an important engineering question: how can modern software technologies improve accessibility to voting while preserving security, privacy, transparency, and public trust?
+
 This project does not claim to solve every challenge associated with online voting. Instead, it investigates how secure software engineering principles can contribute to future digital voting systems.
 
 ## The Problem
-Designing a secure digital voting system is significantly more complex than building a standard web application.
-A trustworthy voting platform must address challenges such as:
+Designing a secure digital voting system is significantly more complex than building a standard web application. A trustworthy voting platform must address challenges such as:
 * Verifying voter identity.
 * Preventing duplicate voting.
-* Protecting ballot secrecy.
+* Protecting ballot secrecy, even from the operators of the system.
 * Preventing unauthorized modification of votes.
-* Providing transparent and auditable election records.
+* Providing transparent and independently verifiable election records.
 * Preserving voter privacy.
 * Maintaining confidence in election results.
-VoteTrust explores these challenges through software engineering, security, and modern backend architecture.
 
-## Project Vision
-The vision of VoteTrust is to build a secure, scalable, and maintainable backend platform that demonstrates how modern technologies can be combined to create a transparent and trustworthy digital voting system.
-The project emphasizes clean architecture, security-first development, and real-world engineering practices over simply implementing features.
+## Project Vision and Goals
+The vision of YourVoice is a secure, maintainable, full-stack platform that demonstrates how modern technologies can be combined into a transparent and trustworthy digital voting system, with clean architecture, security-first development, and real-world engineering practices across the whole stack.
 
-## Project Goals
-* Build a secure RESTful API using Spring Boot.
-* Implement robust authentication and authorization.
+* Build an accessible, responsive web interface for voters, administrators, and observers.
+* Build a secure RESTful API with robust authentication and authorization.
 * Ensure every eligible voter can cast only one vote.
-* Protect ballot confidentiality through cryptographic techniques.
-* Maintain immutable and verifiable audit records.
+* Protect ballot secrecy cryptographically, so ballots cannot be linked to voters.
+* Maintain tamper-evident records that anyone can verify.
 * Apply secure software engineering principles throughout the system.
-* Demonstrate scalable backend architecture suitable for enterprise applications.
 * Produce a professional portfolio project that reflects real-world engineering practices.
 
 ## Core Principles
-VoteTrust is built around five fundamental principles.
 * **Security**: Protect voter identities, ballots, and election data against unauthorized access and tampering.
 * **Privacy**: Ensure that individual votes remain confidential while maintaining election integrity.
 * **Integrity**: Guarantee that votes cannot be modified, duplicated, or removed once accepted by the system.
-* **Transparency**: Provide verifiable audit logs that improve accountability without exposing sensitive information.
+* **Transparency**: Provide verifiable records that improve accountability without exposing sensitive information.
 * **Accessibility**: Explore how digital platforms may reduce practical barriers that discourage participation.
 
 ---
 
+## What You Can Do
+
+### As a voter
+* Create an account once, with your South African ID number and voting district. The ID number is validated and stored only as a protected hash.
+* Register for an election while its registration window is open.
+* Vote in the contests you are eligible for. Your browser blinds a random ballot token, the server signs it after checking eligibility, and your ballot is cast without your identity.
+* Stay signed in across page reloads, and sign out to revoke the session.
+
+### As an administrator
+* Create voting districts, elections, contests, and ballot options (party, independent candidate, blank, spoilt).
+* Edit or remove draft ballot content, and rename or reschedule a draft election.
+* Watch each election's lifecycle history, and cancel an election in an emergency.
+* Review security audit events and add other administrators.
+
+### As a public observer
+* Browse elections and contests.
+* After an election closes, view the final results, the server's integrity audit, and the published ledger, which your browser re-verifies hash by hash.
+
 ## Key Features
 
-### Stateless Authentication and Authorization
-
-* Spring Security operates without server-side HTTP sessions and authenticates requests with short-lived JWT access tokens.
-* Rotating refresh tokens (stored hashed, grouped in families) keep sessions alive across page reloads; reusing a rotated token revokes the whole family, and logout revokes it explicitly.
-* Passwords are hashed with BCrypt using a cost factor of 12. Unknown emails still pay for one BCrypt check, so response timing does not reveal which accounts exist.
-* Repeated failed sign-ins lock an email address temporarily, in addition to per-IP rate limits. The lock applies equally to unknown emails.
-* Role-based authorization separates voter operations from election administration. The first-administrator bootstrap is disabled by default, token-protected, and closes after an administrator exists; administrators can then add further administrators, and each addition is audited.
-
-### Controlled Voter Registration
-
-* Voter onboarding creates the platform account and voter profile together, collecting the legal name, contact email, South African ID, identity-document type, and voting district once.
-* Election registration is accepted only while the configured registration window is open and the election is in the correct lifecycle state. It always uses the voting district captured at onboarding, so voters cannot choose a different ward or province per election.
-* South African ID numbers are validated during onboarding and stored as peppered HMAC-SHA-256 hashes rather than plaintext identifiers.
-* Voting-district and contest-scope checks model national, provincial, municipal proportional-representation, and ward eligibility.
-
 ### Unlinkable Ballot Credentials (Blind Signatures)
-
 * Each contest has its own RSA key. The voter's browser generates a random ballot token, blinds it, and asks the server to sign the blinded value after the eligibility checks.
 * The browser removes the blinding and casts the ballot with the token and signature, without the voter's login token. The server can verify the signature but cannot link the ballot to the voter it signed for.
-* Each voter can obtain one signature per contest; repeating a request with the same blinded token returns the same signature, so a lost response can be retried safely.
-* Private keys are encrypted at rest (AES-256-GCM), and every voter can compare the contest key fingerprint.
+* Each voter can obtain one signature per contest. Repeating a request with the same blinded token returns the same signature, so a lost response can be retried safely.
+* Private keys are encrypted at rest (AES-256-GCM), and voters can compare the contest key fingerprint shown after voting.
 
 ### One Person, One Vote
-
-* Database uniqueness constraints prevent duplicate election registrations, voting rights, spent ballot tokens, and ledger positions.
+* Database uniqueness constraints prevent duplicate registrations, voting rights, spent ballot tokens, and ledger positions.
 * Pessimistic locks and race-free inserts serialize voting rights, token spending, and ledger appends. Dedicated concurrency tests release many simultaneous requests against PostgreSQL and require exactly one success.
 
 ### Ballot Privacy
-
-* Ballot ledgers contain no account, voter-profile, election-registration, or voting-right reference.
-* The public ledger is published after voting closes with ballots shuffled into a random order, so ledger positions say nothing about when (or by whom) a ballot was cast.
-* The database stores only the day each ballot was recorded, never the exact time.
-* Ballot responses contain no receipt, and no metric is broken down by option.
+* Ballot ledgers contain no account, voter profile, registration, or voting-right reference.
+* The public ledger is published after voting closes with ballots shuffled into a random order, so ledger positions say nothing about when, or by whom, a ballot was cast.
+* The database stores only the day each ballot was recorded, never the exact time. Ballot responses contain no receipt, and no metric is broken down by option.
 
 ### Tamper-Evident, Publicly Verifiable Ledgers
-
 * Ballots are chained with SHA-256 in an internal ledger (cast order) and, after closing, in a published ledger (shuffled order) whose hash inputs are all public.
-* Anyone can recompute the published chain; the public ledger page does it in the browser. The server audit also checks the internal chain and that both ledgers contain the same ballots.
-* The hash chains are tamper-evident, not a blockchain. Stronger real-world assurance would require restricted database administration, external hash anchoring, signed exports, and independent operational oversight.
+* Anyone can recompute the published chain, and the ledger page does it in the browser. The server audit also checks the internal chain and that both ledgers contain the same ballots.
+* The hash chains are tamper-evident, not a blockchain. Stronger real-world assurance would require restricted database administration, external hash anchoring, signed exports, and independent oversight.
 
-### Results, Auditing, and Operations
+### Authentication and Account Security
+* Short-lived JWT access tokens with rotating refresh tokens. Refresh tokens are stored hashed, and reusing a rotated token revokes the whole session family.
+* Passwords hashed with BCrypt (cost 12). Unknown emails still pay for one BCrypt check, so timing does not reveal which accounts exist.
+* Per-IP rate limits plus a temporary lock on an email address after repeated failed sign-ins, applied equally to unknown emails.
+* Role-based access for voters and administrators. The first administrator comes from a disabled-by-default, token-protected bootstrap; further administrators are added from the app and audited.
 
-* Results and ledgers become available only after the election is completed, the contest is closed, and voting has ended. Turnout is computed against the voters eligible for each contest.
-* Blank and spoilt ballots are represented explicitly and are excluded from valid-vote winner calculations.
-* Election stages advance automatically on schedule; administrators can correct draft ballots, reschedule draft elections, or cancel an election, and every change is recorded.
-* Security audit events record authentication, session, bootstrap, administrator, and rate-limit outcomes without linking ballots to voters.
-* Every response carries a request ID that also appears in logs; Prometheus metrics (admin only), optional JSON logs, health probes, Flyway migrations, Docker packaging, Postman artifacts, and CI for backend and frontend support operations.
+### Elections, Eligibility, and Results
+* Election stages (registration open and closed, voting open, completed) advance automatically on schedule. A database lock keeps the scheduler safe across multiple instances.
+* National, provincial, municipal proportional-representation, and ward contests, with eligibility derived from the voting district captured at onboarding.
+* Results become available only after voting has ended. Turnout is computed against the voters eligible for each contest, and blank and spoilt ballots are counted separately from valid votes.
+
+### Frontend Experience
+* Accessible pages built on semantic HTML: labelled forms with inline field errors, skip links, live status and alert regions, and keyboard-friendly two-step confirmations for destructive actions.
+* The voting flow guards the in-memory ballot credential: it warns before you leave the page, retries safely after network errors, and never claims an outcome it cannot confirm.
+* Cryptography runs in the browser with the Web Crypto API and native `BigInt` (blinding, unblinding, and ledger verification), with test vectors shared with the backend.
+
+### Operations
+* Every response carries a request ID that also appears in error bodies and logs.
+* Prometheus metrics (administrators only), optional JSON logs, readiness and liveness probes, Flyway migrations, a hardened Docker image, Postman collections, and CI for backend and frontend.
 
 ## Technology Stack
 
-| Area | Technology |
+| Layer | Technology |
 | --- | --- |
-| Language | Java 21 |
-| Application framework | Spring Boot 3 |
-| Web API | Spring MVC and Jakarta Bean Validation |
-| Security | Spring Security, stateless JWT with JJWT, BCrypt |
-| Persistence | Spring Data JPA and Hibernate |
-| Database | PostgreSQL 16 |
-| Schema management | Flyway |
+| Frontend | React 19, TypeScript, Vite, React Router, Web Crypto API |
+| Frontend quality | Vitest, Testing Library, oxlint |
+| Backend | Java 21, Spring Boot 3, Spring MVC, Jakarta Bean Validation |
+| Security | Spring Security, stateless JWT (JJWT), BCrypt, RSA blind signatures, HMAC-SHA-256, AES-GCM |
+| Persistence | PostgreSQL 16, Spring Data JPA and Hibernate, Flyway |
 | API documentation | Springdoc OpenAPI and Swagger UI |
-| Build | Maven Wrapper |
-| Testing | JUnit 5, Mockito, Spring Security Test, Testcontainers |
-| Operations | Spring Boot Actuator, Docker, Docker Compose |
-| CI | GitHub Actions |
+| Backend quality | JUnit 5, Mockito, Spring Security Test, Testcontainers |
+| Operations | Spring Boot Actuator, Micrometer and Prometheus, ShedLock, Docker, Docker Compose |
+| Hosting and CI | Vercel (frontend), Render (API and database), GitHub Actions |
 
-Runtime secrets and database credentials are supplied through environment variables. They are not embedded in the application artifact.
-
-## System Architecture / Endpoints
-
-VoteTrust follows a layered Spring architecture:
+## Architecture
 
 ```text
-HTTP client
-    -> Spring Security filters and rate limiting
-    -> REST controllers and validated DTOs
-    -> transactional domain services
-    -> Spring Data JPA repositories
-    -> PostgreSQL and Flyway-managed schema
+                Browser (React SPA, hosted on Vercel)
+                ├─ pages for voters, administrators, observers
+                ├─ blinds and unblinds ballot tokens (Web Crypto + BigInt)
+                └─ re-verifies the published ledger
+                                │  HTTPS + JSON, JWT bearer tokens
+                                ▼
+                Spring Boot REST API (Docker, hosted on Render)
+                ├─ security filters: request IDs, rate limiting, JWT
+                ├─ controllers with validated DTOs
+                ├─ transactional services: auth, eligibility, lifecycle scheduler,
+                │  blind signing, hash-chain ledgers, tallying, audit
+                └─ Spring Data JPA repositories
+                                │
+                                ▼
+                PostgreSQL (Flyway-managed schema)
 ```
 
-The system uses a centralized PostgreSQL ledger. It applies cryptographic chaining for tamper evidence but does not claim to be a distributed ledger or blockchain.
+The backend follows a layered design (controllers → services → repositories). The frontend is a client-rendered SPA that talks to the API over CORS, keeps the access token in memory and the refresh token in tab-scoped `sessionStorage`, and never persists ballot credentials.
 
-### Core REST API
+## Repository Structure
 
-| Method | Endpoint | Access | Purpose |
-| --- | --- | --- | --- |
-| `POST` | `/api/v1/auth/register` | Public | Create a voter account and protected voter profile, then return a JWT. |
-| `POST` | `/api/v1/auth/login` | Public | Authenticate an account and return an access and refresh token. |
-| `POST` | `/api/v1/auth/refresh` | Refresh token | Rotate the refresh token and issue a new access token. |
-| `POST` | `/api/v1/auth/logout` | Refresh token | Revoke the session. |
-| `GET` | `/api/v1/auth/me` | Authenticated | Return the current account. |
-| `POST` | `/api/v1/admin/bootstrap` | Controlled bootstrap | Create the first administrator during a temporary bootstrap window. |
-| `GET`, `POST` | `/api/v1/admin/accounts` | Administrator | List or add administrators. |
-| `POST`, `PUT`, `DELETE` | `/api/v1/admin/voting-districts[/{id}]` | Administrator | Manage voting districts (geography is locked once voters use a district). |
-| `POST` | `/api/v1/admin/elections` | Administrator | Create an election. |
-| `PUT` | `/api/v1/admin/elections/{electionId}` | Administrator | Rename or reschedule a draft election. |
-| `PATCH` | `/api/v1/admin/elections/{electionId}/status` | Administrator | Emergency-cancel an election (other transitions are automatic). |
-| `POST`, `PUT`, `DELETE` | `/api/v1/admin/elections/{electionId}/contests[/{contestId}]` | Administrator | Manage geographically scoped contests while the ballot is a draft. |
-| `POST`, `PUT`, `DELETE` | `/api/v1/admin/elections/{electionId}/contests/{contestId}/options[/{optionId}]` | Administrator | Manage party, candidate, blank, or spoilt options while the ballot is a draft. |
-| `GET` | `/api/v1/admin/security-audit-events` | Administrator | Review recent security audit events. |
-| `GET` | `/api/v1/voting-districts` | Public | List voting districts available during registration. |
-| `GET` | `/api/v1/elections` | Public | List elections. |
-| `GET` | `/api/v1/elections/{electionId}` | Public | Retrieve an election. |
-| `POST` | `/api/v1/elections/{electionId}/registrations` | Authenticated voter | Register the existing voter profile, in its onboarding voting district, during the election registration window. |
-| `GET` | `/api/v1/me/registrations` | Authenticated voter | List the current voter's registrations. |
-| `GET` | `/api/v1/elections/{electionId}/contests` | Public | List contests and options for an election. |
-| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/ballot-key` | Public once voting opens | Return the contest's public RSA key for blinding. |
-| `POST` | `/api/v1/elections/{electionId}/contests/{contestId}/credentials` | Authenticated voter | Blind-sign the voter's blinded ballot token after eligibility checks. |
-| `POST` | `/api/v1/ballots` | Ballot token and signature | Cast a ballot without attaching the voter's identity. |
-| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/results` | Public after closure | Return final contest results. |
-| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/audit` | Public after closure | Verify both hash chains and that they contain the same ballots. |
-| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/ledger` | Public after closure | Return the shuffled, publicly verifiable ledger. |
+```text
+.
+├── frontend/                 React + TypeScript SPA (Vite)
+│   ├── src/api/              one module per API resource
+│   ├── src/auth/             session handling and route guards
+│   ├── src/pages/            one component per route
+│   ├── src/components/       shared, admin, and voting components
+│   └── src/utils/            formatting, blind signatures, ledger verification
+├── src/main/java/…/yourvoice Spring Boot API (controller, service, repository,
+│                             entity, dto, security, config, observability)
+├── src/main/resources/       application.properties, Flyway migrations, logging
+├── src/test/                 unit, integration, concurrency, and artifact tests
+├── postman/                  verified end-to-end Postman collection
+├── compose.yaml, Dockerfile  local stack and production image
+├── render.yaml               Render Blueprint (API + PostgreSQL)
+└── .github/workflows/        CI and an optional Render keep-alive
+```
 
-List endpoints accept optional `page` and `size` parameters and return the total in the `X-Total-Count` header.
-
-Interactive API documentation is available at `/swagger-ui.html`; the OpenAPI document is available at `/api-docs`.
-
-## Local Deployment
+## Getting Started
 
 ### Prerequisites
-
 * Git
-* Java 21 or newer
-* PostgreSQL 16 or a compatible supported PostgreSQL installation
-* PowerShell on Windows, or a POSIX-compatible shell on Linux/macOS
+* Docker with Docker Compose (for the API and database, and for the backend integration tests)
+* Node.js 22.12 or newer and npm (for the frontend; CI uses Node 24)
+* Java 21 (only to run the API or tests outside Docker)
 
 ### 1. Clone the repository
 
-```powershell
-git clone https://github.com/HumphreyMahlangu/VoteTrust.git
-Set-Location VoteTrust
+```bash
+git clone https://github.com/HumphreyMahlangu/YourVoice.git
+cd YourVoice
 ```
 
-### 2. Create the local PostgreSQL database
+### 2. Start the API and database
 
-Open `psql` as a PostgreSQL administrator and create a dedicated local role and database:
-
-```sql
-CREATE USER votetrust WITH PASSWORD 'replace-with-a-local-password';
-CREATE DATABASE votetrust OWNER votetrust;
+```bash
+cp .env.example .env        # local-only values; never reuse them anywhere else
+docker compose --env-file .env up --build -d
+curl http://localhost:8080/actuator/health/readiness   # {"status":"UP"} when ready
 ```
 
-Do not reuse development credentials in any hosted environment.
+The API is now at `http://localhost:8080`, with Swagger UI at `http://localhost:8080/swagger-ui.html`.
 
-### 3. Configure the application
+### 3. Create the first administrator
 
-Set the required values in the same PowerShell session that will start Spring Boot:
+`.env.example` enables the one-time bootstrap for local use:
 
-```powershell
-$env:SPRING_DATASOURCE_URL = "jdbc:postgresql://localhost:5432/votetrust"
-$env:SPRING_DATASOURCE_USERNAME = "votetrust"
-$env:SPRING_DATASOURCE_PASSWORD = "replace-with-the-local-database-password"
-$env:VOTETRUST_JWT_SECRET = "replace-with-a-random-secret-of-at-least-32-characters"
-$env:VOTETRUST_ID_HASH_PEPPER = "replace-with-an-independent-random-32-character-pepper"
-$env:VOTETRUST_VOTE_CREDENTIAL_PEPPER = "replace-with-another-independent-32-character-pepper"
+```bash
+curl -X POST http://localhost:8080/api/v1/admin/bootstrap \
+  -H 'Content-Type: application/json' \
+  -H "X-YourVoice-Bootstrap-Token: $(grep ^YOURVOICE_ADMIN_BOOTSTRAP_TOKEN .env | cut -d= -f2)" \
+  -d '{"email":"admin@example.com","password":"VeryStrongPassword1"}'
 ```
 
-Keep the JWT secret and two peppers independent. Never commit real values to `.env`, source code, Postman files, or GitHub.
+Then set `YOURVOICE_ADMIN_BOOTSTRAP_ENABLED=false` in `.env`. Further administrators can be added from the app.
 
-### 4. Run tests
+### 4. Start the frontend
 
-```powershell
-.\mvnw.cmd clean verify
+```bash
+cd frontend
+npm install
+echo 'VITE_API_BASE_URL=http://localhost:8080' > .env.development.local   # use the local API
+npm run dev
 ```
 
-Integration tests use PostgreSQL Testcontainers when Docker is available. GitHub Actions runs the complete database-backed suite with PostgreSQL.
+Open `http://localhost:5173`. Sign in as the administrator to create a district and an election, then create a voter account to register and vote. Election stages advance automatically at the times you set.
 
-### 5. Start the API
+To stop everything, press `Ctrl+C` in the frontend terminal and run `docker compose down` (add `-v` to delete the local database).
 
-```powershell
-.\mvnw.cmd spring-boot:run
+### Running the API without Docker
+
+Provide a PostgreSQL 16 database and the required environment variables, then use the Maven wrapper (`mvnw.cmd` on Windows):
+
+```bash
+export SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/yourvoice
+export SPRING_DATASOURCE_USERNAME=yourvoice
+export SPRING_DATASOURCE_PASSWORD=<local database password>
+export YOURVOICE_JWT_SECRET=<random, at least 32 characters>
+export YOURVOICE_ID_HASH_PEPPER=<independent random value, at least 32 characters>
+export YOURVOICE_VOTE_CREDENTIAL_PEPPER=<another independent random value, at least 32 characters>
+./mvnw spring-boot:run
 ```
 
-On Linux or macOS, use `./mvnw` instead of `.\mvnw.cmd`.
+All optional settings and their defaults are listed in [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
-### 6. Verify the service
+## Testing
 
-* API base URL: `http://localhost:8080`
-* Readiness: `http://localhost:8080/actuator/health/readiness`
-* Liveness: `http://localhost:8080/actuator/health/liveness`
-* Swagger UI: `http://localhost:8080/swagger-ui.html`
-* OpenAPI JSON: `http://localhost:8080/api-docs`
+```bash
+./mvnw clean verify                          # backend: unit, integration, concurrency, artifact tests
+cd frontend && npm run lint && npm test && npm run build   # frontend
+```
 
-The repository also includes Docker Compose and verified Postman artifacts for an end-to-end local demonstration. See [`postman/README.md`](postman/README.md) and [`DEPLOYMENT.md`](DEPLOYMENT.md), which also covers the Render (API) and Vercel (frontend) deployments.
+* Backend integration tests run against PostgreSQL in Testcontainers and are skipped, not failed, when Docker is unavailable.
+* The Postman collection in [`postman/`](postman/README.md) runs a complete election end to end, including blinding in its scripts.
+* GitHub Actions runs both the backend and frontend checks on every push and pull request to `main`.
+
+## Deployment
+
+* **API and database: Render.** The [`render.yaml`](render.yaml) Blueprint builds the Docker image, provisions PostgreSQL, and deploys only after CI passes. Secrets are set once in the Render dashboard.
+* **Frontend: Vercel**, with `frontend` as the project root. `VITE_API_BASE_URL` points at the API, and the Vercel origin must be allowed in the API's `YOURVOICE_CORS_ALLOWED_ORIGINS`.
+
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full runbook, required settings, monitoring, and the first-administrator procedure.
+
+## REST API
+
+Interactive documentation is served at `/swagger-ui.html`, and the OpenAPI document at `/api-docs`.
+
+| Method | Endpoint | Access | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/api/v1/auth/register` | Public | Create a voter account and protected voter profile. |
+| `POST` | `/api/v1/auth/login` | Public | Return an access token and a refresh token. |
+| `POST` | `/api/v1/auth/refresh` | Refresh token | Rotate the refresh token and issue a new access token. |
+| `POST` | `/api/v1/auth/logout` | Refresh token | Revoke the session. |
+| `GET` | `/api/v1/auth/me` | Authenticated | Return the current account. |
+| `POST` | `/api/v1/admin/bootstrap` | Bootstrap token | Create the first administrator during a temporary bootstrap window. |
+| `GET`, `POST` | `/api/v1/admin/accounts` | Administrator | List or add administrators. |
+| `POST`, `PUT`, `DELETE` | `/api/v1/admin/voting-districts[/{id}]` | Administrator | Manage voting districts. |
+| `POST` | `/api/v1/admin/elections` | Administrator | Create an election. |
+| `PUT` | `/api/v1/admin/elections/{electionId}` | Administrator | Rename or reschedule a draft election. |
+| `PATCH` | `/api/v1/admin/elections/{electionId}/status` | Administrator | Emergency-cancel an election. |
+| `GET` | `/api/v1/admin/elections/{electionId}/lifecycle-events` | Administrator | Read the election's lifecycle history. |
+| `POST`, `PUT`, `DELETE` | `/api/v1/admin/elections/{electionId}/contests[/{contestId}]` | Administrator | Manage contests while the ballot is a draft. |
+| `POST`, `PUT`, `DELETE` | `/api/v1/admin/elections/{electionId}/contests/{contestId}/options[/{optionId}]` | Administrator | Manage ballot options while the ballot is a draft. |
+| `GET` | `/api/v1/admin/security-audit-events` | Administrator | Review recent security audit events. |
+| `GET` | `/api/v1/voting-districts` | Public | List voting districts. |
+| `GET` | `/api/v1/elections`, `/api/v1/elections/{electionId}` | Public | List or retrieve elections. |
+| `POST` | `/api/v1/elections/{electionId}/registrations` | Voter | Register for an election in the voter's onboarding district. |
+| `GET` | `/api/v1/me/registrations` | Voter | List the voter's registrations. |
+| `GET` | `/api/v1/elections/{electionId}/contests` | Public | List contests and ballot options. |
+| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/ballot-key` | Public once voting opens | Return the contest's public key for blinding. |
+| `POST` | `/api/v1/elections/{electionId}/contests/{contestId}/credentials` | Voter | Blind-sign the voter's blinded ballot token. |
+| `POST` | `/api/v1/ballots` | Ballot token and signature | Cast a ballot without the voter's identity. |
+| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/results` | Public after closure | Final contest results. |
+| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/audit` | Public after closure | Verify both hash chains and that they hold the same ballots. |
+| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/ledger` | Public after closure | The shuffled, publicly verifiable ledger. |
+
+List endpoints accept optional `page` and `size` parameters and return the total in the `X-Total-Count` header.
 
 ## Project Status
+YourVoice is a functional full-stack portfolio MVP. It covers voter onboarding, controlled election registration, geographic eligibility, blind-signature ballot credentials, concurrency-tested duplicate-vote prevention, automatic election lifecycles, per-contest tallying, shuffled and publicly verifiable ledgers, administrator tooling, session security, observability, and automated tests across the backend and frontend.
 
-VoteTrust is a functional portfolio MVP. The implemented system covers account security with rotating sessions, controlled election registration, geographic eligibility, blind-signature ballot credentials, concurrency-tested duplicate-vote prevention, ballot casting, per-contest tallying, shuffled and publicly verifiable ledgers, administrator tooling, observability, OpenAPI documentation, automated backend and frontend tests, and container packaging.
-
-The project compiles and passes its automated CI quality gates. The API and PostgreSQL database are deployed to Render through the `render.yaml` Blueprint, and the React frontend is deployed to Vercel. The repository should not be presented as a certified or operational public-election platform.
+The API and PostgreSQL database deploy to Render through the `render.yaml` Blueprint, and the React frontend deploys to Vercel. The project should not be presented as a certified or operational public-election platform.
 
 ## Roadmap
-
-* Add email verification and stronger account recovery controls.
-* Replace the internal cast-order ledger with a verifiable shuffle (mix-net) so not even database administrators can correlate ballot order.
-* Move rate limiting to a distributed gateway or Redis-backed implementation for horizontal scaling.
+* Add email verification and stronger account recovery.
+* Replace the internal cast-order ledger with a verifiable shuffle (mix-net), so not even database administrators can correlate ballot order.
+* Move rate limiting to a distributed gateway or a Redis-backed implementation for horizontal scaling.
 * Separate application and migration database roles using least privilege.
 * Add alerting on the exported metrics, backup restoration tests, and disaster-recovery exercises.
+* Add browser end-to-end tests to CI and a formal accessibility audit.
 * Anchor signed ledger checkpoints outside the primary database and commission independent cryptographic and penetration testing.
 * Expand simulation coverage only where rules can be traced to authoritative South African electoral requirements.
 
 ## About the Developer
-
-VoteTrust is developed by Humphrey Mahlangu while completing an Information Technology qualification at the Cape Peninsula University of Technology. The project demonstrates a focus on secure enterprise backend development, Java and Spring engineering, relational data modelling, API security, automated testing, and production-minded operational practices.
+YourVoice is developed by Humphrey Mahlangu while completing an Information Technology qualification at the Cape Peninsula University of Technology. The project demonstrates full-stack engineering with a security focus: React and TypeScript on the frontend, Java and Spring on the backend, relational data modelling, applied cryptography, API security, automated testing, and production-minded operations.
 
 ## Disclaimer
-
-VoteTrust is an educational portfolio project and technical simulation. It is not endorsed or certified by the Electoral Commission of South Africa, does not replace statutory election processes, and must not be used to conduct a binding public election.
+YourVoice is an educational portfolio project and technical simulation. It is not endorsed or certified by the Electoral Commission of South Africa, does not replace statutory election processes, and must not be used to conduct a binding public election.
 
 Online voting requires legal authorization, independent security assessment, operational controls, accessibility review, incident response, physical and procedural safeguards, and public oversight beyond application code alone.
 
 ## License
-
 This project is licensed under the MIT License. See [`LICENSE`](LICENSE) for the full license text.

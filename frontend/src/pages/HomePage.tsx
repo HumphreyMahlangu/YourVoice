@@ -16,7 +16,7 @@ function HomePage() {
             <span> built into every vote.</span>
           </h1>
           <p className="hero__lead">
-            VoteTrust brings registration, secure ballot access, and public
+            YourVoice brings registration, secure ballot access, and public
             result verification into one clear civic experience.
           </p>
 
@@ -42,7 +42,7 @@ function HomePage() {
           </ul>
         </div>
 
-        <aside className="integrity-card" aria-label="VoteTrust assurance model">
+        <aside className="integrity-card" aria-label="YourVoice assurance model">
           <div className="integrity-card__header">
             <span>Assurance model</span>
             <span className="system-status">

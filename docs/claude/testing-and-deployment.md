@@ -1,12 +1,12 @@
 # Testing, CI and deployment
 
-## Backend test suite (`src/test/java/.../votetrust`)
+## Backend test suite (`src/test/java/.../yourvoice`)
 
 | Kind | Classes | Needs Docker/Postgres? |
 | --- | --- | --- |
 | Pure unit (Mockito / plain) | `service/*ServiceTest`, `SouthAfricanIdNumberValidatorTest`, `ElectionLifecycleCoordinatorTest`, `security/{Jwt,IdentityHash,RateLimit,LoginThrottle,BlindSignature}ServiceTest`, `LedgerPublicationServiceTest` | no |
 | Convention / artifact checks | `documentation/OpenApiAnnotationCoverageTest`, `entity/BallotAnonymitySchemaTest`, `deployment/DeploymentArtifactTest`, `deployment/PostmanArtifactTest` | no |
-| Full-stack integration (`@SpringBootTest` + MockMvc) | `controller/*IntegrationTest`, `VoteTrustApplicationTests` | **yes** |
+| Full-stack integration (`@SpringBootTest` + MockMvc) | `controller/*IntegrationTest`, `YourVoiceApplicationTests` | **yes** |
 | Real-port integration (`RANDOM_PORT` + `java.net.http.HttpClient`) | `controller/ForwardedClientAddressIntegrationTest`. Use this style for anything that happens in Tomcat valves (e.g. `X-Forwarded-For`), because MockMvc bypasses them | **yes** |
 | DB-specific | `database/FlywayPostgreSqlMigrationIntegrationTest`, `service/ElectionLifecyclePostgreSqlIntegrationTest` | **yes** |
 | Concurrency | `service/ConcurrentVotingIntegrationTest`: threads released by a latch against real Postgres (same token cast twice, double issuance, many first ballots, concurrent publication, scheduler vs cancel) | **yes** |
@@ -16,7 +16,7 @@ Integration-test recipe (copy it for new ones):
 - `@SpringBootTest` (+ `properties = {...}` for overrides such as bootstrap enabled or CORS origin),
   `@AutoConfigureMockMvc`, `@ActiveProfiles("test")`, `@Testcontainers(disabledWithoutDocker = true)`,
   `extends PostgreSqlTestContainerSupport`.
-- `PostgreSqlTestContainerSupport` uses the CI DB if `VOTETRUST_TEST_DATASOURCE_URL` is set; otherwise it starts one
+- `PostgreSqlTestContainerSupport` uses the CI DB if `YOURVOICE_TEST_DATASOURCE_URL` is set; otherwise it starts one
   shared `postgres:16-alpine` container. Flyway runs and Hibernate validates.
 - `@BeforeEach void cleanDatabase() { DatabaseCleaner.clean(jdbcTemplate); }` truncates every table except
   `flyway_schema_history`, so new tables need no test changes.
@@ -25,7 +25,7 @@ Integration-test recipe (copy it for new ones):
 - Fixed time: a nested `@TestConfiguration` with a `@Primary Clock.fixed(FIXED_NOW, UTC)` bean.
 - Tokens: autowire `JwtService` and call `generateAccessToken(account)` instead of going through login.
 - `src/test/resources/application-test.properties` supplies the test secrets and sets
-  `votetrust.lifecycle.scheduling-enabled=false`, so tests drive the lifecycle explicitly.
+  `yourvoice.lifecycle.scheduling-enabled=false`, so tests drive the lifecycle explicitly.
 
 **Without Docker, the integration tests are skipped, not failed.** If they show as skipped although Docker is
 running, check the log for `Could not find a valid Docker environment`. Common causes: the shell isn't in the
@@ -43,12 +43,12 @@ Gate commits on Maven's exit code, not on `grep` output: `./mvnw … > log; echo
 ### Tests that assert on non-Java files
 
 `DeploymentArtifactTest` checks substrings in:
-- `Dockerfile` (temurin 21 jdk/jre jammy, `USER votetrust`, HEALTHCHECK on readiness, OCI title label)
+- `Dockerfile` (temurin 21 jdk/jre jammy, `USER yourvoice`, HEALTHCHECK on readiness, OCI title label)
 - `.dockerignore`: the **exact** line list
 - `compose.yaml`: required-secret `:?` syntax, `read_only`, `no-new-privileges`, `cap_drop`
 - `application.properties`: the exact datasource URL expression (env URL, falling back to HOST/PORT/NAME parts),
   username/password placeholders with **no defaults**, graceful shutdown, `server.forward-headers-strategy`, readiness group
-- `render.yaml`: docker runtime, readiness health check, `autoDeployTrigger: checksPass`, generated secrets,
+- `render.yaml`: docker runtime, readiness health check, `autoDeployTrigger: checksPass`, dashboard-managed secrets (`sync: false`, no `generateValue`),
   CORS origins `sync: false`, bootstrap disabled
 - `.github/workflows/ci.yml`: action versions, the mvnw command, compose config, docker build, the frontend job
 - `DEPLOYMENT.md` (required env vars, compose smoke test, the Render section, CI gates)
@@ -75,26 +75,26 @@ waits for the commit's GitHub checks (this CI) to pass. Vercel builds the fronte
 | Target | Files | Notes |
 | --- | --- | --- |
 | Local Docker | `compose.yaml`, `.env.example` | Postgres 16 + hardened API container (read-only FS, tmpfs /tmp, cap_drop ALL). `.env.example` enables bootstrap for local use. |
-| **Render (API + DB)** | `render.yaml` | Blueprint: free web service from the Dockerfile + free Postgres `votetrust-db`. Datasource injected as HOST/PORT/NAME/USER/PASSWORD via `fromDatabase`, which is why `application.properties` builds the JDBC URL from parts. JWT and peppers come from `generateValue: true`. `VOTETRUST_CORS_ALLOWED_ORIGINS` is `sync: false`, so it's set in the Render dashboard and must include the Vercel origin. Health check: `/actuator/health/readiness`. Render injects `PORT`. Deploys only after CI passes. URL: `https://votetrust-api.onrender.com`. |
+| **Render (API + DB)** | `render.yaml` | Blueprint: free web service `votetrust-api` from the Dockerfile + free Postgres `votetrust-db` (both keep their pre-rename names on purpose). Datasource injected as HOST/PORT/NAME/USER/PASSWORD via `fromDatabase`, which is why `application.properties` builds the JDBC URL from parts. The JWT secret, both peppers and `YOURVOICE_CORS_ALLOWED_ORIGINS` are `sync: false`: set in the Render dashboard, never generated or overwritten by a sync. CORS must include the Vercel origin. Health check: `/actuator/health/readiness`. Render injects `PORT`. Deploys only after CI passes. URL: `https://votetrust-api.onrender.com`. |
 | **Vercel (frontend)** | `frontend/vercel.json`, `frontend/.env.production` | SPA rewrite. The API URL is baked in at build time from `VITE_API_BASE_URL`. |
 
 Dockerfile: multi-stage (`mvnw dependency:go-offline` then `package -DskipTests`), runtime JRE 21 as the non-root
-`votetrust` user, `JAVA_OPTS` passthrough, curl healthcheck. `.dockerignore` whitelists only build inputs.
+`yourvoice` user, `JAVA_OPTS` passthrough, curl healthcheck. `.dockerignore` whitelists only build inputs.
 
 ### First-admin bootstrap on a deployed instance
 
-Set `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=true` and a ≥32-char `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN`, redeploy, then call
-`POST /api/v1/admin/bootstrap` with header `X-VoteTrust-Bootstrap-Token` and body `{email, password}`. Then set
+Set `YOURVOICE_ADMIN_BOOTSTRAP_ENABLED=true` and a ≥32-char `YOURVOICE_ADMIN_BOOTSTRAP_TOKEN`, redeploy, then call
+`POST /api/v1/admin/bootstrap` with header `X-YourVoice-Bootstrap-Token` and body `{email, password}`. Then set
 enabled back to false and redeploy. Create further admins from the app (`/admin/accounts`).
 
 ### Manual end-to-end check
 
-Use the Postman pair `postman/VoteTrust.verified.postman_collection.json` and
-`VoteTrust.verified-local.postman_environment.json`. They create an election with short real-time windows
+Use the Postman pair `postman/YourVoice.verified.postman_collection.json` and
+`YourVoice.verified-local.postman_environment.json`. They create an election with short real-time windows
 (120s configuration grace, 180s registration, 90s voting by default) and wait for the scheduler to advance it.
 The voting steps fetch the ballot key and blind and unblind in the Postman sandbox (BigInt + CryptoJS). See
 `postman/README.md`.
 
 To test against a disposable stack without touching the developer's local database, use a separate Compose
-project: `APP_PORT=18080 POSTGRES_PORT=15432 VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=true VOTETRUST_ADMIN_BOOTSTRAP_TOKEN=<32+ chars> docker compose -p votetrust-e2e --env-file .env up -d`,
-then `docker compose -p votetrust-e2e down -v`. Shell variables override `.env` values.
+project: `APP_PORT=18080 POSTGRES_PORT=15432 YOURVOICE_ADMIN_BOOTSTRAP_ENABLED=true YOURVOICE_ADMIN_BOOTSTRAP_TOKEN=<32+ chars> docker compose -p yourvoice-e2e --env-file .env up -d`,
+then `docker compose -p yourvoice-e2e down -v`. Shell variables override `.env` values.

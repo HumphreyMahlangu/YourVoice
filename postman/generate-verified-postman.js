@@ -2,10 +2,10 @@ const fs = require('fs');
 const path = require('path');
 
 const outDir = __dirname;
-const collectionPath = path.join(outDir, 'VoteTrust.verified.postman_collection.json');
-const environmentPath = path.join(outDir, 'VoteTrust.verified-local.postman_environment.json');
-const compatibilityCollectionPath = path.join(outDir, 'VoteTrust.postman_collection.json');
-const compatibilityEnvironmentPath = path.join(outDir, 'VoteTrust.local.postman_environment.json');
+const collectionPath = path.join(outDir, 'YourVoice.verified.postman_collection.json');
+const environmentPath = path.join(outDir, 'YourVoice.verified-local.postman_environment.json');
+const compatibilityCollectionPath = path.join(outDir, 'YourVoice.postman_collection.json');
+const compatibilityEnvironmentPath = path.join(outDir, 'YourVoice.local.postman_environment.json');
 
 function event(listen, exec) {
   return { listen, script: { type: 'text/javascript', exec } };
@@ -125,7 +125,7 @@ const resetDemoScript = [
   "pm.environment.set('voterEmail', `voter+${runId}@example.com`);",
   "pm.environment.set('districtCode', `WC-${runId.slice(-12)}`);",
   "pm.environment.set('districtName', `Cape Town Demo Ward ${runId.slice(-4)}`);",
-  "pm.environment.set('electionName', `VoteTrust Verified Election ${runId}`);",
+  "pm.environment.set('electionName', `YourVoice Verified Election ${runId}`);",
   "pm.environment.set('contestName', `Ward 12 Councillor ${runId}`);",
   "['adminToken', 'adminUserId', 'voterToken', 'voterUserId', 'votingDistrictId', 'electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential', 'votingCredentialSignature', 'ballotKeyModulus', 'ballotKeyExponent', 'ballotTokenDomain', 'blindingFactor', 'blindedToken', 'secondBlindedToken', 'registrationStartAt', 'registrationEndAt', 'votingStartAt', 'votingEndAt'].forEach((key) => pm.environment.unset(key));",
   '',
@@ -176,7 +176,7 @@ function freshElectionScript() {
     'const now = Date.now();',
     "const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');",
     "const suffix = `${stamp.slice(8)}${Math.random().toString(36).slice(2, 6)}`;",
-    "pm.environment.set('electionName', `VoteTrust Verified Election ${suffix}`);",
+    "pm.environment.set('electionName', `YourVoice Verified Election ${suffix}`);",
     "pm.environment.set('contestName', `Ward 12 Councillor ${suffix}`);",
     "['electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential', 'votingCredentialSignature', 'blindingFactor', 'blindedToken', 'secondBlindedToken'].forEach((key) => pm.environment.unset(key));",
     "const configurationGraceSeconds = Math.max(30, Number(pm.environment.get('configurationGraceSeconds') || 120));",
@@ -256,8 +256,8 @@ function contestStatusTests(expectedStatus, label) {
 const collection = {
   info: {
     _postman_id: '76d91d2d-6f35-4fd5-84f1-2bf843d097d8',
-    name: 'VoteTrust API - Verified Local Flow',
-    description: 'Clean verified collection for local Postman testing of the VoteTrust secure voting API. Import with the VoteTrust Verified Local environment and run folders in order.',
+    name: 'YourVoice API - Verified Local Flow',
+    description: 'Clean verified collection for local Postman testing of the YourVoice secure voting API. Import with the YourVoice Verified Local environment and run folders in order.',
     schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json'
   },
   item: [
@@ -279,7 +279,7 @@ const collection = {
           url: '{{baseUrl}}/api-docs',
           test: [
             ...expectStatus(200, 'OpenAPI JSON is available'),
-            "pm.test('OpenAPI title is VoteTrust API', function () { pm.expect(pm.response.json().info.title).to.equal('VoteTrust API'); });"
+            "pm.test('OpenAPI title is YourVoice API', function () { pm.expect(pm.response.json().info.title).to.equal('YourVoice API'); });"
           ]
         })
       ]
@@ -291,7 +291,7 @@ const collection = {
           name: 'Bootstrap First Admin - Optional',
           method: 'POST',
           url: '{{baseUrl}}/api/v1/admin/bootstrap',
-          header: headers(['Content-Type', 'application/json'], ['X-VoteTrust-Bootstrap-Token', '{{adminBootstrapToken}}']),
+          header: headers(['Content-Type', 'application/json'], ['X-YourVoice-Bootstrap-Token', '{{adminBootstrapToken}}']),
           body: jsonBody({ email: '{{adminEmail}}', password: '{{adminPassword}}' }),
           prerequest: requireVars(['adminBootstrapToken', 'adminEmail', 'adminPassword']),
           test: [
@@ -714,11 +714,11 @@ const collection = {
 
 const environment = {
   id: 'f5b45db1-a5ce-4f17-b03e-19f5590902b9',
-  name: 'VoteTrust Verified Local',
+  name: 'YourVoice Verified Local',
   values: [
     { key: 'baseUrl', value: 'http://localhost:8080', type: 'default', enabled: true },
     { key: 'adminBootstrapToken', value: 'change-me-local-admin-bootstrap-token-at-least-32-characters', type: 'secret', enabled: true },
-    { key: 'adminEmail', value: 'admin@votetrust.local', type: 'default', enabled: true },
+    { key: 'adminEmail', value: 'admin@yourvoice.local', type: 'default', enabled: true },
     { key: 'adminPassword', value: 'VeryStrongPassword1', type: 'secret', enabled: true },
     { key: 'voterPassword', value: 'VeryStrongPassword1', type: 'secret', enabled: true },
     { key: 'configurationGraceSeconds', value: '120', type: 'default', enabled: true },
@@ -768,9 +768,9 @@ const environment = {
 fs.writeFileSync(collectionPath, JSON.stringify(collection, null, 2) + '\n');
 fs.writeFileSync(environmentPath, JSON.stringify(environment, null, 2) + '\n');
 const compatibilityCollection = structuredClone(collection);
-compatibilityCollection.info.name = 'VoteTrust API';
+compatibilityCollection.info.name = 'YourVoice API';
 const compatibilityEnvironment = structuredClone(environment);
-compatibilityEnvironment.name = 'VoteTrust Local';
+compatibilityEnvironment.name = 'YourVoice Local';
 fs.writeFileSync(compatibilityCollectionPath, JSON.stringify(compatibilityCollection, null, 2) + '\n');
 fs.writeFileSync(compatibilityEnvironmentPath, JSON.stringify(compatibilityEnvironment, null, 2) + '\n');
 console.log(`Wrote ${collectionPath}`);

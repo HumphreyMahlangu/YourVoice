@@ -58,5 +58,5 @@ findings. Update this file whenever items are fixed or found.
 ## Cosmetic
 
 - Naming drift: the Dockerfile label source is `github.com/humphreymahlangu/voting-api`, the README clone URL is
-  `…/VoteTrust.git`, and the actual remote is `…/YourVoice.git`.
+  `…/YourVoice.git`, and the actual remote is `…/YourVoice.git`.
 - `.gitignore` lists `frontend/.env.development` and `.env.production`, but both are tracked.

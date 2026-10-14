@@ -45,7 +45,7 @@ describe('AuthProvider', () => {
   })
 
   it('restores the session from the refresh token kept in this tab', async () => {
-    window.sessionStorage.setItem('votetrust.refreshToken', 'stored-refresh-token')
+    window.sessionStorage.setItem('yourvoice.refreshToken', 'stored-refresh-token')
     vi.mocked(authApi.refreshSession).mockResolvedValue(restoredSession)
 
     render(
@@ -59,13 +59,13 @@ describe('AuthProvider', () => {
       await screen.findByText('signed in as voter@example.com'),
     ).toBeInTheDocument()
     expect(authApi.refreshSession).toHaveBeenCalledWith('stored-refresh-token')
-    expect(window.sessionStorage.getItem('votetrust.refreshToken')).toBe(
+    expect(window.sessionStorage.getItem('yourvoice.refreshToken')).toBe(
       'rotated-refresh-token',
     )
   })
 
   it('sends one refresh request even when StrictMode runs the restore effect twice', async () => {
-    window.sessionStorage.setItem('votetrust.refreshToken', 'strict-mode-refresh-token')
+    window.sessionStorage.setItem('yourvoice.refreshToken', 'strict-mode-refresh-token')
     vi.mocked(authApi.refreshSession).mockResolvedValue(restoredSession)
 
     render(
@@ -83,7 +83,7 @@ describe('AuthProvider', () => {
   })
 
   it('signs out and forgets the stored token when it cannot be refreshed', async () => {
-    window.sessionStorage.setItem('votetrust.refreshToken', 'revoked-refresh-token')
+    window.sessionStorage.setItem('yourvoice.refreshToken', 'revoked-refresh-token')
     vi.mocked(authApi.refreshSession).mockRejectedValue(new Error('revoked'))
 
     render(
@@ -93,11 +93,11 @@ describe('AuthProvider', () => {
     )
 
     expect(await screen.findByText('signed out')).toBeInTheDocument()
-    expect(window.sessionStorage.getItem('votetrust.refreshToken')).toBeNull()
+    expect(window.sessionStorage.getItem('yourvoice.refreshToken')).toBeNull()
   })
 
   it('revokes the session on the server when signing out', async () => {
-    window.sessionStorage.setItem('votetrust.refreshToken', 'stored-refresh-token')
+    window.sessionStorage.setItem('yourvoice.refreshToken', 'stored-refresh-token')
     vi.mocked(authApi.refreshSession).mockResolvedValue(restoredSession)
     vi.mocked(authApi.logoutSession).mockResolvedValue(undefined)
 
@@ -114,6 +114,6 @@ describe('AuthProvider', () => {
 
     await waitFor(() => expect(screen.getByText('signed out')).toBeInTheDocument())
     expect(authApi.logoutSession).toHaveBeenCalledWith('rotated-refresh-token')
-    expect(window.sessionStorage.getItem('votetrust.refreshToken')).toBeNull()
+    expect(window.sessionStorage.getItem('yourvoice.refreshToken')).toBeNull()
   })
 })

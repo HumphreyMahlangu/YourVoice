@@ -34,14 +34,14 @@ DRAFT ──(now ≥ registrationStartAt, ballot ready)──▶ REGISTRATION_OP
 any non-COMPLETED ──(admin cancel; OPEN contests→CLOSED)──▶ CANCELLED
 ```
 
-- `ElectionLifecycleCoordinator` runs every `votetrust.lifecycle.poll-interval-ms` (default 5 s) under a ShedLock
+- `ElectionLifecycleCoordinator` runs every `yourvoice.lifecycle.poll-interval-ms` (default 5 s) under a ShedLock
   lock, so only one instance polls at a time. Each election advances in its own transaction with
   `SELECT … FOR UPDATE`, and one tick can cascade through several states.
 - **Ballot ready** means at least one contest, and every contest has at least two party or independent options.
   This is checked before registration opens and before voting opens.
 - **Fail closed:** a failed transition leaves the status unchanged and writes a `FAILURE` event, unless the
   election's *latest* event is already the same failure. Any later event, such as an admin reschedule, re-arms
-  recording. The `votetrust.elections.stuck` gauge counts active elections whose latest event is a failure from
+  recording. The `yourvoice.elections.stuck` gauge counts active elections whose latest event is a failure from
   their current status.
 - Admins can cancel (PATCH status `CANCELLED`) and can **rename or reschedule a DRAFT election**
   (`PUT /admin/elections/{id}`). A reschedule needs a registration window ending in the future, and it is

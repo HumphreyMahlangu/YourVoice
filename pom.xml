@@ -9,9 +9,9 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>io.github.humphreymahlangu</groupId>
-    <artifactId>votetrust-api</artifactId>
+    <artifactId>yourvoice-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>VoteTrust API</name>
+    <name>YourVoice API</name>
     <description>Secure REST API for a South African online voting simulation</description>
     <url/>
     <licenses>
