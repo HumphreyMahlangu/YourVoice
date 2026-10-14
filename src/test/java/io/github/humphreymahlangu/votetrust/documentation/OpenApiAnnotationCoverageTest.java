@@ -2,6 +2,7 @@ package io.github.humphreymahlangu.votetrust.documentation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.humphreymahlangu.votetrust.controller.AdminAccountController;
 import io.github.humphreymahlangu.votetrust.controller.AdminBootstrapController;
 import io.github.humphreymahlangu.votetrust.controller.AdminElectionManagementController;
 import io.github.humphreymahlangu.votetrust.controller.AdminSecurityAuditController;
@@ -20,14 +21,17 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 class OpenApiAnnotationCoverageTest {
 
     private static final List<Class<?>> CONTROLLERS = List.of(
+            AdminAccountController.class,
             AdminBootstrapController.class,
             AdminElectionManagementController.class,
             AdminSecurityAuditController.class,
@@ -88,6 +92,8 @@ class OpenApiAnnotationCoverageTest {
                 .isEqualTo("bearerAuth");
         assertThat(MyRegistrationController.class.getAnnotation(SecurityRequirement.class).name())
                 .isEqualTo("bearerAuth");
+        assertThat(AdminAccountController.class.getAnnotation(SecurityRequirement.class).name())
+                .isEqualTo("bearerAuth");
 
         assertBearerSecurity(AuthController.class.getDeclaredMethod("me", io.github.humphreymahlangu.votetrust.security.UserPrincipal.class));
         assertBearerSecurity(ElectionController.class.getDeclaredMethod(
@@ -100,7 +106,8 @@ class OpenApiAnnotationCoverageTest {
                 "issueVotingCredential",
                 io.github.humphreymahlangu.votetrust.security.UserPrincipal.class,
                 java.util.UUID.class,
-                java.util.UUID.class
+                java.util.UUID.class,
+                io.github.humphreymahlangu.votetrust.dto.VotingCredentialRequest.class
         ));
     }
 
@@ -116,7 +123,9 @@ class OpenApiAnnotationCoverageTest {
             Class<? extends Annotation> annotationType = annotation.annotationType();
             if (annotationType == GetMapping.class
                     || annotationType == PostMapping.class
-                    || annotationType == PatchMapping.class) {
+                    || annotationType == PutMapping.class
+                    || annotationType == PatchMapping.class
+                    || annotationType == DeleteMapping.class) {
                 return true;
             }
         }

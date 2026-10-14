@@ -1,7 +1,9 @@
 package io.github.humphreymahlangu.votetrust.controller;
 
 import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
+import io.github.humphreymahlangu.votetrust.dto.BallotKeyResponse;
 import io.github.humphreymahlangu.votetrust.dto.ContestResponse;
+import io.github.humphreymahlangu.votetrust.dto.VotingCredentialRequest;
 import io.github.humphreymahlangu.votetrust.dto.VotingCredentialResponse;
 import io.github.humphreymahlangu.votetrust.security.UserPrincipal;
 import io.github.humphreymahlangu.votetrust.service.ContestService;
@@ -13,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -20,6 +23,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,6 +32,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/elections/{electionId}/contests")
 @Tag(name = "Contests", description = "Election contest browsing and anonymous credential issuance")
 @ApiResponses({
+        @ApiResponse(
+                responseCode = "400",
+                description = "Request validation failed or the blinded token is not valid for the contest key",
+                content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
+        ),
         @ApiResponse(
                 responseCode = "401",
                 description = "Authentication is required for credential issuance",
@@ -78,15 +87,25 @@ public class ContestController {
     @PostMapping("/{contestId}/credentials")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
-            summary = "Issue an anonymous one-time voting credential",
-            description = "Issues one credential per registered voter per contest after age, registration, voting-window, and geographic eligibility checks pass.",
+            summary = "Blind-sign a ballot token",
+            description = "After age, registration, voting-window, and geographic eligibility checks, signs the client's blinded ballot token. Each voter gets one signature per contest; repeating the request with the same blinded token returns the same signature. Because the token is blinded, the server cannot link the resulting ballot to the voter.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     public VotingCredentialResponse issueVotingCredential(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID electionId,
-            @PathVariable UUID contestId
+            @PathVariable UUID contestId,
+            @Valid @RequestBody VotingCredentialRequest request
     ) {
-        return votingService.issueVotingCredential(principal.id(), electionId, contestId);
+        return votingService.issueVotingCredential(principal.id(), electionId, contestId, request);
+    }
+
+    @GetMapping("/{contestId}/ballot-key")
+    @Operation(
+            summary = "Get the contest ballot key",
+            description = "Returns the public RSA key voters use to blind their ballot token before requesting a credential. Available once voting opens. Every voter must receive the same key; compare keyFingerprint to check."
+    )
+    public BallotKeyResponse getBallotKey(@PathVariable UUID electionId, @PathVariable UUID contestId) {
+        return votingService.getBallotKey(electionId, contestId);
     }
 }

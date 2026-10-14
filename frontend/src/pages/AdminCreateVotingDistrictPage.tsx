@@ -102,7 +102,7 @@ function AdminCreateVotingDistrictPage() {
             type="text"
             required
             maxLength={32}
-            pattern="[A-Za-z0-9-]+"
+            pattern="[A-Za-z0-9\-]+"
             value={code}
             aria-invalid={codeError ? true : undefined}
             aria-describedby={codeError ? 'district-code-error' : undefined}

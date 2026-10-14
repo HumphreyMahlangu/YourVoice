@@ -37,6 +37,10 @@ public class VotingRight {
     @Column(name = "credential_issued", nullable = false)
     private boolean credentialIssued;
 
+    // Hash of the blinded token that was signed. Unlinkable to the ballot token; used only for idempotent retries.
+    @Column(name = "blinded_token_hash", length = 64)
+    private String blindedTokenHash;
+
     protected VotingRight() {
     }
 
@@ -61,7 +65,12 @@ public class VotingRight {
         return credentialIssued;
     }
 
-    public void markCredentialIssued() {
+    public String getBlindedTokenHash() {
+        return blindedTokenHash;
+    }
+
+    public void markCredentialIssued(String blindedTokenHash) {
         this.credentialIssued = true;
+        this.blindedTokenHash = blindedTokenHash;
     }
 }

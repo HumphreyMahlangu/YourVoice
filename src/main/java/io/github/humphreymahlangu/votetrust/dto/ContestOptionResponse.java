@@ -1,5 +1,6 @@
 package io.github.humphreymahlangu.votetrust.dto;
 
+import io.github.humphreymahlangu.votetrust.entity.ContestOption;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
 
@@ -17,4 +18,13 @@ public record ContestOptionResponse(
         @Schema(description = "Display ordering on the ballot", example = "1")
         Integer displayOrder
 ) {
+
+    public static ContestOptionResponse from(ContestOption contestOption) {
+        return new ContestOptionResponse(
+                contestOption.getId(),
+                contestOption.getName(),
+                contestOption.getOptionType().name(),
+                contestOption.getDisplayOrder()
+        );
+    }
 }

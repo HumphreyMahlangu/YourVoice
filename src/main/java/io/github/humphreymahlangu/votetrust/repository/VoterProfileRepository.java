@@ -10,4 +10,6 @@ public interface VoterProfileRepository extends JpaRepository<VoterProfile, UUID
     Optional<VoterProfile> findByUserAccountId(UUID userAccountId);
 
     boolean existsByIdNumberHash(String idNumberHash);
+
+    boolean existsByVotingDistrictId(UUID votingDistrictId);
 }

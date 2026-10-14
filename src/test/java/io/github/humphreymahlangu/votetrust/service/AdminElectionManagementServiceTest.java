@@ -1,13 +1,20 @@
 package io.github.humphreymahlangu.votetrust.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.humphreymahlangu.votetrust.dto.ContestResponse;
 import io.github.humphreymahlangu.votetrust.dto.ContestStatusUpdateRequest;
 import io.github.humphreymahlangu.votetrust.dto.CreateContestOptionRequest;
 import io.github.humphreymahlangu.votetrust.dto.CreateContestRequest;
+import io.github.humphreymahlangu.votetrust.dto.CreateVotingDistrictRequest;
+import io.github.humphreymahlangu.votetrust.dto.ElectionResponse;
+import io.github.humphreymahlangu.votetrust.dto.UpdateElectionRequest;
+import io.github.humphreymahlangu.votetrust.dto.VotingDistrictResponse;
 import io.github.humphreymahlangu.votetrust.entity.Contest;
 import io.github.humphreymahlangu.votetrust.entity.ContestOption;
 import io.github.humphreymahlangu.votetrust.entity.ContestOptionType;
@@ -16,11 +23,14 @@ import io.github.humphreymahlangu.votetrust.entity.ContestType;
 import io.github.humphreymahlangu.votetrust.entity.Election;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
 import io.github.humphreymahlangu.votetrust.entity.ElectionType;
+import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
 import io.github.humphreymahlangu.votetrust.exception.DuplicateResourceException;
 import io.github.humphreymahlangu.votetrust.exception.ElectionLifecycleException;
 import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
+import io.github.humphreymahlangu.votetrust.repository.ElectionRegistrationRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
 import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
 import java.time.Clock;
 import java.lang.reflect.Field;
@@ -54,6 +64,12 @@ class AdminElectionManagementServiceTest {
     @Mock
     private ElectionLifecycleService electionLifecycleService;
 
+    @Mock
+    private VoterProfileRepository voterProfileRepository;
+
+    @Mock
+    private ElectionRegistrationRepository electionRegistrationRepository;
+
     private AdminElectionManagementService adminElectionManagementService;
 
     @BeforeEach
@@ -64,6 +80,8 @@ class AdminElectionManagementServiceTest {
                 contestRepository,
                 contestOptionRepository,
                 electionLifecycleService,
+                voterProfileRepository,
+                electionRegistrationRepository,
                 Clock.fixed(FIXED_NOW, ZoneOffset.UTC)
         );
     }
@@ -88,32 +106,48 @@ class AdminElectionManagementServiceTest {
     }
 
     @Test
-    void ballotConfigurationLocksAtRegistrationBoundaryBeforeSchedulerRuns() {
+    void draftElectionPastRegistrationStartCanStillBeConfiguredSoItIsNotStuck() {
+        UUID electionId = UUID.randomUUID();
+        Election election = draftElection(FIXED_NOW.minusSeconds(60), FIXED_NOW.plusSeconds(3600));
+        when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
+        when(contestRepository.save(any(Contest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ContestResponse response = adminElectionManagementService.createContest(electionId, wardContestRequest());
+
+        assertThat(response.name()).isEqualTo("Ward 1 Councillor");
+        assertThat(response.status()).isEqualTo(ContestStatus.DRAFT.name());
+    }
+
+    @Test
+    void ballotConfigurationClosesOnceTheRegistrationWindowHasEnded() {
+        UUID electionId = UUID.randomUUID();
+        Election election = draftElection(FIXED_NOW.minusSeconds(3600), FIXED_NOW);
+        when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
+
+        assertThatThrownBy(() -> adminElectionManagementService.createContest(electionId, wardContestRequest()))
+                .isInstanceOf(ElectionLifecycleException.class)
+                .hasMessage("Ballot configuration is closed because the registration window has ended; cancel this election and create a new one");
+        verify(contestRepository, never()).save(any(Contest.class));
+    }
+
+    @Test
+    void ballotConfigurationIsLockedOnceRegistrationHasOpened() {
         UUID electionId = UUID.randomUUID();
         Election election = new Election(
-                "Boundary Election",
+                "Open Election",
                 ElectionType.MUNICIPAL,
-                FIXED_NOW,
+                FIXED_NOW.minusSeconds(60),
                 FIXED_NOW.plusSeconds(3600),
                 FIXED_NOW.plusSeconds(7200),
                 FIXED_NOW.plusSeconds(10800),
-                ElectionStatus.DRAFT
+                ElectionStatus.REGISTRATION_OPEN
         );
         when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
 
-        CreateContestRequest request = new CreateContestRequest(
-                "Ward 1 Councillor",
-                ContestType.MUNICIPAL_WARD,
-                1,
-                "Western Cape",
-                "City of Cape Town",
-                1
-        );
-
-        assertThatThrownBy(() -> adminElectionManagementService.createContest(electionId, request))
+        assertThatThrownBy(() -> adminElectionManagementService.createContest(electionId, wardContestRequest()))
                 .isInstanceOf(ElectionLifecycleException.class)
-                .hasMessage("Ballot configuration is locked once registration starts");
-        verify(contestRepository, never()).save(org.mockito.ArgumentMatchers.any(Contest.class));
+                .hasMessage("Ballot configuration is locked once registration opens");
+        verify(contestRepository, never()).save(any(Contest.class));
     }
 
     @Test
@@ -138,7 +172,114 @@ class AdminElectionManagementServiceTest {
         ))
                 .isInstanceOf(DuplicateResourceException.class)
                 .hasMessage("A BLANK_BALLOT option already exists for this contest");
-        verify(contestOptionRepository, never()).save(org.mockito.ArgumentMatchers.any(ContestOption.class));
+        verify(contestOptionRepository, never()).save(any(ContestOption.class));
+    }
+
+    @Test
+    void reschedulingADraftElectionUpdatesItAndRecordsTheAdministrator() {
+        UUID electionId = UUID.randomUUID();
+        UUID adminId = UUID.randomUUID();
+        Election election = draftElection(FIXED_NOW.minusSeconds(7200), FIXED_NOW.minusSeconds(3600));
+        when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
+        UpdateElectionRequest request = new UpdateElectionRequest(
+                " Rescheduled Election ",
+                FIXED_NOW.plusSeconds(60),
+                FIXED_NOW.plusSeconds(3600),
+                FIXED_NOW.plusSeconds(7200),
+                FIXED_NOW.plusSeconds(10800)
+        );
+
+        ElectionResponse response = adminElectionManagementService.updateElection(electionId, request, adminId, "admin@example.com");
+
+        assertThat(response.name()).isEqualTo("Rescheduled Election");
+        assertThat(election.getRegistrationEndAt()).isEqualTo(FIXED_NOW.plusSeconds(3600));
+        verify(electionLifecycleService).recordAdministratorUpdate(
+                election, adminId, "admin@example.com", "Election name or schedule updated by an administrator");
+    }
+
+    @Test
+    void openedElectionsCannotBeRescheduled() {
+        UUID electionId = UUID.randomUUID();
+        Election election = new Election(
+                "Open Election",
+                ElectionType.MUNICIPAL,
+                FIXED_NOW.minusSeconds(60),
+                FIXED_NOW.plusSeconds(3600),
+                FIXED_NOW.plusSeconds(7200),
+                FIXED_NOW.plusSeconds(10800),
+                ElectionStatus.REGISTRATION_OPEN
+        );
+        when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
+        UpdateElectionRequest request = new UpdateElectionRequest(
+                "Open Election",
+                FIXED_NOW.plusSeconds(60),
+                FIXED_NOW.plusSeconds(3600),
+                FIXED_NOW.plusSeconds(7200),
+                FIXED_NOW.plusSeconds(10800)
+        );
+
+        assertThatThrownBy(() -> adminElectionManagementService.updateElection(electionId, request, UUID.randomUUID(), "admin@example.com"))
+                .isInstanceOf(ElectionLifecycleException.class)
+                .hasMessage("Only DRAFT elections can be edited; cancel an election that has already opened");
+    }
+
+    @Test
+    void districtGeographyCannotChangeOnceVotersUseIt() {
+        UUID districtId = UUID.randomUUID();
+        VotingDistrict district = new VotingDistrict("WC001-0001", "Ward 1 Station", "Western Cape", "City of Cape Town", 1);
+        when(votingDistrictRepository.findById(districtId)).thenReturn(Optional.of(district));
+        when(voterProfileRepository.existsByVotingDistrictId(districtId)).thenReturn(true);
+
+        assertThatThrownBy(() -> adminElectionManagementService.updateVotingDistrict(
+                districtId,
+                new CreateVotingDistrictRequest("WC001-0001", "Ward 1 Station", "Western Cape", "City of Cape Town", 2)
+        ))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("This voting district has registered voters; only its code and name can be changed");
+
+        VotingDistrictResponse renamed = adminElectionManagementService.updateVotingDistrict(
+                districtId,
+                new CreateVotingDistrictRequest("wc001-0001", "Ward 1 Community Hall", "Western Cape", "City of Cape Town", 1)
+        );
+        assertThat(renamed.name()).isEqualTo("Ward 1 Community Hall");
+        assertThat(renamed.code()).isEqualTo("WC001-0001");
+    }
+
+    @Test
+    void districtsInUseCannotBeDeleted() {
+        UUID districtId = UUID.randomUUID();
+        VotingDistrict district = new VotingDistrict("WC001-0001", "Ward 1 Station", "Western Cape", "City of Cape Town", 1);
+        when(votingDistrictRepository.findById(districtId)).thenReturn(Optional.of(district));
+        when(voterProfileRepository.existsByVotingDistrictId(districtId)).thenReturn(false);
+        when(electionRegistrationRepository.existsByVotingDistrictId(districtId)).thenReturn(true);
+
+        assertThatThrownBy(() -> adminElectionManagementService.deleteVotingDistrict(districtId))
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage("This voting district has registered voters and cannot be deleted");
+        verify(votingDistrictRepository, never()).delete(any(VotingDistrict.class));
+    }
+
+    private Election draftElection(Instant registrationStartAt, Instant registrationEndAt) {
+        return new Election(
+                "Boundary Election",
+                ElectionType.MUNICIPAL,
+                registrationStartAt,
+                registrationEndAt,
+                registrationEndAt.plusSeconds(3600),
+                registrationEndAt.plusSeconds(7200),
+                ElectionStatus.DRAFT
+        );
+    }
+
+    private CreateContestRequest wardContestRequest() {
+        return new CreateContestRequest(
+                "Ward 1 Councillor",
+                ContestType.MUNICIPAL_WARD,
+                1,
+                "Western Cape",
+                "City of Cape Town",
+                1
+        );
     }
 
     private Contest contest(ElectionStatus electionStatus, ContestStatus contestStatus) {

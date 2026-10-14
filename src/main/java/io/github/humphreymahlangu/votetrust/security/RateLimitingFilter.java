@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
 import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEventType;
 import io.github.humphreymahlangu.votetrust.entity.SecurityAuditOutcome;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.service.SecurityAuditService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,17 +26,20 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private final RateLimitProperties rateLimitProperties;
     private final ObjectMapper objectMapper;
     private final SecurityAuditService securityAuditService;
+    private final VoteTrustMetrics metrics;
 
     public RateLimitingFilter(
             RateLimitService rateLimitService,
             RateLimitProperties rateLimitProperties,
             ObjectMapper objectMapper,
-            SecurityAuditService securityAuditService
+            SecurityAuditService securityAuditService,
+            VoteTrustMetrics metrics
     ) {
         this.rateLimitService = rateLimitService;
         this.rateLimitProperties = rateLimitProperties;
         this.objectMapper = objectMapper;
         this.securityAuditService = securityAuditService;
+        this.metrics = metrics;
     }
 
     @Override
@@ -64,6 +68,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
 
         auditBlockedRequest(request, rateLimitedEndpoint);
+        metrics.rateLimitBlocked(rateLimitedEndpoint.bucket());
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setHeader(HttpHeaders.RETRY_AFTER, Integer.toString(decision.retryAfterSeconds()));
@@ -84,7 +89,10 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
 
         String path = request.getServletPath();
-        if ("/api/v1/auth/login".equals(path) || "/api/v1/auth/register".equals(path)) {
+        if ("/api/v1/auth/login".equals(path)
+                || "/api/v1/auth/register".equals(path)
+                || "/api/v1/auth/refresh".equals(path)
+                || "/api/v1/auth/logout".equals(path)) {
             return Optional.of(new RateLimitedEndpoint("auth", rateLimitProperties.getAuthLimit()));
         }
 

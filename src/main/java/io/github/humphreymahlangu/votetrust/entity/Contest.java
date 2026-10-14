@@ -117,6 +117,23 @@ public class Contest {
         this.status = status;
     }
 
+    /** Replaces the contest definition while its ballot is still being configured. */
+    public void updateDetails(
+            String name,
+            ContestType type,
+            Integer displayOrder,
+            String scopeProvince,
+            String scopeMunicipality,
+            Integer scopeWardNumber
+    ) {
+        this.name = name;
+        this.type = type;
+        this.displayOrder = displayOrder;
+        this.scopeProvince = scopeProvince;
+        this.scopeMunicipality = scopeMunicipality;
+        this.scopeWardNumber = scopeWardNumber;
+    }
+
     public Integer getDisplayOrder() {
         return displayOrder;
     }

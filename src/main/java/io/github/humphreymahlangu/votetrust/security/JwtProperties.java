@@ -17,6 +17,9 @@ public record JwtProperties(
         String issuer,
 
         @Min(1)
-        long accessTokenExpirationMinutes
+        long accessTokenExpirationMinutes,
+
+        @Min(1)
+        long refreshTokenExpirationHours
 ) {
 }

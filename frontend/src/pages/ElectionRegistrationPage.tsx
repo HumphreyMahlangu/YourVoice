@@ -1,35 +1,24 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
 import ApiError from '../api/ApiError'
-import { getVotingDistricts } from '../api/districts'
 import { getElection } from '../api/elections'
 import { registerForElection } from '../api/registrations'
 import { useAuth } from '../auth/useAuth'
 import ElectionMetadata from '../components/ElectionMetadata'
-import type { VotingDistrict } from '../types/district'
 import type { Election } from '../types/election'
 import type { ElectionRegistration } from '../types/registration'
 import { formatDateTime, formatEnumLabel } from '../utils/formatters'
 import { getErrorMessage } from '../utils/getErrorMessage'
 
-interface RegistrationPageData {
-  election: Election
-  districts: VotingDistrict[]
-}
-
 function ElectionRegistrationPage() {
   const { electionId } = useParams<{ electionId: string }>()
   const { session, logout } = useAuth()
-  const [pageData, setPageData] = useState<RegistrationPageData | null>(null)
-  const [votingDistrictId, setVotingDistrictId] = useState('')
+  const [election, setElection] = useState<Election | null>(null)
   const [registration, setRegistration] =
     useState<ElectionRegistration | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<unknown>(null)
-  const [fieldErrors, setFieldErrors] = useState<
-    Readonly<Record<string, string>>
-  >({})
 
   useEffect(() => {
     if (!electionId) {
@@ -42,23 +31,18 @@ function ElectionRegistrationPage() {
     const abortController = new AbortController()
 
     async function loadRegistrationPage() {
-      setPageData(null)
+      setElection(null)
       setError(null)
       setIsLoading(true)
 
       try {
-        const [election, districtResponse] = await Promise.all([
-          getElection(requestedElectionId, abortController.signal),
-          getVotingDistricts(abortController.signal),
-        ])
-        const districts = districtResponse.toSorted((left, right) =>
-          `${left.province}-${left.municipality}-${left.code}`.localeCompare(
-            `${right.province}-${right.municipality}-${right.code}`,
-          ),
+        const response = await getElection(
+          requestedElectionId,
+          abortController.signal,
         )
 
         if (!abortController.signal.aborted) {
-          setPageData({ election, districts })
+          setElection(response)
         }
       } catch (requestError) {
         if (!abortController.signal.aborted) {
@@ -84,13 +68,12 @@ function ElectionRegistrationPage() {
     }
 
     setError(null)
-    setFieldErrors({})
     setIsSubmitting(true)
 
     try {
       const response = await registerForElection(
         electionId,
-        { votingDistrictId },
+        {},
         session.accessToken,
       )
       setRegistration(response)
@@ -101,17 +84,12 @@ function ElectionRegistrationPage() {
       }
 
       setError(requestError)
-
-      if (requestError instanceof ApiError) {
-        setFieldErrors(requestError.fieldErrors)
-      }
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const electionPath = electionId ? `/elections/${electionId}` : '/elections'
-  const districtError = fieldErrors.votingDistrictId
 
   return (
     <section className="page workflow-page" aria-labelledby="election-registration-heading">
@@ -120,19 +98,19 @@ function ElectionRegistrationPage() {
 
       {isLoading && <p role="status">Loading registration details...</p>}
 
-      {!isLoading && pageData === null && error !== null && (
+      {!isLoading && election === null && error !== null && (
         <p role="alert">
           {getErrorMessage(error, 'Unable to load election registration.')}
         </p>
       )}
 
-      {!isLoading && pageData !== null && (
+      {!isLoading && election !== null && (
         <>
           <section aria-labelledby="registration-election-heading">
             <h2 id="registration-election-heading">
-              {pageData.election.name}
+              {election.name}
             </h2>
-            <ElectionMetadata election={pageData.election} />
+            <ElectionMetadata election={election} />
           </section>
 
           {registration !== null ? (
@@ -164,7 +142,7 @@ function ElectionRegistrationPage() {
               </dl>
               <Link to="/dashboard">Return to voter dashboard</Link>
             </section>
-          ) : pageData.election.status !== 'REGISTRATION_OPEN' ? (
+          ) : election.status !== 'REGISTRATION_OPEN' ? (
             <p>Registration is not currently open for this election.</p>
           ) : (
             <form onSubmit={handleSubmit} autoComplete="off">
@@ -177,47 +155,14 @@ function ElectionRegistrationPage() {
                 </p>
               )}
 
-              <div>
-                <label htmlFor="voting-district">Voting district</label>
-                <p id="voting-district-help">
-                  Confirm the district that applies to this election. Your
-                  identity details are taken from your protected voter profile.
-                </p>
-                <select
-                  id="voting-district"
-                  name="votingDistrictId"
-                  required
-                  value={votingDistrictId}
-                  aria-invalid={districtError ? true : undefined}
-                  aria-describedby={
-                    districtError
-                      ? 'voting-district-help voting-district-error'
-                      : 'voting-district-help'
-                  }
-                  onChange={(event) =>
-                    setVotingDistrictId(event.target.value)
-                  }
-                >
-                  <option value="">Select your voting district</option>
-                  {pageData.districts.map((district) => (
-                    <option key={district.id} value={district.id}>
-                      {district.code} — {district.name}, {district.municipality},
-                      ward {district.wardNumber}
-                    </option>
-                  ))}
-                </select>
-                {districtError && (
-                  <p id="voting-district-error">{districtError}</p>
-                )}
-                {pageData.districts.length === 0 && (
-                  <p>No voting districts are currently available.</p>
-                )}
-              </div>
+              <p>
+                You will be registered in the voting district on your voter
+                profile, which you chose when you created your account. That
+                district decides which contests you can vote in. Your identity
+                details are taken from your protected voter profile.
+              </p>
 
-              <button
-                type="submit"
-                disabled={isSubmitting || pageData.districts.length === 0}
-              >
+              <button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Registering...' : 'Register for election'}
               </button>
             </form>

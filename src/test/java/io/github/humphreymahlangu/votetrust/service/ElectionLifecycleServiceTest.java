@@ -16,10 +16,12 @@ import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleOutcome;
 import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleTrigger;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
 import io.github.humphreymahlangu.votetrust.entity.ElectionType;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionLifecycleEventRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.lang.reflect.Field;
 import java.time.Clock;
 import java.time.Instant;
@@ -51,6 +53,12 @@ class ElectionLifecycleServiceTest {
     @Mock
     private ElectionLifecycleEventRepository lifecycleEventRepository;
 
+    @Mock
+    private LedgerPublicationService ledgerPublicationService;
+
+    @Mock
+    private BallotSigningKeyService ballotSigningKeyService;
+
     private ElectionLifecycleService lifecycleService;
 
     @BeforeEach
@@ -60,6 +68,9 @@ class ElectionLifecycleServiceTest {
                 contestRepository,
                 contestOptionRepository,
                 lifecycleEventRepository,
+                ledgerPublicationService,
+                ballotSigningKeyService,
+                new VoteTrustMetrics(new SimpleMeterRegistry()),
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -87,6 +98,8 @@ class ElectionLifecycleServiceTest {
         assertThat(election.getStatus()).isEqualTo(ElectionStatus.COMPLETED);
         assertThat(contest.getStatus()).isEqualTo(ContestStatus.CLOSED);
         verify(lifecycleEventRepository, times(4)).save(any(ElectionLifecycleEvent.class));
+        verify(ballotSigningKeyService).getOrCreate(contest.getId());
+        verify(ledgerPublicationService).ensurePublished(contest);
     }
 
     @Test
@@ -127,11 +140,19 @@ class ElectionLifecycleServiceTest {
 
         when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
         when(contestRepository.findByElectionId(electionId)).thenReturn(List.of());
-        when(lifecycleEventRepository.existsByElectionIdAndPreviousStatusAndOutcome(
+        ElectionLifecycleEvent recordedFailure = new ElectionLifecycleEvent(
                 electionId,
                 ElectionStatus.DRAFT,
-                ElectionLifecycleOutcome.FAILURE
-        )).thenReturn(false, true);
+                ElectionStatus.REGISTRATION_OPEN,
+                ElectionLifecycleTrigger.AUTOMATIC,
+                ElectionLifecycleOutcome.FAILURE,
+                null,
+                null,
+                "Election must have at least one contest before registration opens",
+                NOW
+        );
+        when(lifecycleEventRepository.findTopByElectionIdOrderByEventSequenceDesc(electionId))
+                .thenReturn(Optional.empty(), Optional.of(recordedFailure));
 
         lifecycleService.advanceElection(electionId);
         lifecycleService.advanceElection(electionId);

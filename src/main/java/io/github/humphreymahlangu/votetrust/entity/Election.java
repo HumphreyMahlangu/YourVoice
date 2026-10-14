@@ -109,6 +109,21 @@ public class Election {
         this.status = status;
     }
 
+    /** Renames and reschedules a DRAFT election. Callers validate the windows and the status. */
+    public void updateDetails(
+            String name,
+            Instant registrationStartAt,
+            Instant registrationEndAt,
+            Instant votingStartAt,
+            Instant votingEndAt
+    ) {
+        this.name = name;
+        this.registrationStartAt = registrationStartAt;
+        this.registrationEndAt = registrationEndAt;
+        this.votingStartAt = votingStartAt;
+        this.votingEndAt = votingEndAt;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

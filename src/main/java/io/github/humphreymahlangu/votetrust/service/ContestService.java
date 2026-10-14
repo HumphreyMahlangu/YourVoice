@@ -1,6 +1,5 @@
 package io.github.humphreymahlangu.votetrust.service;
 
-import io.github.humphreymahlangu.votetrust.dto.ContestOptionResponse;
 import io.github.humphreymahlangu.votetrust.dto.ContestResponse;
 import io.github.humphreymahlangu.votetrust.entity.Contest;
 import io.github.humphreymahlangu.votetrust.entity.ContestOption;
@@ -9,7 +8,9 @@ import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,36 +37,15 @@ public class ContestService {
             throw new ResourceNotFoundException("Election not found");
         }
 
-        return contestRepository.findByElectionIdOrderByDisplayOrderAscNameAsc(electionId)
+        List<Contest> contests = contestRepository.findByElectionIdOrderByDisplayOrderAscNameAsc(electionId);
+        // One query for every contest's options instead of one per contest; groupingBy keeps the query's order.
+        Map<UUID, List<ContestOption>> optionsByContest = contestOptionRepository
+                .findByContestIdInOrderByDisplayOrderAscNameAsc(contests.stream().map(Contest::getId).toList())
                 .stream()
-                .map(this::toResponse)
+                .collect(Collectors.groupingBy(option -> option.getContest().getId()));
+
+        return contests.stream()
+                .map(contest -> ContestResponse.from(contest, optionsByContest.getOrDefault(contest.getId(), List.of())))
                 .toList();
-    }
-
-    private ContestResponse toResponse(Contest contest) {
-        return new ContestResponse(
-                contest.getId(),
-                contest.getElection().getId(),
-                contest.getName(),
-                contest.getType().name(),
-                contest.getStatus().name(),
-                contest.getDisplayOrder(),
-                contest.getScopeProvince(),
-                contest.getScopeMunicipality(),
-                contest.getScopeWardNumber(),
-                contestOptionRepository.findByContestIdOrderByDisplayOrderAscNameAsc(contest.getId())
-                        .stream()
-                        .map(this::toOptionResponse)
-                        .toList()
-        );
-    }
-
-    private ContestOptionResponse toOptionResponse(ContestOption contestOption) {
-        return new ContestOptionResponse(
-                contestOption.getId(),
-                contestOption.getName(),
-                contestOption.getOptionType().name(),
-                contestOption.getDisplayOrder()
-        );
     }
 }

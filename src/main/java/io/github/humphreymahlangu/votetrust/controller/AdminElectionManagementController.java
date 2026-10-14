@@ -11,6 +11,7 @@ import io.github.humphreymahlangu.votetrust.dto.CreateVotingDistrictRequest;
 import io.github.humphreymahlangu.votetrust.dto.ElectionResponse;
 import io.github.humphreymahlangu.votetrust.dto.ElectionLifecycleEventResponse;
 import io.github.humphreymahlangu.votetrust.dto.ElectionStatusUpdateRequest;
+import io.github.humphreymahlangu.votetrust.dto.UpdateElectionRequest;
 import io.github.humphreymahlangu.votetrust.dto.VotingDistrictResponse;
 import io.github.humphreymahlangu.votetrust.service.AdminElectionManagementService;
 import io.github.humphreymahlangu.votetrust.service.ElectionLifecycleService;
@@ -28,10 +29,12 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -146,5 +149,70 @@ public class AdminElectionManagementController {
             @Valid @RequestBody ContestStatusUpdateRequest request
     ) {
         return adminElectionManagementService.updateContestStatus(electionId, contestId, request);
+    }
+
+    @PutMapping("/elections/{electionId}")
+    @Operation(summary = "Rename or reschedule a DRAFT election", description = "Replaces the name and windows of an election that has not opened. The registration window must end in the future. Use this to rescue an election whose ballot was not ready when registration was due to open. The change is recorded in the lifecycle history.")
+    public ElectionResponse updateElection(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID electionId,
+            @Valid @RequestBody UpdateElectionRequest request
+    ) {
+        return adminElectionManagementService.updateElection(electionId, request, principal.id(), principal.email());
+    }
+
+    @PutMapping("/elections/{electionId}/contests/{contestId}")
+    @Operation(summary = "Replace a contest", description = "Replaces a DRAFT contest's name, type, display order, and geographic scope while ballot configuration is open.")
+    public ContestResponse updateContest(
+            @PathVariable UUID electionId,
+            @PathVariable UUID contestId,
+            @Valid @RequestBody CreateContestRequest request
+    ) {
+        return adminElectionManagementService.updateContest(electionId, contestId, request);
+    }
+
+    @DeleteMapping("/elections/{electionId}/contests/{contestId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete a contest", description = "Deletes a DRAFT contest and its ballot options while ballot configuration is open.")
+    public void deleteContest(@PathVariable UUID electionId, @PathVariable UUID contestId) {
+        adminElectionManagementService.deleteContest(electionId, contestId);
+    }
+
+    @PutMapping("/elections/{electionId}/contests/{contestId}/options/{optionId}")
+    @Operation(summary = "Replace a ballot option", description = "Replaces a ballot option's name, type, and display order while its contest is DRAFT.")
+    public ContestOptionResponse updateContestOption(
+            @PathVariable UUID electionId,
+            @PathVariable UUID contestId,
+            @PathVariable UUID optionId,
+            @Valid @RequestBody CreateContestOptionRequest request
+    ) {
+        return adminElectionManagementService.updateContestOption(electionId, contestId, optionId, request);
+    }
+
+    @DeleteMapping("/elections/{electionId}/contests/{contestId}/options/{optionId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete a ballot option", description = "Deletes a ballot option while its contest is DRAFT.")
+    public void deleteContestOption(
+            @PathVariable UUID electionId,
+            @PathVariable UUID contestId,
+            @PathVariable UUID optionId
+    ) {
+        adminElectionManagementService.deleteContestOption(electionId, contestId, optionId);
+    }
+
+    @PutMapping("/voting-districts/{votingDistrictId}")
+    @Operation(summary = "Replace a voting district", description = "Updates a district. Once voters are registered in it, only the code and name can change, because the province, municipality, and ward decide contest eligibility.")
+    public VotingDistrictResponse updateVotingDistrict(
+            @PathVariable UUID votingDistrictId,
+            @Valid @RequestBody CreateVotingDistrictRequest request
+    ) {
+        return adminElectionManagementService.updateVotingDistrict(votingDistrictId, request);
+    }
+
+    @DeleteMapping("/voting-districts/{votingDistrictId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Delete a voting district", description = "Deletes a district that no voter profile or registration uses.")
+    public void deleteVotingDistrict(@PathVariable UUID votingDistrictId) {
+        adminElectionManagementService.deleteVotingDistrict(votingDistrictId);
     }
 }

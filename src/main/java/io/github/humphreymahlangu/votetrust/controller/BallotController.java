@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
         ),
         @ApiResponse(
                 responseCode = "401",
-                description = "Voting credential is invalid",
+                description = "Ballot signature is invalid",
                 content = @Content(schema = @Schema(implementation = ApiErrorResponse.class))
         ),
         @ApiResponse(
@@ -60,7 +60,7 @@ public class BallotController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
             summary = "Cast an anonymous ballot",
-            description = "Accepts an anonymous one-time voting credential and selected option. The response intentionally omits ledger hashes, indexes, and identifiers that could become a vote receipt."
+            description = "Accepts a ballot token, its unblinded signature, and the selected option. No JWT is sent, and the server cannot link the token to the voter it signed for. Each token can be spent once. The response intentionally omits ledger hashes, indexes, and identifiers that could become a vote receipt."
     )
     public BallotCastResponse castBallot(@Valid @RequestBody BallotCastRequest request) {
         return votingService.castBallot(request);

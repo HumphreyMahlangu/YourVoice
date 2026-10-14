@@ -81,6 +81,14 @@ public class VotingDistrict {
         return wardNumber;
     }
 
+    public void updateDetails(String code, String name, String province, String municipality, Integer wardNumber) {
+        this.code = code;
+        this.name = name;
+        this.province = province;
+        this.municipality = municipality;
+        this.wardNumber = wardNumber;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

@@ -1,8 +1,6 @@
 package io.github.humphreymahlangu.votetrust.security;
 
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.HexFormat;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -12,9 +10,7 @@ import org.springframework.stereotype.Service;
 public class VoteCredentialService {
 
     private static final String HMAC_ALGORITHM = "HmacSHA256";
-    private static final int TOKEN_BYTES = 32;
 
-    private final SecureRandom secureRandom = new SecureRandom();
     private final SecretKeySpec secretKeySpec;
 
     public VoteCredentialService(VoteCredentialProperties properties) {
@@ -22,12 +18,6 @@ public class VoteCredentialService {
                 properties.voteCredentialPepper().getBytes(StandardCharsets.UTF_8),
                 HMAC_ALGORITHM
         );
-    }
-
-    public String generateRawCredential() {
-        byte[] bytes = new byte[TOKEN_BYTES];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     public String hashCredential(String rawCredential) {

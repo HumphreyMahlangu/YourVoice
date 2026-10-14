@@ -2,12 +2,14 @@ import { createBrowserRouter } from 'react-router'
 import App from './App'
 import RequireAdmin from './auth/RequireAdmin'
 import RequireVoter from './auth/RequireVoter'
+import AdminAccountsPage from './pages/AdminAccountsPage'
 import AdminCreateElectionPage from './pages/AdminCreateElectionPage'
 import AdminCreateVotingDistrictPage from './pages/AdminCreateVotingDistrictPage'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminElectionBuilderPage from './pages/AdminElectionBuilderPage'
 import AdminElectionOperationsPage from './pages/AdminElectionOperationsPage'
 import AdminSecurityEventsPage from './pages/AdminSecurityEventsPage'
+import AdminVotingDistrictsPage from './pages/AdminVotingDistrictsPage'
 import ContestAuditPage from './pages/ContestAuditPage'
 import ContestLedgerPage from './pages/ContestLedgerPage'
 import ContestResultsPage from './pages/ContestResultsPage'
@@ -101,8 +103,16 @@ const router = createBrowserRouter([
             element: <AdminElectionOperationsPage />,
           },
           {
+            path: 'admin/voting-districts',
+            element: <AdminVotingDistrictsPage />,
+          },
+          {
             path: 'admin/voting-districts/new',
             element: <AdminCreateVotingDistrictPage />,
+          },
+          {
+            path: 'admin/accounts',
+            element: <AdminAccountsPage />,
           },
         ],
       },

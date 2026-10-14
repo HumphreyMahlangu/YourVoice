@@ -15,6 +15,7 @@ import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionLifecycleEventRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
 import java.time.Clock;
 import java.time.Instant;
@@ -28,6 +29,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -36,6 +38,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Import(ElectionLifecyclePostgreSqlIntegrationTest.FixedClockConfig.class)
 @Testcontainers(disabledWithoutDocker = true)
 class ElectionLifecyclePostgreSqlIntegrationTest extends PostgreSqlTestContainerSupport {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private static final Instant NOW = Instant.parse("2026-08-09T10:00:00Z");
 
@@ -56,10 +61,7 @@ class ElectionLifecyclePostgreSqlIntegrationTest extends PostgreSqlTestContainer
 
     @BeforeEach
     void cleanDatabase() {
-        lifecycleEventRepository.deleteAll();
-        contestOptionRepository.deleteAll();
-        contestRepository.deleteAll();
-        electionRepository.deleteAll();
+        DatabaseCleaner.clean(jdbcTemplate);
     }
 
     @Test

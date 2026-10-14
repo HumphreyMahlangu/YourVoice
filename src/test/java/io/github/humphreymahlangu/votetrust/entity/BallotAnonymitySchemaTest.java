@@ -28,6 +28,21 @@ class BallotAnonymitySchemaTest {
     }
 
     @Test
+    void votingRightStoresOnlyTheBlindedTokenNeverTheBallotTokenOrSignature() {
+        assertThat(fieldNames(VotingRight.class))
+                .contains("blindedTokenHash")
+                .doesNotContain("ballotToken", "ballotTokenHash", "signature", "credentialHash");
+    }
+
+    @Test
+    void ballotSigningKeyAndPublishedLedgerDoNotContainVoterLinkFields() {
+        assertThat(fieldNames(ContestSigningKey.class))
+                .doesNotContain("userAccount", "voterProfile", "votingRight");
+        assertThat(fieldNames(PublishedBallotEntry.class))
+                .doesNotContain("userAccount", "voterProfile", "votingRight", "ledgerIndex", "castAt");
+    }
+
+    @Test
     void ballotCastResponseDoesNotContainReceiptLikeLedgerFields() {
         assertThat(fieldNames(BallotCastResponse.class))
                 .doesNotContain("ballotLedgerEntryId", "ledgerIndex", "previousHash", "currentHash", "castAt");

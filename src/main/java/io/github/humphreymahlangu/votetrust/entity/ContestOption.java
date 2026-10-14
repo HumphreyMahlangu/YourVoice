@@ -83,6 +83,13 @@ public class ContestOption {
         return displayOrder;
     }
 
+    /** Replaces the option definition while its contest is still a draft. */
+    public void updateDetails(String name, ContestOptionType optionType, Integer displayOrder) {
+        this.name = name;
+        this.optionType = optionType;
+        this.displayOrder = displayOrder;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

@@ -11,6 +11,7 @@ import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleTrigger;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
 import io.github.humphreymahlangu.votetrust.exception.ElectionLifecycleException;
 import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionLifecycleEventRepository;
@@ -37,6 +38,9 @@ public class ElectionLifecycleService {
     private final ContestRepository contestRepository;
     private final ContestOptionRepository contestOptionRepository;
     private final ElectionLifecycleEventRepository lifecycleEventRepository;
+    private final LedgerPublicationService ledgerPublicationService;
+    private final BallotSigningKeyService ballotSigningKeyService;
+    private final VoteTrustMetrics metrics;
     private final Clock clock;
 
     public ElectionLifecycleService(
@@ -44,12 +48,18 @@ public class ElectionLifecycleService {
             ContestRepository contestRepository,
             ContestOptionRepository contestOptionRepository,
             ElectionLifecycleEventRepository lifecycleEventRepository,
+            LedgerPublicationService ledgerPublicationService,
+            BallotSigningKeyService ballotSigningKeyService,
+            VoteTrustMetrics metrics,
             Clock clock
     ) {
         this.electionRepository = electionRepository;
         this.contestRepository = contestRepository;
         this.contestOptionRepository = contestOptionRepository;
         this.lifecycleEventRepository = lifecycleEventRepository;
+        this.ledgerPublicationService = ledgerPublicationService;
+        this.ballotSigningKeyService = ballotSigningKeyService;
+        this.metrics = metrics;
         this.clock = clock;
     }
 
@@ -62,6 +72,7 @@ public class ElectionLifecycleService {
             advanceDueTransitions(election, now);
         } catch (ElectionLifecycleException exception) {
             if (recordFailureOnce(election, exception.getMessage(), now)) {
+                metrics.lifecycleFailure();
                 LOGGER.warn("Election {} lifecycle transition failed closed: {}", electionId, exception.getMessage());
             }
         }
@@ -93,6 +104,22 @@ public class ElectionLifecycleService {
                 Instant.now(clock)
         ));
         return election;
+    }
+
+    /** Audits an administrator change to a DRAFT election; the status itself does not change. */
+    @Transactional
+    public void recordAdministratorUpdate(Election election, UUID actorUserId, String actorEmail, String detail) {
+        lifecycleEventRepository.save(new ElectionLifecycleEvent(
+                election.getId(),
+                election.getStatus(),
+                election.getStatus(),
+                ElectionLifecycleTrigger.ADMINISTRATOR,
+                ElectionLifecycleOutcome.SUCCESS,
+                actorUserId,
+                actorEmail,
+                detail,
+                Instant.now(clock)
+        ));
     }
 
     @Transactional(readOnly = true)
@@ -158,6 +185,8 @@ public class ElectionLifecycleService {
             }
             if (contest.getStatus() == ContestStatus.DRAFT) {
                 contest.transitionTo(ContestStatus.OPEN);
+                // Generate the ballot key up front so the first voter does not pay for RSA key generation.
+                ballotSigningKeyService.getOrCreate(contest.getId());
                 opened++;
             }
         }
@@ -175,6 +204,7 @@ public class ElectionLifecycleService {
                 contest.transitionTo(ContestStatus.CLOSED);
                 closed++;
             }
+            ledgerPublicationService.ensurePublished(contest);
         }
         return closed;
     }
@@ -221,13 +251,17 @@ public class ElectionLifecycleService {
         ));
     }
 
+    /**
+     * Records a failure unless the election's latest event is already the same failure. Any later event (such as an
+     * administrator rescheduling the election) re-arms recording, so a repeat failure after a fix is visible again.
+     */
     private boolean recordFailureOnce(Election election, String detail, Instant occurredAt) {
         ElectionStatus previousStatus = election.getStatus();
-        if (lifecycleEventRepository.existsByElectionIdAndPreviousStatusAndOutcome(
-                election.getId(),
-                previousStatus,
-                ElectionLifecycleOutcome.FAILURE
-        )) {
+        boolean alreadyRecorded = lifecycleEventRepository.findTopByElectionIdOrderByEventSequenceDesc(election.getId())
+                .filter(event -> event.getOutcome() == ElectionLifecycleOutcome.FAILURE)
+                .filter(event -> event.getPreviousStatus() == previousStatus)
+                .isPresent();
+        if (alreadyRecorded) {
             return false;
         }
 

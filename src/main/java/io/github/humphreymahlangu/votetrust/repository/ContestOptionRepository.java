@@ -13,6 +13,8 @@ public interface ContestOptionRepository extends JpaRepository<ContestOption, UU
 
     List<ContestOption> findByContestIdOrderByDisplayOrderAscNameAsc(UUID contestId);
 
+    List<ContestOption> findByContestIdInOrderByDisplayOrderAscNameAsc(Collection<UUID> contestIds);
+
     @EntityGraph(attributePaths = {"contest", "contest.election"})
     Optional<ContestOption> findByIdAndContestId(UUID id, UUID contestId);
 
@@ -24,4 +26,11 @@ public interface ContestOptionRepository extends JpaRepository<ContestOption, UU
 
     long countByContestIdAndOptionTypeIn(UUID contestId, Collection<ContestOptionType> optionTypes);
 
+    boolean existsByContestIdAndNameIgnoreCaseAndIdNot(UUID contestId, String name, UUID id);
+
+    boolean existsByContestIdAndDisplayOrderAndIdNot(UUID contestId, Integer displayOrder, UUID id);
+
+    boolean existsByContestIdAndOptionTypeAndIdNot(UUID contestId, ContestOptionType optionType, UUID id);
+
+    List<ContestOption> findByContestId(UUID contestId);
 }

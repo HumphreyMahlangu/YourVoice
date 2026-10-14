@@ -26,3 +26,17 @@ export function getCurrentAccount(authToken: string, signal?: AbortSignal) {
     signal,
   })
 }
+
+export function refreshSession(refreshToken: string) {
+  return apiRequest<AuthSession>('/api/v1/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken },
+  })
+}
+
+export function logoutSession(refreshToken: string) {
+  return apiRequest<void>('/api/v1/auth/logout', {
+    method: 'POST',
+    body: { refreshToken },
+  })
+}

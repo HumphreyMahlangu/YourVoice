@@ -1,10 +1,13 @@
 package io.github.humphreymahlangu.votetrust.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import io.github.humphreymahlangu.votetrust.dto.ContestOptionTallyRow;
 import io.github.humphreymahlangu.votetrust.dto.ContestResultResponse;
+import io.github.humphreymahlangu.votetrust.dto.DistrictRegistrationCount;
 import io.github.humphreymahlangu.votetrust.entity.Contest;
 import io.github.humphreymahlangu.votetrust.entity.ContestOptionType;
 import io.github.humphreymahlangu.votetrust.entity.ContestStatus;
@@ -17,7 +20,7 @@ import io.github.humphreymahlangu.votetrust.entity.LedgerState;
 import io.github.humphreymahlangu.votetrust.repository.BallotLedgerEntryRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRegistrationRepository;
-import io.github.humphreymahlangu.votetrust.repository.LedgerStateRepository;
+import io.github.humphreymahlangu.votetrust.repository.PublishedBallotEntryRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -34,6 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class TallyAuditServiceTest {
 
     private static final Instant FIXED_NOW = Instant.parse("2026-08-07T22:00:00Z");
+    private static final String PUBLISHED_HEAD = "ab".repeat(32);
 
     @Mock
     private ContestRepository contestRepository;
@@ -42,13 +46,16 @@ class TallyAuditServiceTest {
     private BallotLedgerEntryRepository ballotLedgerEntryRepository;
 
     @Mock
-    private LedgerStateRepository ledgerStateRepository;
+    private PublishedBallotEntryRepository publishedBallotEntryRepository;
 
     @Mock
     private ElectionRegistrationRepository electionRegistrationRepository;
 
     @Mock
     private VoteHashChainService voteHashChainService;
+
+    @Mock
+    private LedgerPublicationService ledgerPublicationService;
 
     private TallyAuditService tallyAuditService;
 
@@ -57,9 +64,10 @@ class TallyAuditServiceTest {
         tallyAuditService = new TallyAuditService(
                 contestRepository,
                 ballotLedgerEntryRepository,
-                ledgerStateRepository,
+                publishedBallotEntryRepository,
                 electionRegistrationRepository,
                 voteHashChainService,
+                ledgerPublicationService,
                 Clock.fixed(FIXED_NOW, ZoneOffset.UTC)
         );
     }
@@ -78,9 +86,9 @@ class TallyAuditServiceTest {
         when(ballotLedgerEntryRepository.tallyContestOptions(contestId))
                 .thenReturn(List.of(party, candidate, blank, spoilt));
         when(ballotLedgerEntryRepository.countByContestId(contestId)).thenReturn(5L);
-        when(electionRegistrationRepository.countByElectionIdAndStatus(electionId, RegistrationStatus.ACTIVE))
-                .thenReturn(5L);
-        when(ledgerStateRepository.findByContestId(contestId)).thenReturn(Optional.empty());
+        when(electionRegistrationRepository.countByDistrict(any(), eq(RegistrationStatus.ACTIVE)))
+                .thenReturn(List.of(new DistrictRegistrationCount("Western Cape", "City of Cape Town", 1, 5L)));
+        when(ledgerPublicationService.ensurePublished(contest)).thenReturn(publishedLedgerState(contest));
 
         ContestResultResponse response = tallyAuditService.getContestResult(electionId, contestId);
 
@@ -88,12 +96,42 @@ class TallyAuditServiceTest {
         assertThat(response.validVotes()).isEqualTo(3);
         assertThat(response.blankBallots()).isEqualTo(1);
         assertThat(response.spoiltBallots()).isEqualTo(1);
-        assertThat(response.ledgerHeadHash()).isEqualTo(LedgerState.GENESIS_HASH);
+        assertThat(response.ledgerHeadHash()).isEqualTo(PUBLISHED_HEAD);
         assertThat(response.options())
                 .extracting(option -> option.optionType().name())
                 .containsExactly("PARTY", "INDEPENDENT_CANDIDATE");
         assertThat(response.options().getFirst().voteCount()).isEqualTo(2);
         assertThat(response.options().getFirst().leading()).isTrue();
+    }
+
+    @Test
+    void turnoutCountsOnlyRegisteredVotersEligibleForTheContest() {
+        UUID electionId = UUID.randomUUID();
+        UUID contestId = UUID.randomUUID();
+        Contest contest = closedContest();
+
+        when(contestRepository.findByIdAndElectionId(contestId, electionId)).thenReturn(Optional.of(contest));
+        when(ballotLedgerEntryRepository.tallyContestOptions(contestId)).thenReturn(List.of(
+                tallyRow("Ubuntu Civic Party", ContestOptionType.PARTY, 1, 2)
+        ));
+        when(ballotLedgerEntryRepository.countByContestId(contestId)).thenReturn(2L);
+        when(electionRegistrationRepository.countByDistrict(any(), eq(RegistrationStatus.ACTIVE))).thenReturn(List.of(
+                new DistrictRegistrationCount(" western cape ", "City of Cape Town", 1, 4L),
+                new DistrictRegistrationCount("Western Cape", "City of Cape Town", 2, 50L),
+                new DistrictRegistrationCount("Gauteng", "City of Johannesburg", 1, 70L)
+        ));
+        when(ledgerPublicationService.ensurePublished(contest)).thenReturn(publishedLedgerState(contest));
+
+        ContestResultResponse response = tallyAuditService.getContestResult(electionId, contestId);
+
+        assertThat(response.registeredVoterCount()).isEqualTo(4);
+        assertThat(response.turnoutPercentage()).isEqualByComparingTo("50.00");
+    }
+
+    private LedgerState publishedLedgerState(Contest contest) {
+        LedgerState ledgerState = new LedgerState(contest);
+        ledgerState.markPublished(PUBLISHED_HEAD, 5);
+        return ledgerState;
     }
 
     private Contest closedContest() {

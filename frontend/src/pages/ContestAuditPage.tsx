@@ -81,13 +81,16 @@ function ContestAuditPage() {
           <h1 id="contest-audit-heading">Contest ledger verification</h1>
           <p role={audit.chainValid ? 'status' : 'alert'}>
             {audit.chainValid
-              ? 'The ledger hash chain is valid.'
-              : 'The ledger hash chain has integrity violations.'}
+              ? 'Both ledger hash chains are valid and contain the same ballots.'
+              : 'The ledger has integrity violations.'}
           </p>
 
           <dl>
-            <dt>Ledger entries verified</dt>
+            <dt>Internal ledger entries verified</dt>
             <dd>{formatNumber(audit.ledgerEntryCount)}</dd>
+
+            <dt>Published ledger entries verified</dt>
+            <dd>{formatNumber(audit.publishedLedgerEntryCount)}</dd>
 
             <dt>Verification time</dt>
             <dd>
@@ -96,7 +99,7 @@ function ContestAuditPage() {
               </time>
             </dd>
 
-            <dt>Stored next ledger index</dt>
+            <dt>Stored next internal ledger index</dt>
             <dd>
               {audit.storedNextLedgerIndex === null
                 ? 'Not available'
@@ -108,16 +111,32 @@ function ContestAuditPage() {
               <code>{audit.genesisHash}</code>
             </dd>
 
-            <dt>Computed head hash</dt>
+            <dt>Computed internal head hash</dt>
             <dd>
               <code>{audit.computedHeadHash}</code>
             </dd>
 
-            <dt>Stored head hash</dt>
+            <dt>Stored internal head hash</dt>
             <dd>
               <code>{audit.storedHeadHash}</code>
             </dd>
+
+            <dt>Computed published head hash</dt>
+            <dd>
+              <code>{audit.computedPublishedHeadHash}</code>
+            </dd>
+
+            <dt>Stored published head hash</dt>
+            <dd>
+              <code>{audit.publishedHeadHash}</code>
+            </dd>
           </dl>
+          <p>
+            The internal ledger records ballots in the order they were cast and
+            stays on the server. The published ledger holds the same ballots in a
+            random order, so you can verify it yourself without learning who voted
+            when.
+          </p>
 
           <section aria-labelledby="violations-heading">
             <h2 id="violations-heading">Integrity violations</h2>

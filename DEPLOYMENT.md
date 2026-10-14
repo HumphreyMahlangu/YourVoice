@@ -20,6 +20,15 @@ Optional but recommended:
 * `VOTETRUST_RATE_LIMIT_*`
 * `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED`
 * `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN`
+* `VOTETRUST_JWT_REFRESH_TOKEN_EXPIRATION_HOURS` (default 12)
+* `VOTETRUST_LOGIN_MAX_FAILURES` and `VOTETRUST_LOGIN_LOCK_SECONDS` (defaults 5 and 900)
+* `VOTETRUST_LOG_FORMAT` (`text` or `json`)
+* `SERVER_FORWARD_HEADERS_STRATEGY` (default `native`; trusts `X-Forwarded-For` only from private-network proxies)
+
+Never regenerate `VOTETRUST_ID_HASH_PEPPER` or `VOTETRUST_VOTE_CREDENTIAL_PEPPER` once voters exist. The ID
+pepper protects duplicate-registration detection; the vote-credential pepper protects spent ballot tokens and
+encrypts each open contest's ballot signing key, so changing it during an election stops voting for that
+election.
 
 ## Local Compose Smoke Test
 
@@ -43,60 +52,54 @@ For manual API testing, import the Postman collection and local environment from
 
 The GitHub Actions workflow must pass:
 
-* Maven tests, including PostgreSQL Testcontainers on Docker-capable runners.
+* Maven tests, including PostgreSQL integration and concurrency tests.
 * Maven package build.
 * Docker Compose config validation with `.env.example`.
 * Container image build.
+* Frontend lint, unit tests, and production build.
 
-## Azure ACR Tasks Deployment
+## Monitoring
 
-VoteTrust can be deployed to Azure Container Apps through Azure Container Registry Tasks. This keeps GitHub Actions responsible for tests and uses ACR Tasks for image build, push, and runtime update after code reaches `main`.
-
-The Azure deployment assets live in `infra/azure/`:
-
-* `acr-task.yaml` builds the Dockerfile image, tags it with the Git commit SHA and `main`, pushes both tags to ACR, and updates Azure Container Apps.
-* `provision-acr-tasks-deployment.ps1` creates the Azure resource group, ACR, private-network PostgreSQL Flexible Server, Key Vault, managed identities, Container Apps environment, Container App, and ACR Task.
-* `README.md` contains the exact runbook for provisioning, validation, first-admin bootstrap, ACR task logs, manual task runs, and rollback.
-
-Prerequisites:
-
-```powershell
-az login
-az account set --subscription "<subscription-id-or-name>"
-az extension add --name containerapp --upgrade
-$env:GITHUB_PAT = "<github-pat-with-public_repo-and-repo:status>"
-```
-
-Deploy:
-
-```powershell
-pwsh .\infra\azure\provision-acr-tasks-deployment.ps1
-```
-
-The script targets `spaincentral` by default and stops during preflight if Azure Container Apps, ACR, Key Vault, or PostgreSQL Flexible Server is unavailable in that region for the active subscription.
-
-After deployment, verify:
-
-```powershell
-$baseUrl = "https://<container-app-fqdn>"
-curl "$baseUrl/actuator/health/readiness"
-curl "$baseUrl/swagger-ui.html"
-```
-
-For Postman, set the environment `baseUrl` to the Container App URL.
+* Health probes: `/actuator/health/readiness` and `/actuator/health/liveness` (public).
+* Metrics: `/actuator/prometheus` in Prometheus format, available to administrator tokens only. Alert on
+  `votetrust_elections_stuck > 0` (an election could not advance and needs an administrator) and watch
+  `votetrust_auth_refresh_token_reuse_total` (possible session theft) and `votetrust_ratelimit_blocked_total`.
+* Every response includes an `X-Request-Id` header; the same ID appears in error bodies and log lines. Set
+  `VOTETRUST_LOG_FORMAT=json` for one JSON log object per line.
 
 ## Render Backend Deployment
 
-The root `render.yaml` defines a backend-only Render Blueprint with the Dockerized Spring Boot API and a managed PostgreSQL database. It does not deploy or modify the frontend.
+The root `render.yaml` defines a Render Blueprint with the Dockerized Spring Boot API (`votetrust-api`) and a managed PostgreSQL database (`votetrust-db`).
 
 Deploy it from the Render dashboard:
 
 1. Push the repository to GitHub with `render.yaml` on the deployment branch.
 2. In Render, choose **New > Blueprint**, connect the repository, and apply the Blueprint.
-3. Wait for `votetrust-db` and `votetrust-api` to finish deploying.
-4. Verify `https://<api-host>/actuator/health/readiness` and `https://<api-host>/swagger-ui.html`.
+3. When prompted, set `VOTETRUST_CORS_ALLOWED_ORIGINS` to the frontend origin(s), for example `https://<project>.vercel.app`. The variable is declared with `sync: false`, so later Blueprint syncs never overwrite the dashboard value.
+4. Wait for `votetrust-db` and `votetrust-api` to finish deploying.
+5. Verify `https://<api-host>/actuator/health/readiness` and `https://<api-host>/swagger-ui.html`.
 
-The Blueprint generates the JWT and pepper secrets. For a controlled first-admin bootstrap, set `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=true` and a strong `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN` on the API service, create the admin, then disable bootstrap and redeploy. Set `VOTETRUST_CORS_ALLOWED_ORIGINS` to the eventual frontend origin before browser clients call the API.
+How the Blueprint is wired:
+
+* Database connection values are injected as `SPRING_DATASOURCE_HOST`, `SPRING_DATASOURCE_PORT`, `SPRING_DATASOURCE_NAME`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD`; `application.properties` builds the JDBC URL from them when `SPRING_DATASOURCE_URL` is not set.
+* `VOTETRUST_JWT_SECRET`, `VOTETRUST_ID_HASH_PEPPER`, and `VOTETRUST_VOTE_CREDENTIAL_PEPPER` are generated by Render. Do not regenerate the peppers after voters register: existing ID hashes and outstanding voting credentials would stop matching.
+* Render injects `PORT`, which the application uses when `SERVER_PORT` is not set.
+* `autoDeployTrigger: checksPass` deploys a commit only after its GitHub checks, including the CI workflow, pass.
+* `server.forward-headers-strategy=native` makes rate limiting and security audit events use the client IP from `X-Forwarded-For` set by Render's proxy. After deploying, confirm that `GET /api/v1/admin/security-audit-events` shows real client IPs rather than private proxy addresses.
+
+For a controlled first-admin bootstrap, set `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=true` and a strong `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN` (at least 32 characters) on the API service, call `POST /api/v1/admin/bootstrap` with the `X-VoteTrust-Bootstrap-Token` header, then set `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=false` and redeploy.
+
+The free Render plan suspends the web service when it is idle. The election lifecycle scheduler only runs while the service is awake; pending transitions are applied on the first scheduler tick after it wakes. To keep the service awake during an election, set the GitHub repository variable `RENDER_KEEPALIVE_URL` to the readiness URL; the `keep-alive.yml` workflow then pings it every 10 minutes. Remove the variable afterwards.
+
+For Postman, set the environment `baseUrl` to the Render API URL.
+
+## Vercel Frontend Deployment
+
+The React frontend in `frontend/` deploys to Vercel with `frontend` as the project root directory.
+
+* `frontend/vercel.json` rewrites every path to `index.html` so client-side routes work on reload.
+* `VITE_API_BASE_URL` is read at build time from `frontend/.env.production` (or a Vercel project environment variable, which takes precedence) and must point at the Render API URL.
+* The Vercel origin must be listed in the API's `VOTETRUST_CORS_ALLOWED_ORIGINS`, otherwise browser requests fail CORS preflight.
 
 ## Production Hardening Notes
 
@@ -104,7 +107,7 @@ The Blueprint generates the JWT and pepper secrets. For a controlled first-admin
 * Rotate the bootstrap token immediately after first-admin creation.
 * Use managed PostgreSQL with backups, point-in-time recovery, and encrypted storage.
 * Restrict public exposure to the REST API and health endpoints required by the platform.
-* Use an API gateway or distributed limiter for horizontally scaled deployments.
+* Use an API gateway or distributed limiter for horizontally scaled deployments; the IP rate limiter and the sign-in throttle are per instance. The election scheduler is already coordinated across instances with a database lock.
 * Store logs centrally, but do not log raw credentials, South African ID numbers, anonymous voting credentials, or ballot receipts.
-* Protect `main` in GitHub so only CI-passing pull requests can trigger the ACR production deployment task.
-* Use a separate migration/database role before treating this as a real production deployment; the portfolio script uses the managed PostgreSQL admin account so Flyway can bootstrap the schema automatically.
+* Protect `main` in GitHub so only CI-passing pull requests reach the branch that Render deploys from.
+* Use a separate migration/database role before treating this as a real production deployment; the Render Blueprint uses the database owner account so Flyway can bootstrap the schema automatically.

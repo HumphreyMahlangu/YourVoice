@@ -27,4 +27,8 @@ public interface ContestRepository extends JpaRepository<Contest, UUID> {
     boolean existsByElectionIdAndStatusNot(UUID electionId, ContestStatus status);
 
     long countByElectionId(UUID electionId);
+
+    boolean existsByElectionIdAndNameIgnoreCaseAndIdNot(UUID electionId, String name, UUID id);
+
+    boolean existsByElectionIdAndDisplayOrderAndIdNot(UUID electionId, Integer displayOrder, UUID id);
 }

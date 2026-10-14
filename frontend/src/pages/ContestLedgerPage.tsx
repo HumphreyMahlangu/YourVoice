@@ -4,6 +4,10 @@ import { getContestLedger } from '../api/audit'
 import type { ContestLedgerEntry } from '../types/audit'
 import { formatNumber } from '../utils/formatters'
 import { getErrorMessage } from '../utils/getErrorMessage'
+import {
+  verifyPublishedLedger,
+  type LedgerVerificationResult,
+} from '../utils/ledgerVerification'
 
 function ContestLedgerPage() {
   const { electionId, contestId } = useParams<{
@@ -11,6 +15,8 @@ function ContestLedgerPage() {
     contestId: string
   }>()
   const [entries, setEntries] = useState<ContestLedgerEntry[]>([])
+  const [verification, setVerification] =
+    useState<LedgerVerificationResult | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<unknown>(null)
 
@@ -27,6 +33,7 @@ function ContestLedgerPage() {
 
     async function loadLedger() {
       setEntries([])
+      setVerification(null)
       setError(null)
       setIsLoading(true)
 
@@ -37,8 +44,14 @@ function ContestLedgerPage() {
           abortController.signal,
         )
 
+        const result = await verifyPublishedLedger(
+          requestedContestId,
+          response,
+        )
+
         if (!abortController.signal.aborted) {
           setEntries(response)
+          setVerification(result)
         }
       } catch (requestError) {
         if (!abortController.signal.aborted) {
@@ -66,9 +79,30 @@ function ContestLedgerPage() {
       <Link to={auditPath}>Back to ledger verification</Link>
       <h1 id="contest-ledger-heading">Public contest ledger</h1>
       <p>
-        Entries are anonymous and expose only a coarse recording date. They do
-        not contain voter identities or exact voting times.
+        Entries are anonymous. Ballots were shuffled before publication, so an
+        entry&apos;s position says nothing about when it was cast, and no
+        voting times are published.
       </p>
+      <p>
+        Each hash is SHA-256 of{' '}
+        <code>
+          votetrust-public-ledger-v1|contestId|optionId|position|previousHash|nonce
+        </code>
+        , so anyone can recompute the chain from this page.
+      </p>
+
+      {verification !== null && (
+        <p role={verification.valid ? 'status' : 'alert'}>
+          {verification.valid
+            ? `Your browser recomputed ${entries.length === 1 ? 'the ledger hash' : `all ${formatNumber(entries.length)} hashes`} and the chain is intact. Head hash: `
+            : 'Your browser found problems while recomputing the chain: '}
+          {verification.valid ? (
+            <code>{verification.headHash}</code>
+          ) : (
+            verification.violations.join('; ')
+          )}
+        </p>
+      )}
 
       {isLoading && <p role="status">Loading public ledger entries...</p>}
 
@@ -89,9 +123,8 @@ function ContestLedgerPage() {
           </caption>
           <thead>
             <tr>
-              <th scope="col">Index</th>
+              <th scope="col">Position</th>
               <th scope="col">Option identifier</th>
-              <th scope="col">Recorded date</th>
               <th scope="col">Previous hash</th>
               <th scope="col">Current hash</th>
               <th scope="col">Nonce</th>
@@ -99,13 +132,10 @@ function ContestLedgerPage() {
           </thead>
           <tbody>
             {entries.map((entry) => (
-              <tr key={entry.ledgerIndex}>
-                <th scope="row">{formatNumber(entry.ledgerIndex)}</th>
+              <tr key={entry.position}>
+                <th scope="row">{formatNumber(entry.position)}</th>
                 <td>
                   <code>{entry.contestOptionId}</code>
-                </td>
-                <td>
-                  <time dateTime={entry.recordedDate}>{entry.recordedDate}</time>
                 </td>
                 <td>
                   <code>{entry.previousHash}</code>

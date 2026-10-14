@@ -36,10 +36,10 @@ public record ContestResultResponse(
         @Schema(description = "Number of explicit spoilt ballots", example = "0")
         long spoiltBallots,
 
-        @Schema(description = "Turnout as a percentage of registered voters", example = "64.50")
+        @Schema(description = "Turnout as a percentage of registered voters eligible for this contest", example = "64.50")
         BigDecimal turnoutPercentage,
 
-        @Schema(description = "Stored ledger head hash at result generation time")
+        @Schema(description = "Head hash of the published ledger, verifiable by anyone from the public ledger entries")
         String ledgerHeadHash,
 
         @Schema(description = "UTC timestamp when results were generated", example = "2026-08-07T20:15:30Z")

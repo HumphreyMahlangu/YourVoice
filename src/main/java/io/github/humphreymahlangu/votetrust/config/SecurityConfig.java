@@ -5,6 +5,7 @@ import io.github.humphreymahlangu.votetrust.security.CorsProperties;
 import io.github.humphreymahlangu.votetrust.security.IdentityHashProperties;
 import io.github.humphreymahlangu.votetrust.security.JwtAuthenticationFilter;
 import io.github.humphreymahlangu.votetrust.security.JwtProperties;
+import io.github.humphreymahlangu.votetrust.security.LoginThrottleProperties;
 import io.github.humphreymahlangu.votetrust.security.RateLimitProperties;
 import io.github.humphreymahlangu.votetrust.security.RateLimitingFilter;
 import io.github.humphreymahlangu.votetrust.security.RestAccessDeniedHandler;
@@ -38,7 +39,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
         VoteCredentialProperties.class,
         CorsProperties.class,
         AdminBootstrapProperties.class,
-        RateLimitProperties.class
+        RateLimitProperties.class,
+        LoginThrottleProperties.class,
+        LoggingProperties.class
 })
 public class SecurityConfig {
 
@@ -61,6 +64,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout",
                                 "/api/v1/ballots",
                                 "/actuator/health",
                                 "/actuator/health/**",
@@ -72,6 +77,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/bootstrap").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // Health probes are public above; metrics and every other actuator endpoint are admin-only.
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/v1/elections/**",
@@ -92,13 +99,15 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(corsProperties.allowedOriginList());
-        configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
                 HttpHeaders.AUTHORIZATION,
                 HttpHeaders.CONTENT_TYPE,
                 HttpHeaders.ACCEPT,
                 "X-Requested-With"
         ));
+        // Let browser clients read pagination totals, request IDs, and rate-limit hints.
+        configuration.setExposedHeaders(List.of("X-Total-Count", "X-Request-Id", HttpHeaders.RETRY_AFTER));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
 

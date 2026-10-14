@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
+import ApiError from '../api/ApiError'
+import { deleteContest, deleteContestOption } from '../api/adminManagement'
 import { getElectionContests } from '../api/contests'
 import { getElection } from '../api/elections'
 import { useAuth } from '../auth/useAuth'
@@ -24,6 +26,10 @@ function AdminElectionBuilderPage() {
   )
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<unknown>(null)
+  // Identifies the contest or option awaiting delete confirmation, e.g. "contest:<id>" or "option:<id>".
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<unknown>(null)
 
   useEffect(() => {
     if (!electionId) {
@@ -77,6 +83,91 @@ function AdminElectionBuilderPage() {
     )
   }
 
+  async function confirmDelete(contestId: string, optionId?: string) {
+    if (!builderData || !session) {
+      return
+    }
+    setDeleteError(null)
+    setIsDeleting(true)
+
+    try {
+      if (optionId) {
+        await deleteContestOption(
+          builderData.election.id,
+          contestId,
+          optionId,
+          session.accessToken,
+        )
+      } else {
+        await deleteContest(builderData.election.id, contestId, session.accessToken)
+      }
+      setBuilderData((currentData) =>
+        currentData
+          ? {
+              ...currentData,
+              contests: optionId
+                ? currentData.contests.map((contest) =>
+                    contest.id === contestId
+                      ? {
+                          ...contest,
+                          options: contest.options.filter(
+                            (option) => option.id !== optionId,
+                          ),
+                        }
+                      : contest,
+                  )
+                : currentData.contests.filter(
+                    (contest) => contest.id !== contestId,
+                  ),
+            }
+          : currentData,
+      )
+      setPendingDelete(null)
+    } catch (requestError) {
+      if (requestError instanceof ApiError && requestError.status === 401) {
+        logout()
+        return
+      }
+      setDeleteError(requestError)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  function deleteControls(key: string, label: string, onConfirm: () => void) {
+    if (!isConfigurationOpen) {
+      return null
+    }
+    return pendingDelete === key ? (
+      <>
+        {' '}
+        <button type="button" disabled={isDeleting} onClick={onConfirm}>
+          {isDeleting ? 'Removing...' : `Confirm removing ${label}`}
+        </button>{' '}
+        <button
+          type="button"
+          disabled={isDeleting}
+          onClick={() => setPendingDelete(null)}
+        >
+          Keep
+        </button>
+      </>
+    ) : (
+      <>
+        {' '}
+        <button
+          type="button"
+          onClick={() => {
+            setDeleteError(null)
+            setPendingDelete(key)
+          }}
+        >
+          Remove
+        </button>
+      </>
+    )
+  }
+
   function handleOptionCreated(contestId: string, option: ContestOption) {
     setBuilderData((currentData) =>
       currentData
@@ -98,9 +189,17 @@ function AdminElectionBuilderPage() {
     )
   }
 
-  const isConfigurationOpen =
-    builderData?.election.status === 'DRAFT' &&
-    new Date(builderData.election.registrationStartAt).getTime() > Date.now()
+  // Mirrors the API: a DRAFT election stays configurable until its registration window ends,
+  // so a ballot that was not ready when registration was due to open can still be completed.
+  const isDraft = builderData?.election.status === 'DRAFT'
+  const registrationWindowEnded =
+    builderData !== null &&
+    new Date(builderData.election.registrationEndAt).getTime() <= Date.now()
+  const isConfigurationOpen = isDraft && !registrationWindowEnded
+  const isRegistrationOverdue =
+    isConfigurationOpen &&
+    builderData !== null &&
+    new Date(builderData.election.registrationStartAt).getTime() <= Date.now()
 
   return (
     <section className="page admin-page workflow-page" aria-labelledby="election-builder-heading">
@@ -133,10 +232,31 @@ function AdminElectionBuilderPage() {
             </Link>
           </p>
 
+          {isRegistrationOverdue && (
+            <p role="status">
+              Registration was due to open but this ballot is not ready yet.
+              Every contest needs at least two party or independent candidate
+              options. Registration opens automatically once the ballot is
+              complete.
+            </p>
+          )}
+
           {!isConfigurationOpen ? (
             <p>
-              Ballot configuration is locked because this election is no
-              longer an upcoming draft.
+              {isDraft ? (
+                <>
+                  The registration window ended before the ballot was ready, so
+                  this election can no longer open.{' '}
+                  <Link
+                    to={`/admin/elections/${builderData.election.id}/operations`}
+                  >
+                    Cancel it from election operations
+                  </Link>{' '}
+                  and create a new election.
+                </>
+              ) : (
+                'Ballot configuration is locked because registration has opened.'
+              )}
             </p>
           ) : session ? (
             <AdminContestForm
@@ -151,6 +271,12 @@ function AdminElectionBuilderPage() {
           <section aria-labelledby="configured-contests-heading">
             <h2 id="configured-contests-heading">Configured contests</h2>
 
+            {deleteError !== null && (
+              <p role="alert">
+                {getErrorMessage(deleteError, 'Unable to remove it.')}
+              </p>
+            )}
+
             {builderData.contests.length === 0 ? (
               <p>No contests have been configured.</p>
             ) : (
@@ -161,6 +287,11 @@ function AdminElectionBuilderPage() {
                       <h3 id={`admin-contest-${contest.id}`}>
                         {contest.name}
                       </h3>
+                      {deleteControls(
+                        `contest:${contest.id}`,
+                        `${contest.name} and its options`,
+                        () => void confirmDelete(contest.id),
+                      )}
                       <dl>
                         <dt>Type</dt>
                         <dd>{formatEnumLabel(contest.type)}</dd>
@@ -203,6 +334,9 @@ function AdminElectionBuilderPage() {
                               {option.name} —{' '}
                               {formatEnumLabel(option.optionType)} — order{' '}
                               {option.displayOrder}
+                              {deleteControls(`option:${option.id}`, option.name, () =>
+                                void confirmDelete(contest.id, option.id),
+                              )}
                             </li>
                           ))}
                         </ol>

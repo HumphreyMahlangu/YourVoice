@@ -151,6 +151,12 @@ function AdminDashboardPage() {
                 </Link>
               </li>
               <li>
+                <Link to="/admin/voting-districts">Manage voting districts</Link>
+              </li>
+              <li>
+                <Link to="/admin/accounts">Manage administrators</Link>
+              </li>
+              <li>
                 <Link to="/admin/security-events">
                   Review security audit events
                 </Link>

@@ -3,7 +3,11 @@ import { Link, useBlocker, useParams } from 'react-router'
 import ApiError from '../api/ApiError'
 import { getElectionContests } from '../api/contests'
 import { getElection } from '../api/elections'
-import { castBallot, issueVotingCredential } from '../api/voting'
+import {
+  castBallot,
+  getBallotKey,
+  issueVotingCredential,
+} from '../api/voting'
 import { useAuth } from '../auth/useAuth'
 import BallotReview from '../components/voting/BallotReview'
 import BallotSelection from '../components/voting/BallotSelection'
@@ -11,6 +15,11 @@ import LeaveVotingPageWarning from '../components/voting/LeaveVotingPageWarning'
 import type { Contest } from '../types/contest'
 import type { Election } from '../types/election'
 import type { BallotCastResponse } from '../types/voting'
+import {
+  blindBallotToken,
+  unblindSignature,
+  type BlindedBallot,
+} from '../utils/blindSignature'
 import { formatEnumLabel } from '../utils/formatters'
 import { getErrorMessage } from '../utils/getErrorMessage'
 
@@ -27,13 +36,20 @@ interface VotingPageData {
   contest: Contest
 }
 
+// Lives only in a ref: the blinded ballot (so issuance can be retried with
+// the same blinded token) and, once unblinded, the ballot signature.
+interface HeldCredential {
+  ballot: BlindedBallot
+  signature: string | null
+}
+
 function VotePage() {
   const { electionId, contestId } = useParams<{
     electionId: string
     contestId: string
   }>()
   const { session, logout } = useAuth()
-  const credentialRef = useRef<string | null>(null)
+  const credentialRef = useRef<HeldCredential | null>(null)
   const [pageData, setPageData] = useState<VotingPageData | null>(null)
   const [selectedOptionId, setSelectedOptionId] = useState('')
   const [phase, setPhase] = useState<VotingPhase>('selecting')
@@ -42,6 +58,7 @@ function VotePage() {
   )
   const [hasIssuedCredential, setHasIssuedCredential] = useState(false)
   const [acceptance, setAcceptance] = useState<BallotCastResponse | null>(null)
+  const [keyFingerprint, setKeyFingerprint] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [pageError, setPageError] = useState<unknown>(null)
   const [submissionError, setSubmissionError] = useState<unknown>(null)
@@ -140,32 +157,51 @@ function VotePage() {
 
     setSubmissionError(null)
     setPhase('submitting')
-    let requestStage: 'credential' | 'ballot' = credentialRef.current
+    let requestStage: 'credential' | 'ballot' = credentialRef.current?.signature
       ? 'ballot'
       : 'credential'
 
     try {
-      let votingCredential = credentialRef.current
+      let heldCredential = credentialRef.current
 
-      if (!votingCredential) {
+      if (!heldCredential) {
+        const ballotKey = await getBallotKey(
+          pageData.election.id,
+          pageData.contest.id,
+        )
+        heldCredential = {
+          ballot: await blindBallotToken(ballotKey),
+          signature: null,
+        }
+        credentialRef.current = heldCredential
+        setHasIssuedCredential(true)
+      }
+
+      if (!heldCredential.signature) {
+        // Retrying with the same blinded token is safe: the API returns the
+        // same signature instead of refusing a second credential.
         const credential = await issueVotingCredential(
           pageData.election.id,
           pageData.contest.id,
+          heldCredential.ballot.blindedToken,
           session.accessToken,
         )
-        votingCredential = credential.votingCredential
-        credentialRef.current = votingCredential
+        heldCredential.signature = await unblindSignature(
+          heldCredential.ballot,
+          credential.blindSignature,
+        )
         setCredentialExpiresAt(credential.expiresAt)
-        setHasIssuedCredential(true)
       }
 
       requestStage = 'ballot'
       const response = await castBallot({
         contestId: pageData.contest.id,
         contestOptionId: selectedOption.id,
-        votingCredential,
+        ballotToken: heldCredential.ballot.ballotToken,
+        signature: heldCredential.signature,
       })
 
+      setKeyFingerprint(heldCredential.ballot.keyFingerprint)
       clearCredential()
       setSelectedOptionId('')
       setAcceptance(response)
@@ -182,10 +218,19 @@ function VotePage() {
 
       setSubmissionError(requestError)
 
+      const isRetryable =
+        !(requestError instanceof ApiError) ||
+        requestError.status === 429 ||
+        requestError.status >= 500
+
       if (
         requestStage === 'credential' &&
-        (!(requestError instanceof ApiError) || requestError.status === 409)
+        requestError instanceof ApiError &&
+        requestError.status === 409 &&
+        requestError.message.toLowerCase().includes('already been issued')
       ) {
+        // A credential was issued for a different blinded token, e.g. in
+        // another tab. This page cannot tell whether that ballot was cast.
         clearCredential()
         setPhase('uncertain')
         return
@@ -202,13 +247,7 @@ function VotePage() {
         return
       }
 
-      const canRetry =
-        requestStage === 'ballot' &&
-        (!(requestError instanceof ApiError) ||
-          requestError.status === 429 ||
-          requestError.status >= 500)
-
-      if (canRetry) {
+      if (isRetryable && credentialRef.current) {
         setPhase('reviewing')
       } else {
         clearCredential()
@@ -293,6 +332,19 @@ function VotePage() {
                 No candidate selection, ballot identifier, ledger position, or
                 receipt is displayed.
               </p>
+              <p>
+                Your ballot was authorised by a blind signature, so the server
+                could check you were eligible without being able to link this
+                ballot to you.
+                {keyFingerprint && (
+                  <>
+                    {' '}
+                    Contest key fingerprint:{' '}
+                    <code>{keyFingerprint.slice(0, 16)}</code>. Every voter in
+                    this contest should see the same fingerprint.
+                  </>
+                )}
+              </p>
               <Link to="/dashboard">Return to voter dashboard</Link>
             </section>
           )}
@@ -303,10 +355,10 @@ function VotePage() {
                 Ballot outcome cannot be confirmed
               </h2>
               <p role="alert">
-                The one-time credential may have been issued or consumed, but
-                the browser did not receive a definitive confirmation. The
-                frontend cannot safely claim that the ballot succeeded or
-                failed.
+                A ballot credential for this contest was already issued or used,
+                possibly from another tab or device, so this page cannot confirm
+                whether your ballot was counted. To protect ballot secrecy the
+                system cannot look this up for you.
               </p>
               {submissionError !== null && (
                 <p>{getErrorMessage(submissionError)}</p>

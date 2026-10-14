@@ -1,11 +1,14 @@
 package io.github.humphreymahlangu.votetrust.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
 import io.github.humphreymahlangu.votetrust.entity.Election;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
@@ -36,6 +39,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -46,6 +50,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @ActiveProfiles("test")
 @Testcontainers(disabledWithoutDocker = true)
 class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private static final Instant FIXED_NOW = Instant.parse("2026-08-07T10:00:00Z");
 
@@ -90,18 +97,7 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
 
     @BeforeEach
     void cleanDatabase() {
-        ballotLedgerEntryRepository.deleteAll();
-        ledgerStateRepository.deleteAll();
-        anonymousVotingCredentialRepository.deleteAll();
-        votingRightRepository.deleteAll();
-        electionLifecycleEventRepository.deleteAll();
-        contestOptionRepository.deleteAll();
-        contestRepository.deleteAll();
-        electionRegistrationRepository.deleteAll();
-        voterProfileRepository.deleteAll();
-        electionRepository.deleteAll();
-        votingDistrictRepository.deleteAll();
-        userAccountRepository.deleteAll();
+        DatabaseCleaner.clean(jdbcTemplate);
     }
 
     @Test
@@ -130,6 +126,55 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].electionId").value(election.getId().toString()))
                 .andExpect(jsonPath("$[0].votingDistrictName").value("Cape Town Ward 1 Station"));
+    }
+
+    @Test
+    void registerForElectionUsesProfileDistrictWhenNoDistrictIsSupplied() throws Exception {
+        VotingDistrict district = createVotingDistrict();
+        Election election = createOpenElection();
+        String token = registerAccountAndReturnToken("registration.profile-district@example.com", district);
+
+        mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.votingDistrictId").value(district.getId().toString()));
+    }
+
+    @Test
+    void registerForElectionAcceptsMissingRequestBody() throws Exception {
+        VotingDistrict district = createVotingDistrict();
+        Election election = createOpenElection();
+        String token = registerAccountAndReturnToken("registration.no-body@example.com", district);
+
+        mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.votingDistrictId").value(district.getId().toString()));
+    }
+
+    @Test
+    void registerForElectionRejectsDistrictThatDiffersFromVoterProfile() throws Exception {
+        VotingDistrict profileDistrict = createVotingDistrict();
+        VotingDistrict otherDistrict = votingDistrictRepository.save(new VotingDistrict(
+                "GP001-0042",
+                "Johannesburg Ward 42 Station",
+                "Gauteng",
+                "City of Johannesburg",
+                42
+        ));
+        Election election = createOpenElection();
+        String token = registerAccountAndReturnToken("registration.other-district@example.com", profileDistrict);
+
+        mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationBody(otherDistrict)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value("Voting district must match the district on your voter profile"));
+
+        assertThat(electionRegistrationRepository.count()).isZero();
     }
 
     @Test
@@ -218,6 +263,30 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
         mockMvc.perform(get("/api/v1/voting-districts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(district.getId().toString()));
+    }
+
+    @Test
+    void listEndpointsArePaginatedWithTheTotalInAHeader() throws Exception {
+        createOpenElection();
+        electionRepository.save(new Election(
+                "2026 By-Election",
+                ElectionType.MUNICIPAL,
+                Instant.parse("2026-09-01T00:00:00Z"),
+                Instant.parse("2026-09-10T00:00:00Z"),
+                Instant.parse("2026-10-01T07:00:00Z"),
+                Instant.parse("2026-10-01T21:00:00Z"),
+                ElectionStatus.DRAFT
+        ));
+
+        mockMvc.perform(get("/api/v1/elections").param("page", "0").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Total-Count", "2"))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("2026 By-Election"));
+        mockMvc.perform(get("/api/v1/elections").param("page", "1").param("size", "1"))
+                .andExpect(jsonPath("$[0].name").value("2026 Local Government Election"));
+        mockMvc.perform(get("/api/v1/elections").param("size", "501"))
+                .andExpect(status().isBadRequest());
     }
 
     private Election createOpenElection() {

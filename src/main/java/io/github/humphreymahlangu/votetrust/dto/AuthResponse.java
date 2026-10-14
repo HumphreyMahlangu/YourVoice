@@ -22,6 +22,12 @@ public record AuthResponse(
         String email,
 
         @Schema(description = "Account role", example = "VOTER")
-        String role
+        String role,
+
+        @Schema(description = "Opaque refresh token. Exchange it at /api/v1/auth/refresh; each use rotates it.")
+        String refreshToken,
+
+        @Schema(description = "UTC expiry timestamp for the refresh token", example = "2026-08-07T22:15:00Z")
+        Instant refreshTokenExpiresAt
 ) {
 }

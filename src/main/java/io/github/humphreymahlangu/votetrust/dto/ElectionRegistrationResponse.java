@@ -1,5 +1,8 @@
 package io.github.humphreymahlangu.votetrust.dto;
 
+import io.github.humphreymahlangu.votetrust.entity.Election;
+import io.github.humphreymahlangu.votetrust.entity.ElectionRegistration;
+import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;
@@ -36,4 +39,21 @@ public record ElectionRegistrationResponse(
         @Schema(description = "Registered province", example = "Western Cape")
         String province
 ) {
+
+    public static ElectionRegistrationResponse from(ElectionRegistration registration) {
+        Election election = registration.getElection();
+        VotingDistrict votingDistrict = registration.getVotingDistrict();
+        return new ElectionRegistrationResponse(
+                registration.getId(),
+                election.getId(),
+                election.getName(),
+                election.getType().name(),
+                registration.getStatus().name(),
+                registration.getRegisteredAt(),
+                votingDistrict.getId(),
+                votingDistrict.getCode(),
+                votingDistrict.getName(),
+                votingDistrict.getProvince()
+        );
+    }
 }

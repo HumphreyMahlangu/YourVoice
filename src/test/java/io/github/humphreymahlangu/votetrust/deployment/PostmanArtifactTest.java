@@ -97,6 +97,7 @@ class PostmanArtifactTest {
                 "/api/v1/admin/voting-districts",
                 "/api/v1/admin/elections",
                 "/api/v1/elections/{{electionId}}/registrations",
+                "/api/v1/elections/{{electionId}}/contests/{{contestId}}/ballot-key",
                 "/api/v1/elections/{{electionId}}/contests/{{contestId}}/credentials",
                 "/api/v1/ballots",
                 "/api/v1/elections/{{electionId}}/contests/{{contestId}}/results",
@@ -117,7 +118,10 @@ class PostmanArtifactTest {
                 "Timing Check - Voting Window Closed",
                 "Confirm Election Is REGISTRATION_OPEN",
                 "Confirm Election Is VOTING_OPEN",
-                "Confirm Election Is COMPLETED"
+                "Confirm Election Is COMPLETED",
+                "{{blindedToken}}",
+                "{{votingCredentialSignature}}",
+                "Unblinded signature verifies against the contest key"
         );
         assertThat(collectionJson).doesNotContain(
                 "SOUTH_AFRICAN_ID",
@@ -153,7 +157,13 @@ class PostmanArtifactTest {
                 "spoiltOptionId",
                 "adminToken",
                 "voterToken",
-                "votingCredential"
+                "votingCredential",
+                "votingCredentialSignature",
+                "ballotKeyModulus",
+                "ballotKeyExponent",
+                "ballotTokenDomain",
+                "blindingFactor",
+                "blindedToken"
         );
         assertThat(environment.get("values"))
                 .anySatisfy(value -> {

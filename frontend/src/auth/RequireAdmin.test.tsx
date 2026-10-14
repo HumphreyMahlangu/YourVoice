@@ -12,11 +12,14 @@ const adminSession: AuthSession = {
   userId: 'admin-id',
   email: 'admin@example.com',
   role: 'ADMIN',
+  refreshToken: 'admin-refresh-token',
+  refreshTokenExpiresAt: '2099-01-01T00:00:00Z',
 }
 
 function renderAdminRoute(session: AuthSession | null) {
   const contextValue: AuthContextValue = {
     session,
+    isInitializing: false,
     login: vi.fn(async () => adminSession),
     register: vi.fn(async () => adminSession),
     logout: vi.fn(),

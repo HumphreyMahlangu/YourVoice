@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,11 +20,14 @@ import io.github.humphreymahlangu.votetrust.entity.VoterProfile;
 import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
 import io.github.humphreymahlangu.votetrust.exception.DuplicateResourceException;
 import io.github.humphreymahlangu.votetrust.exception.InvalidCredentialsException;
+import io.github.humphreymahlangu.votetrust.exception.LoginThrottledException;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
 import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
 import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
 import io.github.humphreymahlangu.votetrust.security.IdentityHashService;
-import io.github.humphreymahlangu.votetrust.security.JwtService;
+import io.github.humphreymahlangu.votetrust.security.LoginThrottleService;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.lang.reflect.Field;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -52,7 +57,10 @@ class AuthServiceTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private JwtService jwtService;
+    private AuthTokenService authTokenService;
+
+    @Mock
+    private LoginThrottleService loginThrottleService;
 
     @Mock
     private SecurityAuditService securityAuditService;
@@ -72,11 +80,15 @@ class AuthServiceTest {
                 voterProfileRepository,
                 votingDistrictRepository,
                 passwordEncoder,
-                jwtService,
+                authTokenService,
+                loginThrottleService,
+                new VoteTrustMetrics(new SimpleMeterRegistry()),
                 securityAuditService,
                 idNumberValidator,
                 identityHashService
         );
+        // The constructor pre-computes the timing-equalization hash; tests only care about later calls.
+        clearInvocations(passwordEncoder);
     }
 
     @Test
@@ -114,8 +126,19 @@ class AuthServiceTest {
             setId(userAccount, userId);
             return userAccount;
         });
-        when(jwtService.generateAccessToken(any(UserAccount.class)))
-                .thenReturn(new JwtService.TokenResult("signed.jwt", Instant.parse("2026-08-07T10:15:00Z")));
+        when(authTokenService.issueTokens(any(UserAccount.class))).thenAnswer(invocation -> {
+            UserAccount account = invocation.getArgument(0);
+            return new AuthResponse(
+                    "signed.jwt",
+                    "Bearer",
+                    Instant.parse("2026-08-07T10:15:00Z"),
+                    account.getId(),
+                    account.getEmail(),
+                    account.getRole().name(),
+                    "refresh-token",
+                    Instant.parse("2026-08-07T22:00:00Z")
+            );
+        });
         when(voterProfileRepository.save(any(VoterProfile.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         AuthResponse response = authService.register(request);
@@ -153,7 +176,8 @@ class AuthServiceTest {
         when(userAccountRepository.existsByEmailIgnoreCase("voter@example.com")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(request))
-                .isInstanceOf(DuplicateResourceException.class);
+                .isInstanceOf(DuplicateResourceException.class)
+                .hasMessage(AuthService.DUPLICATE_ACCOUNT_MESSAGE);
 
         verify(userAccountRepository, never()).save(any());
         verify(passwordEncoder, never()).encode(anyString());
@@ -171,7 +195,34 @@ class AuthServiceTest {
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
 
-        verify(jwtService, never()).generateAccessToken(any());
+        verify(authTokenService, never()).issueTokens(any());
+        verify(loginThrottleService).recordFailure("voter@example.com");
+    }
+
+    @Test
+    void loginWithUnknownEmailStillVerifiesAPasswordSoTimingMatchesKnownAccounts() {
+        LoginRequest request = new LoginRequest("nobody@example.com", "SomePassword1");
+        when(userAccountRepository.findByEmailIgnoreCase("nobody@example.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(InvalidCredentialsException.class)
+                .hasMessage("Invalid email or password");
+
+        verify(passwordEncoder).matches(eq("SomePassword1"), any());
+        verify(loginThrottleService).recordFailure("nobody@example.com");
+    }
+
+    @Test
+    void lockedEmailIsRejectedBeforeTheAccountIsLookedUp() {
+        LoginRequest request = new LoginRequest("Voter@Example.com", "VeryStrongPassword1");
+        when(loginThrottleService.lockedForSeconds("voter@example.com")).thenReturn(Optional.of(600));
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(LoginThrottledException.class)
+                .hasMessage("Too many failed sign-in attempts. Try again in 10 minute(s).");
+
+        verify(userAccountRepository, never()).findByEmailIgnoreCase(anyString());
+        verify(passwordEncoder, never()).matches(anyString(), anyString());
     }
 
     private void setId(UserAccount userAccount, UUID userId) throws Exception {
