@@ -1,127 +1,93 @@
 # Frontend (`frontend/`)
 
-React 19 + TypeScript 6 (strict-ish: `noUnusedLocals/Parameters`, `verbatimModuleSyntax`, `erasableSyntaxOnly`,
-so use `import type` and no enums or parameter properties), Vite 8, `react-router` v8 (imported from
-`'react-router'`, not `react-router-dom`), Vitest + Testing Library on jsdom, oxlint. Fonts come from `@fontsource-variable`.
-There are no state, form, data-fetching or UI libraries.
+React 19 + TypeScript 6 (`noUnusedLocals/Parameters`, `verbatimModuleSyntax`, `erasableSyntaxOnly`, so use
+`import type` and no enums or parameter properties; `Uint8Array`s passed to WebCrypto must be typed
+`Uint8Array<ArrayBuffer>`). Vite 8, `react-router` v8 (imported from `'react-router'`), Vitest + Testing Library
+on jsdom, oxlint. There are no state, form, data or UI libraries. CI runs lint, tests and build (`frontend` job).
 
 ## Layout
 
 ```
 src/
-  main.tsx            StrictMode > AuthProvider > RouterProvider
-  router.tsx          createBrowserRouter; App is the layout (header nav, <Outlet/>, footer)
-  App.tsx             nav changes by session.role
-  config/environment.ts  API_BASE_URL = VITE_API_BASE_URL (trailing slashes stripped) || http://localhost:8080
-  api/client.ts       apiRequest<T>(path, { method, body, authToken, signal, ... }) → throws ApiError
-  api/<resource>.ts   one thin function per endpoint (auth, elections, contests, districts, registrations,
-                      voting, results, audit, adminManagement, securityAudit)
-  auth/               AuthProvider (state), context.ts, useAuth, RequireVoter / RequireAdmin route guards
-  types/<resource>.ts TS mirrors of backend DTOs; enums as string-literal unions
-  pages/*Page.tsx     one per route
-  components/         BrandMark, ElectionMetadata, admin/{AdminContestForm, AdminContestOptionForm},
-                      voting/{BallotSelection, BallotReview, LeaveVotingPageWarning}
-  utils/              formatters (en-ZA, Africa/Johannesburg, appends "SAST"), getErrorMessage
-  styles.css          single global stylesheet with design tokens in :root
+  main.tsx              StrictMode > AuthProvider > RouterProvider
+  router.tsx            createBrowserRouter; App is the layout
+  config/environment.ts API_BASE_URL from VITE_API_BASE_URL
+  api/client.ts         apiRequest<T>(path, { method, body, authToken, signal }) → throws ApiError (with requestId)
+  api/<resource>.ts     auth, elections, contests, districts, registrations, voting (ballot key, credential, ballot),
+                        results, audit, adminManagement (create/update/delete), adminAccounts, securityAudit
+  auth/                 AuthProvider (session + refresh), context.ts, useAuth, RequireVoter / RequireAdmin
+  types/                TS mirrors of backend DTOs (string-literal unions for enums)
+  pages/                one per route
+  components/           ElectionMetadata, admin/{AdminContestForm, AdminContestOptionForm, AdminRescheduleElectionForm},
+                        voting/{BallotSelection, BallotReview, LeaveVotingPageWarning}
+  utils/                formatters, getErrorMessage, dateTimeInput (datetime-local ⇄ UTC),
+                        blindSignature (voter side of the RSA blind signature), ledgerVerification (in-browser chain check)
+  styles.css            single global stylesheet, tokens in :root
 ```
 
 ## Routes
 
 | Path | Page | Guard |
 | --- | --- | --- |
-| `/` | HomePage | — |
-| `/elections`, `/elections/:electionId` | ElectionsPage, ElectionDetailsPage | — |
-| `/elections/:eid/contests/:cid/{results,audit,ledger}` | ContestResultsPage, ContestAuditPage, ContestLedgerPage | — |
-| `/login`, `/register` | LoginPage, RegisterPage (redirect away if already signed in) | — |
-| `/dashboard` | VoterDashboardPage (calls `/auth/me` + `/me/registrations`) | RequireVoter |
-| `/elections/:eid/register` | ElectionRegistrationPage (confirm-only, sends `{}`; the API uses the profile district) | RequireVoter |
+| `/`, `/elections`, `/elections/:eid` | Home, Elections, ElectionDetails | — |
+| `/elections/:eid/contests/:cid/{results,audit,ledger}` | results; audit (both chains); ledger (verified in the browser) | — |
+| `/login`, `/register` | | — |
+| `/dashboard` | VoterDashboardPage | RequireVoter |
+| `/elections/:eid/register` | ElectionRegistrationPage (confirm only, sends `{}`) | RequireVoter |
 | `/elections/:eid/contests/:cid/vote` | VotePage | RequireVoter |
-| `/admin` | AdminDashboardPage (lists elections + districts) | RequireAdmin |
-| `/admin/security-events` | AdminSecurityEventsPage (limit selector + refresh) | RequireAdmin |
-| `/admin/elections/new` | AdminCreateElectionPage | RequireAdmin |
-| `/admin/elections/:eid/configure` | AdminElectionBuilderPage (add contests/options while DRAFT and before `registrationEndAt`; shows an "overdue" notice after regStart and a cancel hint once locked) | RequireAdmin |
-| `/admin/elections/:eid/operations` | AdminElectionOperationsPage (lifecycle history + emergency cancel) | RequireAdmin |
-| `/admin/voting-districts/new` | AdminCreateVotingDistrictPage | RequireAdmin |
-| `*` | NotFoundPage; `errorElement` = RouteErrorPage | |
+| `/admin` | dashboard with links to every admin tool | RequireAdmin |
+| `/admin/elections/new` | create election | RequireAdmin |
+| `/admin/elections/:eid/configure` | builder: add or remove contests and options while DRAFT and before `registrationEndAt` | RequireAdmin |
+| `/admin/elections/:eid/operations` | lifecycle history, reschedule form (DRAFT), emergency cancel | RequireAdmin |
+| `/admin/voting-districts`, `/admin/voting-districts/new` | list, edit, delete / create | RequireAdmin |
+| `/admin/accounts` | list and create administrators | RequireAdmin |
+| `/admin/security-events` | audit events | RequireAdmin |
 
-Guards: no session → `/login`. Wrong role: RequireAdmin sends a voter to `/dashboard`; RequireVoter sends an admin to `/`.
-`vercel.json` rewrites every path to `index.html` so deep links work.
+While `isInitializing` is true the guards show "Restoring your session..."; otherwise no session sends the user
+to `/login`, and the wrong role sends them to `/dashboard` or `/`.
 
-## Auth session model
+## Auth session
 
-- `AuthSession` = the backend `AuthResponse` (`accessToken, tokenType, expiresAt, userId, email, role`).
-- It's held **only in React state**. There's no localStorage or cookie, so **a page refresh signs the user out**.
-  This is deliberate: the token isn't persisted, and the vote credential lives only in a `useRef`. Don't "fix" it by
-  persisting tokens without asking.
-- `AuthProvider` sets a timer that clears the session at `expiresAt` (15 minutes by default). There's no refresh.
-- Pages handle a 401 from an authenticated call with `logout()`. The guard then redirects to `/login`.
+- `AuthSession` = backend `AuthResponse`, including `refreshToken` and `refreshTokenExpiresAt`.
+- The access token lives in React state only. The **refresh token is kept in `sessionStorage`**
+  (`votetrust.refreshToken`): tab-scoped, it survives reloads and is cleared when the tab closes. Cookies aren't
+  used because the frontend (Vercel) and API (Render) are different sites. The trade-off is that XSS could read it.
+- On load, a stored refresh token is exchanged at `/auth/refresh`. While a session exists, it's refreshed 60 s
+  before the access token expires. A failed refresh signs the user out.
+- `logout()` revokes the session on the server (best effort) and clears storage. Pages call `logout()` on any
+  401 from an authenticated request. `login`, `register` and `logout` are memoized with `useCallback`.
 
 ## Patterns to copy
 
-**Data loading in effects.** Every page uses this shape:
+- **Data loading:** `useEffect` + `AbortController`, ignore results after abort, keep errors as `unknown`, render
+  them with `getErrorMessage(error, 'fallback')` in `<p role="alert">`, loading text in `<p role="status">`.
+- **Forms:** controlled inputs, then reset errors on submit. On `ApiError`, copy `fieldErrors` next to the inputs
+  with `aria-invalid` and `aria-describedby`. `datetime-local` values convert through `utils/dateTimeInput`.
+- **Destructive actions:** inline two-step confirmation (button → "Confirm …" / "Keep"), never `window.confirm`.
+- **API modules:** `encodeURIComponent` every ID, take `authToken` as a parameter, never call `fetch` directly.
+- **Accessibility:** each page is a `<section className="page …" aria-labelledby>`, and headings have ids.
 
-```ts
-useEffect(() => {
-  const abortController = new AbortController()
-  async function load() {
-    setError(null); setIsLoading(true)
-    try {
-      const data = await getX(id, abortController.signal)
-      if (!abortController.signal.aborted) setData(data)
-    } catch (e) {
-      if (!abortController.signal.aborted) setError(e)
-    } finally {
-      if (!abortController.signal.aborted) setIsLoading(false)
-    }
-  }
-  void load()
-  return () => abortController.abort()
-}, [id])
-```
+## VotePage (blind-signature flow)
 
-Errors are stored as `unknown` and rendered with `getErrorMessage(error, 'fallback')` inside `<p role="alert">`.
-Loading text uses `<p role="status">`.
+Phases: `selecting → reviewing → submitting → accepted | uncertain | failed`.
+On confirm: `getBallotKey` → `blindBallotToken(key)` → `issueVotingCredential(blindedToken)` →
+`unblindSignature` (which checks the result against the key) → `castBallot({ballotToken, signature})`.
 
-**Forms.** Controlled inputs with `useState`. On submit, reset `error` and `fieldErrors`. On an `ApiError`, copy
-`error.fieldErrors` into state and show each next to its input with `aria-invalid` and `aria-describedby`.
-Client-side checks mirror the server's (e.g. the election window order in AdminCreateElectionPage).
-`datetime-local` values go to the API as `new Date(v).toISOString()`.
-
-**API modules.** IDs are passed through `encodeURIComponent`. Authenticated calls take `authToken` as a parameter
-(read from `useAuth().session`). Nothing calls `fetch` directly.
-
-**Accessibility is a first-class concern.** Each page is a `<section className="page …" aria-labelledby>`,
-headings carry ids, and there's a skip link. Keep it that way.
-
-## VotePage state machine (the most delicate UI)
-
-Phases: `selecting → reviewing → submitting → accepted | uncertain | failed` (a retry goes back to `reviewing`).
-The credential is requested **only when the user confirms**, then the ballot is cast right away.
-
-- The raw credential lives in `credentialRef` (a ref, never state or storage). While it's held, `useBlocker` and
-  `beforeunload` warn before the user navigates away.
-- Credential step: 401 → logout. 409 or a network error → `uncertain`, because the credential may or may not have
-  been issued. Any other ApiError → `failed`.
-- Ballot step: 409 containing "already been used" → `uncertain`. 429, ≥500 or a network error → keep the credential
-  and allow a retry. Anything else → `failed`.
-- On success it shows no selection, ID or receipt (this mirrors the backend anonymity invariant).
-- The 409 check matches the backend message text `"Voting credential has already been used"`, so keep the two in sync.
-
-## Styling
-
-There's one global `styles.css` (~1,500 lines). Tokens are in `:root`: `--color-*`, `--font-display` (Plus Jakarta
-Sans) and `--font-body` (Inter), a type scale, `--radius-*`, `--shadow-*`, `--content-width: 1200px`. Breakpoints
-are at 1040px and 760px, and there's a `prefers-reduced-motion` block. Class names are BEM-ish (`app-header__inner`,
-`nav-link--active`, `button button--primary`). Page wrappers have modifier classes like `auth-page`,
-`dashboard-page`, `admin-page`, `workflow-page`, `verification-page`, `directory-page`. Many inner page elements are
-bare semantic HTML styled by element selectors. There's no dark mode.
+- `credentialRef` (a ref, never state or storage) holds the blinded ballot plus, once known, the signature. While
+  it's held, `useBlocker` and `beforeunload` warn before leaving the page.
+- Issuance failures from the network, 429 or ≥500 keep the blinded ballot and allow a retry. Retrying with the
+  same blinded token is idempotent on the server. A 409 "already been issued" (a different token, e.g. from
+  another tab) and a ballot-stage 409 "already been used" both go to `uncertain`. The page can't look up
+  whether a ballot was counted, by design.
+- The accepted screen shows the contest key fingerprint, so voters can compare keys.
+- Message matching depends on backend texts "already been issued" and "already been used", so keep them in sync.
 
 ## Env and tests
 
-- `VITE_API_BASE_URL` lives in `.env.development` and `.env.production` (both currently point at the Render API,
-  `https://votetrust-api.onrender.com`). `.env.example` points to localhost. To use a local backend in dev, create
-  `.env.development.local` (git-ignored by `*.local`).
-- Tests: `api/client.test.ts` (headers, errors), `auth/RequireAdmin.test.tsx` (renders guards with a hand-built
-  `AuthContext.Provider` value, which is the pattern for testing anything that uses `useAuth`), and
-  `utils/formatters.test.ts`. Setup: `src/test/setup.ts` (jest-dom matchers + cleanup).
-- Status on 2026-10-14: `npm test` 10/10 pass, `npm run lint` clean, `npm run build` OK.
+- `VITE_API_BASE_URL` in `.env.development` and `.env.production` (Render API). For a local backend, create
+  `.env.development.local` (git-ignored).
+- Tests: `api/client.test.ts`, `auth/RequireAdmin.test.tsx` (hand-built `AuthContext` value: include
+  `isInitializing`), `auth/AuthProvider.test.tsx` (session restore, failed refresh, logout revocation, using
+  `vi.mock('../api/auth')`), `utils/blindSignature.test.ts` (shared hash vector with Java plus a WebCrypto-key
+  round-trip), `utils/ledgerVerification.test.ts` (shared public-hash vector), `utils/dateTimeInput.test.ts`,
+  `utils/formatters.test.ts`.

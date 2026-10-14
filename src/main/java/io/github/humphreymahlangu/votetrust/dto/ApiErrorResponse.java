@@ -3,8 +3,8 @@ package io.github.humphreymahlangu.votetrust.dto;
 import io.github.humphreymahlangu.votetrust.security.RequestIdFilter;
 import java.time.Instant;
 import java.util.Map;
-import org.slf4j.MDC;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.slf4j.MDC;
 
 @Schema(description = "Standard API error response")
 public record ApiErrorResponse(

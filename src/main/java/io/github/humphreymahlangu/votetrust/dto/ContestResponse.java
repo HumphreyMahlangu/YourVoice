@@ -1,5 +1,7 @@
 package io.github.humphreymahlangu.votetrust.dto;
 
+import io.github.humphreymahlangu.votetrust.entity.Contest;
+import io.github.humphreymahlangu.votetrust.entity.ContestOption;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.UUID;
@@ -36,4 +38,20 @@ public record ContestResponse(
         @Schema(description = "Contest ballot options")
         List<ContestOptionResponse> options
 ) {
+
+    /** Builds the response from a contest and its options, which must already be in display order. */
+    public static ContestResponse from(Contest contest, List<ContestOption> options) {
+        return new ContestResponse(
+                contest.getId(),
+                contest.getElection().getId(),
+                contest.getName(),
+                contest.getType().name(),
+                contest.getStatus().name(),
+                contest.getDisplayOrder(),
+                contest.getScopeProvince(),
+                contest.getScopeMunicipality(),
+                contest.getScopeWardNumber(),
+                options.stream().map(ContestOptionResponse::from).toList()
+        );
+    }
 }

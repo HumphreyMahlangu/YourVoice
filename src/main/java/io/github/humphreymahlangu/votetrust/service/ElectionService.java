@@ -4,8 +4,9 @@ import io.github.humphreymahlangu.votetrust.dto.ElectionResponse;
 import io.github.humphreymahlangu.votetrust.entity.Election;
 import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
-import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,30 +20,14 @@ public class ElectionService {
     }
 
     @Transactional(readOnly = true)
-    public List<ElectionResponse> listElections() {
-        return electionRepository.findAllByOrderByRegistrationStartAtDesc()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<ElectionResponse> listElections(Pageable pageable) {
+        return electionRepository.findAllByOrderByRegistrationStartAtDesc(pageable).map(ElectionResponse::from);
     }
 
     @Transactional(readOnly = true)
     public ElectionResponse getElection(UUID electionId) {
         Election election = electionRepository.findById(electionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Election not found"));
-        return toResponse(election);
-    }
-
-    private ElectionResponse toResponse(Election election) {
-        return new ElectionResponse(
-                election.getId(),
-                election.getName(),
-                election.getType().name(),
-                election.getStatus().name(),
-                election.getRegistrationStartAt(),
-                election.getRegistrationEndAt(),
-                election.getVotingStartAt(),
-                election.getVotingEndAt()
-        );
+        return ElectionResponse.from(election);
     }
 }

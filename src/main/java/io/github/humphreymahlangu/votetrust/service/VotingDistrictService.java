@@ -1,9 +1,9 @@
 package io.github.humphreymahlangu.votetrust.service;
 
 import io.github.humphreymahlangu.votetrust.dto.VotingDistrictResponse;
-import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
 import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,21 +17,8 @@ public class VotingDistrictService {
     }
 
     @Transactional(readOnly = true)
-    public List<VotingDistrictResponse> listVotingDistricts() {
-        return votingDistrictRepository.findAllByOrderByProvinceAscMunicipalityAscWardNumberAscNameAsc()
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
-    private VotingDistrictResponse toResponse(VotingDistrict votingDistrict) {
-        return new VotingDistrictResponse(
-                votingDistrict.getId(),
-                votingDistrict.getCode(),
-                votingDistrict.getName(),
-                votingDistrict.getProvince(),
-                votingDistrict.getMunicipality(),
-                votingDistrict.getWardNumber()
-        );
+    public Page<VotingDistrictResponse> listVotingDistricts(Pageable pageable) {
+        return votingDistrictRepository.findAllByOrderByProvinceAscMunicipalityAscWardNumberAscNameAsc(pageable)
+                .map(VotingDistrictResponse::from);
     }
 }

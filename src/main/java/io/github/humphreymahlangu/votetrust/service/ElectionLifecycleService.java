@@ -106,6 +106,22 @@ public class ElectionLifecycleService {
         return election;
     }
 
+    /** Audits an administrator change to a DRAFT election; the status itself does not change. */
+    @Transactional
+    public void recordAdministratorUpdate(Election election, UUID actorUserId, String actorEmail, String detail) {
+        lifecycleEventRepository.save(new ElectionLifecycleEvent(
+                election.getId(),
+                election.getStatus(),
+                election.getStatus(),
+                ElectionLifecycleTrigger.ADMINISTRATOR,
+                ElectionLifecycleOutcome.SUCCESS,
+                actorUserId,
+                actorEmail,
+                detail,
+                Instant.now(clock)
+        ));
+    }
+
     @Transactional(readOnly = true)
     public List<ElectionLifecycleEventResponse> listEvents(UUID electionId) {
         if (!electionRepository.existsById(electionId)) {
@@ -235,13 +251,17 @@ public class ElectionLifecycleService {
         ));
     }
 
+    /**
+     * Records a failure unless the election's latest event is already the same failure. Any later event (such as an
+     * administrator rescheduling the election) re-arms recording, so a repeat failure after a fix is visible again.
+     */
     private boolean recordFailureOnce(Election election, String detail, Instant occurredAt) {
         ElectionStatus previousStatus = election.getStatus();
-        if (lifecycleEventRepository.existsByElectionIdAndPreviousStatusAndOutcome(
-                election.getId(),
-                previousStatus,
-                ElectionLifecycleOutcome.FAILURE
-        )) {
+        boolean alreadyRecorded = lifecycleEventRepository.findTopByElectionIdOrderByEventSequenceDesc(election.getId())
+                .filter(event -> event.getOutcome() == ElectionLifecycleOutcome.FAILURE)
+                .filter(event -> event.getPreviousStatus() == previousStatus)
+                .isPresent();
+        if (alreadyRecorded) {
             return false;
         }
 

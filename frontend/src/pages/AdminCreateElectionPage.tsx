@@ -4,6 +4,7 @@ import ApiError from '../api/ApiError'
 import { createElection } from '../api/adminManagement'
 import { useAuth } from '../auth/useAuth'
 import type { Election, ElectionType } from '../types/election'
+import { toUtcInstant } from '../utils/dateTimeInput'
 import { formatDateTime, formatEnumLabel } from '../utils/formatters'
 import { getErrorMessage } from '../utils/getErrorMessage'
 
@@ -12,10 +13,6 @@ const ELECTION_TYPES: ElectionType[] = [
   'PROVINCIAL',
   'MUNICIPAL',
 ]
-
-function toUtcInstant(localDateTime: string) {
-  return new Date(localDateTime).toISOString()
-}
 
 function AdminCreateElectionPage() {
   const { session, logout } = useAuth()

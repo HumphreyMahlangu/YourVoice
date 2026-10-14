@@ -7,6 +7,7 @@ import {
 } from '../api/adminManagement'
 import { getElection } from '../api/elections'
 import { useAuth } from '../auth/useAuth'
+import AdminRescheduleElectionForm from '../components/admin/AdminRescheduleElectionForm'
 import ElectionMetadata from '../components/ElectionMetadata'
 import type { Election } from '../types/election'
 import type { ElectionLifecycleEvent } from '../types/electionLifecycle'
@@ -81,6 +82,27 @@ function AdminElectionOperationsPage() {
 
     return () => abortController.abort()
   }, [electionId, logout, session])
+
+  async function handleRescheduled(election: Election) {
+    setOperationsData((currentData) =>
+      currentData ? { ...currentData, election } : currentData,
+    )
+    if (!session) {
+      return
+    }
+    try {
+      const events = await getElectionLifecycleEvents(election.id, session.accessToken)
+      setOperationsData((currentData) =>
+        currentData ? { ...currentData, events } : currentData,
+      )
+    } catch (requestError) {
+      if (requestError instanceof ApiError && requestError.status === 401) {
+        logout()
+        return
+      }
+      setHistoryRefreshError(requestError)
+    }
+  }
 
   async function handleCancellation() {
     if (!electionId || !session) {
@@ -164,6 +186,16 @@ function AdminElectionOperationsPage() {
             </p>
           )}
 
+          {operationsData.election.status === 'DRAFT' && session && (
+            <AdminRescheduleElectionForm
+              key={operationsData.election.id}
+              election={operationsData.election}
+              authToken={session.accessToken}
+              onSaved={(election) => void handleRescheduled(election)}
+              onUnauthorized={logout}
+            />
+          )}
+
           <section aria-labelledby="cancellation-heading">
             <h2 id="cancellation-heading">Emergency cancellation</h2>
 
@@ -230,8 +262,8 @@ function AdminElectionOperationsPage() {
 
             {historyRefreshError !== null && (
               <p role="alert">
-                The cancellation succeeded, but the updated lifecycle history
-                could not be loaded. Reload this page to try again.
+                The change succeeded, but the updated lifecycle history could not
+                be loaded. Reload this page to try again.
               </p>
             )}
 

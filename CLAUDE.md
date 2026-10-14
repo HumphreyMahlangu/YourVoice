@@ -36,6 +36,8 @@ npm run lint     # oxlint
 npm run build    # tsc -b && vite build
 ```
 
+Gate on Maven's exit code (`./mvnw … > log; echo $?`), not on `grep` output.
+
 Required runtime env: `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` (plus `SPRING_DATASOURCE_URL`, or
 `_HOST/_PORT/_NAME`), `VOTETRUST_JWT_SECRET`, `VOTETRUST_ID_HASH_PEPPER`, `VOTETRUST_VOTE_CREDENTIAL_PEPPER`.
 All three secrets must be ≥32 chars and independent of each other. If any is missing, startup fails validation.
@@ -50,61 +52,70 @@ A green local run without Docker doesn't prove those tests pass. CI sets
 ## Architecture (backend)
 
 `controller` → `service` (transactional, all business rules) → `repository` (Spring Data) → Postgres.
-Also: `entity` (JPA + enums), `dto` (Java records, request validation via Jakarta annotations),
-`security` (JWT filter, rate limiter, HMAC hashing, config-property records), `exception` (+ `GlobalExceptionHandler`),
-`config` (`SecurityConfig`, `ClockConfig`, `OpenApiConfig`).
+Also: `entity` (JPA + enums), `dto` (Java records), `security` (JWT, rate limiter, login throttle, HMAC hashing,
+blind signatures, request IDs, property records), `observability` (metrics), `exception` (+ `GlobalExceptionHandler`),
+`config` (`SecurityConfig`, `ClockConfig`, `OpenApiConfig`, `SchedulerLockConfig`, `LoggingProperties`).
 
-Key services: `AuthService`, `AdminBootstrapService`, `VoterRegistrationService`, `VotingService`,
-`VoteHashChainService`, `TallyAuditService`, `ElectionLifecycleService` + `ElectionLifecycleCoordinator` (scheduler),
-`AdminElectionManagementService`, `SecurityAuditService`.
+Key services: `AuthService` + `AuthTokenService` (refresh tokens), `AdminBootstrapService`, `AdminAccountService`,
+`VoterRegistrationService`, `VotingService` (blind-signature issuance, ballot casting), `BallotSigningKeyService`,
+`VoteHashChainService` (internal ledger), `LedgerPublicationService` (shuffled public ledger), `TallyAuditService`,
+`ElectionLifecycleService` + `ElectionLifecycleCoordinator` (ShedLock-guarded scheduler),
+`AdminElectionManagementService`, `SecurityAuditService`. `ContestEligibility` is the one eligibility rule.
 
 ## Conventions to follow
 
-- **No Lombok in practice.** It's in the pom but nothing uses it. Entities have hand-written getters,
-  a `protected` no-arg constructor, a public constructor, and intent-named mutators (`transitionTo`, `markUsed`,
-  `advanceTo`). There are no generic setters.
-- **Constructor injection only**, explicit constructors (no `@Autowired` fields, no `@RequiredArgsConstructor`).
-- **DTOs are records.** Services map entities to response records by hand in private `toXxxResponse` methods
-  (some duplication across services is the existing style; there's no mapper library).
-- **Time comes from the injected `java.time.Clock` bean** (`Instant.now(clock)`), never `Instant.now()` alone.
-  Tests swap in a `@Primary Clock.fixed(...)` via a nested `@TestConfiguration`. Everything is UTC.
-- **Errors**: throw a domain exception from `exception/` and let `GlobalExceptionHandler` map it to
-  `ApiErrorResponse`. If you add an exception type, add a handler. See api.md for the mapping table.
-- **Strings get normalised in services**: emails `trim().toLowerCase(Locale.ROOT)`, names trimmed, district codes upper-cased.
-- **Schema changes = new Flyway migration** `src/main/resources/db/migration/V{n}__snake_case.sql` (latest is V10).
-  `ddl-auto=validate`, so the entity and the migration must match exactly. Never edit an applied migration.
-- **Every controller needs OpenAPI annotations**: class-level `@Tag` (name + description) and `@ApiResponses`;
-  every handler needs `@Operation(summary, description)`; authenticated endpoints need `bearerAuth`.
-  `OpenApiAnnotationCoverageTest` enforces this with a hard-coded controller list, so add new controllers to it.
-- Frontend conventions are in frontend.md (one `api/*.ts` module per resource, `apiRequest<T>`, AbortController in effects).
+- **No Lombok.** Entities have hand-written getters, a `protected` no-arg constructor, a public constructor, and
+  intent-named mutators (`transitionTo`, `markUsed`, `advanceTo`, `updateDetails`). There are no generic setters.
+- **Constructor injection only**, with explicit constructors.
+- **DTOs are records.** Map entities with static factories on the response record (`ElectionResponse.from(…)`,
+  `ContestResponse.from(contest, options)`), not private mapper methods.
+- **Time comes from the injected `java.time.Clock` bean** (`Instant.now(clock)`). Tests swap in a
+  `@Primary Clock.fixed(...)`. Everything is UTC.
+- **Errors:** throw a domain exception from `exception/` and add a handler to `GlobalExceptionHandler` for new
+  types. The catch-all keeps Spring 4xx statuses and turns anything else into a logged 500 carrying a request ID.
+- **Race-free creation:** for "create if missing, then lock", use a native `INSERT … ON CONFLICT DO NOTHING`
+  followed by a `FOR UPDATE` read (see `LedgerStateRepository.insertIfAbsent`, `VotingRightRepository`,
+  `ContestSigningKeyRepository`). After locking, `entityManager.refresh` the entity if the same transaction might
+  already have loaded it. A cached instance hides other transactions' commits; this bug actually happened.
+- **Strings get normalised in services:** emails `trim().toLowerCase(Locale.ROOT)`, names trimmed, district codes upper-cased.
+- **Schema changes = a new Flyway migration** `V{n}__snake_case.sql` (latest is **V14**). `ddl-auto=validate`, and
+  applied migrations are never edited.
+- **Every controller needs OpenAPI annotations** (`@Tag`, `@ApiResponses`, and `@Operation` with summary and
+  description on every GET/POST/PUT/PATCH/DELETE handler; `bearerAuth` where authenticated).
+  `OpenApiAnnotationCoverageTest` has a hard-coded controller list, so add new controllers to it.
+- **Metrics** go through `observability/VoteTrustMetrics`. Never tag a metric with a contest option, because
+  count-over-time per option leaks choices.
+- **Imports:** the codebase mixes ASCII and case-insensitive ordering. Keep a file's existing order and slot new imports in.
+- Frontend conventions are in frontend.md.
 
 ## Invariants you must not break
 
 These are what the project exists to demonstrate. Treat a change that weakens one as a design decision for the
 user to make, not a refactor.
 
-1. **Ballot anonymity.** `BallotLedgerEntry` and `AnonymousVotingCredential` must never reference
-   user/voter/registration/voting-right. `VotingRight` stores no timestamps. `BallotCastResponse` must not return
-   ledger index/hashes/ids (no "receipt"). `BallotAnonymitySchemaTest` checks these field names.
-   `POST /api/v1/ballots` is deliberately unauthenticated: the credential *is* the auth.
-2. **One vote per voter per contest.** Uniqueness constraints plus pessimistic locks
-   (`VotingRight`, credential `...ForUpdate`, `LedgerState ...ForUpdate`, `Election findByIdForUpdate`).
-3. **Hash-chain integrity.** The `VoteHashChainService.calculateHash` payload format (`votetrust-ledger-v1|...`) is
-   load-bearing. Changing it invalidates every existing ledger's audit.
-4. **Raw secrets are never stored or logged.** SA ID numbers and voting credentials are stored only as peppered
-   HMAC-SHA-256. The raw credential exists once, in the issuance response.
-5. **Lifecycle is automatic.** Admins can only *cancel* an election. They can't open or close registration or voting,
-   and they can't change contest status. Ballot configuration is allowed only while the election is `DRAFT` and
-   `now < registrationEndAt`.
-7. **Election registration uses the voter-profile district.** Contest eligibility depends on it, so never let a
-   request choose a different district.
-6. **Results, audit and ledger stay hidden until** election `COMPLETED`, contest `CLOSED`, *and* `now > votingEndAt`.
+1. **Ballot anonymity.** `BallotLedgerEntry`, `PublishedBallotEntry`, `AnonymousVotingCredential` and
+   `ContestSigningKey` never reference user/voter/registration/voting-right. `VotingRight` stores no timestamps
+   and only the *blinded* token hash. `BallotCastResponse` has no receipt fields. `POST /ballots` is
+   unauthenticated: the blind signature is the authorisation. `BallotAnonymitySchemaTest` checks field names.
+2. **Unlinkable credentials.** The server only ever sees blinded tokens at issuance and unblinded (token,
+   signature) pairs at casting. Never log, store or correlate either with the voter. Exactly one signing key per contest.
+3. **One vote per voter per contest.** One `VotingRight` signature per (voter, contest), spent tokens unique,
+   locks on voting right / ledger state / election. `ConcurrentVotingIntegrationTest` proves it; keep it green.
+4. **Ledger formats are load-bearing.** Internal hash `votetrust-ledger-v1|…` (exact instant) and `-v2|…`
+   (UTC day), and public hash `votetrust-public-ledger-v1|…`. The shared vectors in Java, TS and Postman tests
+   pin the hash constructions. Never change an existing version; add a new one. The public ledger order must
+   stay independent of cast order.
+5. **Raw secrets are never stored or logged.** SA IDs and spent tokens are peppered HMACs; refresh tokens are SHA-256.
+6. **Lifecycle is automatic.** Admins can cancel, and while DRAFT they can rename, reschedule and edit the ballot
+   (until `registrationEndAt`). They can't open or close stages.
+7. **Election registration uses the voter-profile district.**
+8. **Results, audit and ledger stay hidden until** election `COMPLETED`, contest `CLOSED`, and `now > votingEndAt`.
 
 ## Tests that read repo files (easy to break by accident)
 
 `DeploymentArtifactTest` and `PostmanArtifactTest` do substring assertions on `Dockerfile`, `.dockerignore`,
-`compose.yaml`, `application.properties`, `render.yaml`, `.github/workflows/ci.yml`, `DEPLOYMENT.md`, and the
-Postman JSON. Editing any of those files can fail the build, so update the assertion in the same change.
+`compose.yaml`, `application.properties`, `render.yaml`, `.github/workflows/ci.yml` (including the frontend job),
+`DEPLOYMENT.md`, and the Postman JSON. Editing any of those files can fail the build, so update the assertion in the same change.
 The Postman JSON is generated by `postman/generate-verified-postman.js`, so edit the generator and re-run it with
 `node`, not the JSON.
 
@@ -112,5 +123,6 @@ The Postman JSON is generated by `postman/generate-verified-postman.js`, so edit
 
 - `frontend/.env.development` and `.env.production` are **tracked** even though `.gitignore` lists them
   (gitignore has no effect on tracked files). They hold only the public API URL.
-- `HELP.md` is the stale Spring Initializr stub (it links Boot 4.1 docs; the project uses 3.3.4). Ignore it.
+- The developer runs Docker locally. To experiment without touching their database, use a separate Compose
+  project (see testing-and-deployment.md); the developer's own local DB is already on V14.
 - `target/` and `frontend/node_modules`, `frontend/dist` are local build output.

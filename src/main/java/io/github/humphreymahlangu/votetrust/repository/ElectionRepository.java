@@ -9,13 +9,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ElectionRepository extends JpaRepository<Election, UUID> {
 
-    List<Election> findAllByOrderByRegistrationStartAtDesc();
+    Page<Election> findAllByOrderByRegistrationStartAtDesc(Pageable pageable);
 
     @Query("select election.id from Election election where election.status in :statuses")
     List<UUID> findIdsByStatusIn(@Param("statuses") Collection<ElectionStatus> statuses);
@@ -36,10 +38,17 @@ public interface ElectionRepository extends JpaRepository<Election, UUID> {
                   where event.electionId = election.id
                     and event.previousStatus = election.status
                     and event.outcome = :failure
+                    and event.eventSequence = (
+                        select max(latest.eventSequence)
+                        from ElectionLifecycleEvent latest
+                        where latest.electionId = election.id
+                    )
               )
             """)
     long countWithFailedTransitionFromCurrentStatus(
             @Param("statuses") Collection<ElectionStatus> statuses,
             @Param("failure") ElectionLifecycleOutcome failure
     );
+
+    boolean existsByNameIgnoreCaseAndIdNot(String name, UUID id);
 }

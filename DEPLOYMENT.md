@@ -20,6 +20,15 @@ Optional but recommended:
 * `VOTETRUST_RATE_LIMIT_*`
 * `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED`
 * `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN`
+* `VOTETRUST_JWT_REFRESH_TOKEN_EXPIRATION_HOURS` (default 12)
+* `VOTETRUST_LOGIN_MAX_FAILURES` and `VOTETRUST_LOGIN_LOCK_SECONDS` (defaults 5 and 900)
+* `VOTETRUST_LOG_FORMAT` (`text` or `json`)
+* `SERVER_FORWARD_HEADERS_STRATEGY` (default `native`; trusts `X-Forwarded-For` only from private-network proxies)
+
+Never regenerate `VOTETRUST_ID_HASH_PEPPER` or `VOTETRUST_VOTE_CREDENTIAL_PEPPER` once voters exist. The ID
+pepper protects duplicate-registration detection; the vote-credential pepper protects spent ballot tokens and
+encrypts each open contest's ballot signing key, so changing it during an election stops voting for that
+election.
 
 ## Local Compose Smoke Test
 
@@ -43,10 +52,20 @@ For manual API testing, import the Postman collection and local environment from
 
 The GitHub Actions workflow must pass:
 
-* Maven tests, including PostgreSQL Testcontainers on Docker-capable runners.
+* Maven tests, including PostgreSQL integration and concurrency tests.
 * Maven package build.
 * Docker Compose config validation with `.env.example`.
 * Container image build.
+* Frontend lint, unit tests, and production build.
+
+## Monitoring
+
+* Health probes: `/actuator/health/readiness` and `/actuator/health/liveness` (public).
+* Metrics: `/actuator/prometheus` in Prometheus format, available to administrator tokens only. Alert on
+  `votetrust_elections_stuck > 0` (an election could not advance and needs an administrator) and watch
+  `votetrust_auth_refresh_token_reuse_total` (possible session theft) and `votetrust_ratelimit_blocked_total`.
+* Every response includes an `X-Request-Id` header; the same ID appears in error bodies and log lines. Set
+  `VOTETRUST_LOG_FORMAT=json` for one JSON log object per line.
 
 ## Render Backend Deployment
 
@@ -70,7 +89,7 @@ How the Blueprint is wired:
 
 For a controlled first-admin bootstrap, set `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=true` and a strong `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN` (at least 32 characters) on the API service, call `POST /api/v1/admin/bootstrap` with the `X-VoteTrust-Bootstrap-Token` header, then set `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=false` and redeploy.
 
-The free Render plan suspends the web service when it is idle. The election lifecycle scheduler only runs while the service is awake; pending transitions are applied on the first scheduler tick after it wakes.
+The free Render plan suspends the web service when it is idle. The election lifecycle scheduler only runs while the service is awake; pending transitions are applied on the first scheduler tick after it wakes. To keep the service awake during an election, set the GitHub repository variable `RENDER_KEEPALIVE_URL` to the readiness URL; the `keep-alive.yml` workflow then pings it every 10 minutes. Remove the variable afterwards.
 
 For Postman, set the environment `baseUrl` to the Render API URL.
 
@@ -88,7 +107,7 @@ The React frontend in `frontend/` deploys to Vercel with `frontend` as the proje
 * Rotate the bootstrap token immediately after first-admin creation.
 * Use managed PostgreSQL with backups, point-in-time recovery, and encrypted storage.
 * Restrict public exposure to the REST API and health endpoints required by the platform.
-* Use an API gateway or distributed limiter for horizontally scaled deployments.
+* Use an API gateway or distributed limiter for horizontally scaled deployments; the IP rate limiter and the sign-in throttle are per instance. The election scheduler is already coordinated across instances with a database lock.
 * Store logs centrally, but do not log raw credentials, South African ID numbers, anonymous voting credentials, or ballot receipts.
 * Protect `main` in GitHub so only CI-passing pull requests reach the branch that Render deploys from.
 * Use a separate migration/database role before treating this as a real production deployment; the Render Blueprint uses the database owner account so Flyway can bootstrap the schema automatically.

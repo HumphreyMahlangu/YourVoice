@@ -8,7 +8,11 @@ import type {
   CreateVotingDistrictRequest,
   VotingDistrict,
 } from '../types/district'
-import type { CreateElectionRequest, Election } from '../types/election'
+import type {
+  CreateElectionRequest,
+  Election,
+  UpdateElectionRequest,
+} from '../types/election'
 import type { ElectionLifecycleEvent } from '../types/electionLifecycle'
 import { apiRequest } from './client'
 
@@ -98,5 +102,87 @@ export function cancelElection(electionId: string, authToken: string) {
       authToken,
       body: { status: 'CANCELLED' },
     },
+  )
+}
+
+export function updateElection(
+  electionId: string,
+  request: UpdateElectionRequest,
+  authToken: string,
+) {
+  return apiRequest<Election>(
+    `${ADMIN_PATH}/elections/${encodeURIComponent(electionId)}`,
+    { method: 'PUT', authToken, body: request },
+  )
+}
+
+function contestPath(electionId: string, contestId: string) {
+  return `${ADMIN_PATH}/elections/${encodeURIComponent(electionId)}/contests/${encodeURIComponent(contestId)}`
+}
+
+export function updateContest(
+  electionId: string,
+  contestId: string,
+  request: CreateContestRequest,
+  authToken: string,
+) {
+  return apiRequest<Contest>(contestPath(electionId, contestId), {
+    method: 'PUT',
+    authToken,
+    body: request,
+  })
+}
+
+export function deleteContest(
+  electionId: string,
+  contestId: string,
+  authToken: string,
+) {
+  return apiRequest<void>(contestPath(electionId, contestId), {
+    method: 'DELETE',
+    authToken,
+  })
+}
+
+export function updateContestOption(
+  electionId: string,
+  contestId: string,
+  optionId: string,
+  request: CreateContestOptionRequest,
+  authToken: string,
+) {
+  return apiRequest<ContestOption>(
+    `${contestPath(electionId, contestId)}/options/${encodeURIComponent(optionId)}`,
+    { method: 'PUT', authToken, body: request },
+  )
+}
+
+export function deleteContestOption(
+  electionId: string,
+  contestId: string,
+  optionId: string,
+  authToken: string,
+) {
+  return apiRequest<void>(
+    `${contestPath(electionId, contestId)}/options/${encodeURIComponent(optionId)}`,
+    { method: 'DELETE', authToken },
+  )
+}
+
+export function updateVotingDistrict(
+  votingDistrictId: string,
+  request: CreateVotingDistrictRequest,
+  authToken: string,
+) {
+  return apiRequest<VotingDistrict>(
+    `${ADMIN_PATH}/voting-districts/${encodeURIComponent(votingDistrictId)}`,
+    { method: 'PUT', authToken, body: request },
+  )
+}
+
+export function deleteVotingDistrict(votingDistrictId: string, authToken: string) {
+  return apiRequest<void>(
+    `${ADMIN_PATH}/voting-districts/${encodeURIComponent(votingDistrictId)}`,
+    { method: 'DELETE', authToken },
   )
 }

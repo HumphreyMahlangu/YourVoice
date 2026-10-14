@@ -29,7 +29,7 @@ The local environment assumes:
 4. Run every request in `02 - Election Setup`. The timing check pauses the flow until automatic registration opening.
 5. Run every request in `03 - Public Reads`.
 6. Run every request in `04 - Voter Registration` before `registrationEndAt`.
-7. Run `05 - Voting` in order. If a timing or status check tells you to wait, allow the lifecycle scheduler a few seconds and rerun that request.
+7. Run `05 - Voting` in order. If a timing or status check tells you to wait, allow the lifecycle scheduler a few seconds and rerun that request. `Get Contest Ballot Key` stores the contest's RSA key; `Issue Voting Credential` blinds a random ballot token in its pre-request script, sends only the blinded value, and unblinds and verifies the returned signature in its test script. `Cast Ballot` then sends the token and signature without the voter's JWT.
 8. Run `06 - Results and Audit` in order. The collection confirms automatic completion before requesting results.
 9. Run `07 - Negative Checks` only after a successful ballot has been cast.
 

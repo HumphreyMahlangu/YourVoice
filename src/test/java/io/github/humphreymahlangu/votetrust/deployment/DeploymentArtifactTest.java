@@ -78,6 +78,13 @@ class DeploymentArtifactTest {
         assertThat(ci).contains("actions/upload-artifact@v7");
         assertThat(ci).contains("docker compose --env-file .env.example config");
         assertThat(ci).contains("docker build -t votetrust-api:ci .");
+        assertThat(ci).containsSubsequence(
+                "working-directory: frontend",
+                "uses: actions/setup-node@v7",
+                "npm ci",
+                "npm run lint",
+                "npm test",
+                "npm run build");
     }
 
     @Test

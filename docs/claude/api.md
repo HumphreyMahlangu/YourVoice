@@ -1,117 +1,110 @@
 # REST API reference
 
 Base path `/api/v1`. JSON only. Swagger UI at `/swagger-ui.html`, spec at `/api-docs`.
-Auth header: `Authorization: Bearer <jwt>`. JWTs are HS256 (JJWT 0.12), `sub` = user UUID, claims `email` and `role`,
-issuer checked, 15-minute default lifetime. **No refresh tokens and no revocation.** Every request re-loads the
-user from the DB (`AccountUserDetailsService.loadUserById`), so a disabled account is rejected immediately.
+
+**Auth:** `Authorization: Bearer <access JWT>`. The access token is HS256, 15 minutes by default, `sub` = user
+id. The user is re-loaded on every request, so disabling an account takes effect immediately. Login, register
+and bootstrap also return a **refresh token**: opaque, 12 hours by default, stored hashed, and rotated on every
+`/auth/refresh`. Presenting an already-rotated token revokes its whole family. `/auth/logout` revokes the family.
+Access tokens are not revocable and expire on their own.
 
 ## Endpoints
 
-| Method | Path | Access | Success | Notable errors | Controller → service |
-| --- | --- | --- | --- | --- | --- |
-| POST | `/auth/register` | public, rate-limited `auth` | 201 `AuthResponse` | 400 validation, 404 district, 409 dup email/ID, 422 ID invalid/underage/non-citizen | `AuthController` → `AuthService` |
-| POST | `/auth/login` | public, rate-limited `auth` | 200 `AuthResponse` | 401 (same message for unknown email / wrong password / disabled) | `AuthController` → `AuthService` |
-| GET | `/auth/me` | any authenticated | 200 `UserAccountResponse` | 401 | `AuthController` |
-| POST | `/admin/bootstrap` | public + header token, rate-limited `admin-bootstrap` | 201 `AuthResponse` | 401 token, 403 disabled, 409 exists | `AdminBootstrapController` |
-| POST | `/admin/voting-districts` | ADMIN | 201 `VotingDistrictResponse` | 409 dup code | `AdminElectionManagementController` |
-| POST | `/admin/elections` | ADMIN | 201 `ElectionResponse` | 409 bad windows / dup name | 〃 |
-| PATCH | `/admin/elections/{id}/status` `{status}` | ADMIN | 200 `ElectionResponse` | 409 if status ≠ CANCELLED or election COMPLETED | 〃 → `ElectionLifecycleService.cancelElection` |
-| GET | `/admin/elections/{id}/lifecycle-events` | ADMIN | 200 list | 404 | 〃 |
-| POST | `/admin/elections/{id}/contests` | ADMIN | 201 `ContestResponse` | 409 locked (not DRAFT, or registration window ended)/type/scope/dup | 〃 |
-| POST | `/admin/elections/{id}/contests/{cid}/options` | ADMIN | 201 `ContestOptionResponse` | 409 locked/dup | 〃 |
-| PATCH | `/admin/elections/{id}/contests/{cid}/status` | ADMIN | 200 only if unchanged | 409 otherwise | 〃 |
-| GET | `/admin/security-audit-events?limit=50` | ADMIN | 200 list (limit clamped to 1..100) | | `AdminSecurityAuditController` |
-| GET | `/voting-districts` | public | 200 list (sorted province, municipality, ward, name) | | `VotingDistrictController` |
-| GET | `/elections` | public | 200 list (sorted registrationStartAt desc) | | `ElectionController` → `ElectionService` |
-| GET | `/elections/{id}` | public | 200 | 404 | 〃 |
-| POST | `/elections/{id}/registrations` body optional (`{votingDistrictId?}`) | authenticated (any role, but needs a voter profile) | 201 `ElectionRegistrationResponse` (always the profile district) | 404, 409 closed/dup, 422 district ≠ profile | 〃 → `VoterRegistrationService` |
-| GET | `/me/registrations` | authenticated | 200 list | | `MyRegistrationController` |
-| GET | `/elections/{id}/contests` | public | 200 list incl. options | 404 | `ContestController` → `ContestService` |
-| POST | `/elections/{id}/contests/{cid}/credentials` | authenticated, rate-limited `credential-issuance` | 201 `VotingCredentialResponse` | 404, 409 closed/already issued, 422 ineligible | `ContestController` → `VotingService` |
-| POST | `/ballots` | **public** (credential in body), rate-limited `ballot-submission` | 201 `BallotCastResponse` | 401 bad/expired credential, 404 option, 409 closed / "already been used" | `BallotController` → `VotingService` |
-| GET | `/elections/{id}/contests/{cid}/results` | public after close | 200 `ContestResultResponse` | 404, 409 not yet available | `ContestResultController` → `TallyAuditService` |
-| GET | `/elections/{id}/contests/{cid}/audit` | public after close | 200 `ContestAuditResponse` | 〃 | 〃 |
-| GET | `/elections/{id}/contests/{cid}/ledger` | public after close | 200 list | 〃 | 〃 |
+| Method | Path | Access | Success | Notable errors |
+| --- | --- | --- | --- | --- |
+| POST | `/auth/register` | public, `auth` bucket | 201 `AuthResponse` | 400, 404 district, 409 duplicate (one generic message for email and ID), 422 ID invalid or under 16 |
+| POST | `/auth/login` | public, `auth` bucket | 200 `AuthResponse` | 401 (same message for every failure), **429 + Retry-After** when the email is throttled |
+| POST | `/auth/refresh` `{refreshToken}` | public, `auth` bucket | 200 `AuthResponse` (new pair) | 401 invalid, expired or reused |
+| POST | `/auth/logout` `{refreshToken}` | public, `auth` bucket | 204 (idempotent) | |
+| GET | `/auth/me` | authenticated | 200 | 401 |
+| POST | `/admin/bootstrap` | public + `X-VoteTrust-Bootstrap-Token` | 201 `AuthResponse` | 401, 403 disabled, 409 |
+| GET/POST | `/admin/accounts` | ADMIN | 200 list / 201 | 409 email exists |
+| POST | `/admin/voting-districts` | ADMIN | 201 | 409 duplicate code |
+| PUT / DELETE | `/admin/voting-districts/{id}` | ADMIN | 200 / 204 | 409 geography change or delete while in use |
+| POST | `/admin/elections` | ADMIN | 201 | 409 bad windows or duplicate name |
+| PUT | `/admin/elections/{id}` | ADMIN | 200 | 409 not DRAFT, bad windows, registration end in the past |
+| PATCH | `/admin/elections/{id}/status` `{status: CANCELLED}` | ADMIN | 200 | 409 other status or already completed |
+| GET | `/admin/elections/{id}/lifecycle-events` | ADMIN | 200 | 404 |
+| POST | `/admin/elections/{id}/contests` | ADMIN | 201 | 409 locked, type, scope or duplicate |
+| PUT / DELETE | `/admin/elections/{id}/contests/{cid}` | ADMIN | 200 / 204 | 409 locked or not DRAFT |
+| POST | `/admin/elections/{id}/contests/{cid}/options` | ADMIN | 201 | 409 |
+| PUT / DELETE | `/admin/elections/{id}/contests/{cid}/options/{oid}` | ADMIN | 200 / 204 | 409 |
+| PATCH | `/admin/elections/{id}/contests/{cid}/status` | ADMIN | 200 only when unchanged | 409 |
+| GET | `/admin/security-audit-events?limit=50` | ADMIN | 200 (limit 1–100) | |
+| GET | `/voting-districts?page&size` | public | 200 array + `X-Total-Count` | 400 bad paging |
+| GET | `/elections?page&size` | public | 200 array + `X-Total-Count` | |
+| GET | `/elections/{id}` | public | 200 | 404 |
+| POST | `/elections/{id}/registrations` (body optional) | authenticated | 201 (profile district) | 404, 409 closed or duplicate, 422 district ≠ profile |
+| GET | `/me/registrations?page&size` | authenticated | 200 array + `X-Total-Count` | |
+| GET | `/elections/{id}/contests` | public | 200 incl. options (one options query in total) | 404 |
+| GET | `/elections/{id}/contests/{cid}/ballot-key` | public | 200 `BallotKeyResponse` | 404, 409 before voting opens |
+| POST | `/elections/{id}/contests/{cid}/credentials` `{blindedToken}` | authenticated, `credential-issuance` bucket | 201 `{blindSignature, keyFingerprint, expiresAt}` | 400 token outside key range, 404, 409 closed or already issued (a different blinded token), 422 ineligible |
+| POST | `/ballots` `{contestId, contestOptionId, ballotToken, signature}` | **public**, `ballot-submission` bucket | 201 `{accepted}` | 401 bad signature, 404, 409 closed or "already been used" |
+| GET | `/elections/{id}/contests/{cid}/results` | public after close | 200 | 404, 409 not yet |
+| GET | `/elections/{id}/contests/{cid}/audit` | public after close | 200 (both chains) | 404, 409 |
+| GET | `/elections/{id}/contests/{cid}/ledger` | public after close | 200 published (shuffled) entries | 404, 409 |
 
-Also public: `/actuator/health`, `/actuator/health/{readiness,liveness}`. `/actuator/info` requires auth.
+Pagination: `page` is 0-based (default 0) and `size` is 1–500 (default 200). The body stays a plain array.
 
-Role enforcement: `SecurityConfig` URL rules (`/api/v1/admin/**` → `hasRole('ADMIN')` except POST bootstrap;
-GET `/elections/**` and `/voting-districts/**` public), plus `@PreAuthorize("hasRole('ADMIN')")` on
-`AdminElectionManagementController`. The VOTER role is **not** enforced server-side on registration or credential
-endpoints. An admin simply fails there because they have no voter profile or registration.
+Actuator: `/actuator/health`, `/health/readiness` and `/health/liveness` are public. **Every other actuator
+endpoint, including `/actuator/prometheus`, requires ADMIN.**
 
-## Error format and mapping
+## Errors
 
-Every error body is `ApiErrorResponse { timestamp, status, error, message, path, fieldErrors }`. `fieldErrors`
-(field → first message) is populated only for bean-validation failures. The frontend relies on this shape.
+Every error body is `ApiErrorResponse { timestamp, status, error, message, path, fieldErrors, requestId }`.
+`requestId` equals the `X-Request-Id` response header and appears in every log line as `[requestId]`.
+`RequestIdFilter` reuses a well-formed incoming `X-Request-Id` (`[A-Za-z0-9._-]{8,64}`) and otherwise generates a UUID.
 
 | Exception | HTTP |
 | --- | --- |
-| `MethodArgumentNotValidException` | 400 "Request validation failed" + fieldErrors |
-| `MethodArgumentTypeMismatchException` (e.g. bad UUID in path) | 400 |
-| `HttpMessageNotReadableException` (bad JSON / bad enum, which lists the allowed values) | 400 |
-| `InvalidCredentialsException`, `InvalidVotingCredentialException`, `InvalidBootstrapTokenException` | 401 |
-| Spring Security auth failure (`RestAuthenticationEntryPoint`) | 401 "Authentication is required" |
-| `AdminBootstrapException`, access denied (`RestAccessDeniedHandler`) | 403 |
+| Bean validation (`MethodArgumentNotValidException`) | 400 + fieldErrors |
+| Bad path or param types, unreadable JSON, `InvalidBallotTokenException` | 400 |
+| `InvalidCredentialsException`, `InvalidVotingCredentialException`, `InvalidBootstrapTokenException`, `InvalidRefreshTokenException` | 401 |
+| `AdminBootstrapException`, access denied | 403 |
 | `ResourceNotFoundException` | 404 |
-| `DuplicateResourceException`, `DataIntegrityViolationException`, `RegistrationClosedException`, `VotingClosedException`, `ResultsUnavailableException`, `ElectionLifecycleException` | 409 |
+| Duplicate, data integrity, registration/voting closed, results unavailable, lifecycle | 409 |
 | `EligibilityException` | 422 |
-| Rate limit (written directly by `RateLimitingFilter`) | 429 + `Retry-After` |
+| `LoginThrottledException` (with `Retry-After`), IP rate limit (written by the filter) | 429 |
+| **Catch-all**: Spring `ErrorResponse` exceptions keep their 4xx status; Spring Security exceptions keep 401/403; anything else is logged with the request ID and returns a generic 500 | |
 
-## Request validation highlights
+## Abuse controls
 
-- Passwords (register and bootstrap): 12–128 chars, at least one lower-case letter, one upper-case letter and one digit.
-- `southAfricanIdNumber`: `\d{13}` at the DTO level, then the full validator in the service.
-- District `code`: `^[A-Za-z0-9-]+$`, max 32. `wardNumber` and `displayOrder`: 1–9999.
-- `votingCredential`: not blank, max 128, trimmed before hashing.
-
-## Rate limiting
-
-`RateLimitingFilter` (before the JWT filter) applies to **POST only** on four buckets: `auth` (login and register),
-`admin-bootstrap`, `credential-issuance` (regex on the path), and `ballot-submission`. `RateLimitService` is a
-fixed-window counter in an in-memory `ConcurrentHashMap` keyed by `bucket:request.getRemoteAddr()`. Allowed responses
-set `X-RateLimit-Remaining`. Blocked requests are audited as `RATE_LIMIT_BLOCKED`, and an audit failure can't turn the
-429 into a 500. The limiter is in-memory, so it's per-instance.
-
-**Client IP behind a proxy:** `server.forward-headers-strategy=native` (env `SERVER_FORWARD_HEADERS_STRATEGY`) turns on
-Tomcat's `RemoteIpValve`. When the TCP peer is a private, loopback or CGNAT address (Tomcat's default `internalProxies`),
-`getRemoteAddr()` becomes the right-most untrusted `X-Forwarded-For` entry. That's what both the rate limiter and the
-audit `clientIp` use. Direct public clients can't spoof it. If Render's proxy ever connects from a public address,
-the valve does nothing and every client shares the proxy IP again. Check this by looking at the audit events after
-a deploy. MockMvc doesn't run valves; see `ForwardedClientAddressIntegrationTest`.
-
-Both filters are `@Component`s, so `SecurityConfig` registers `FilterRegistrationBean`s with `enabled=false` to stop
-Spring Boot auto-registering them a second time outside the security chain. Keep that if you add another filter.
+- **IP rate limiter** (`RateLimitingFilter`, in-memory, fixed window). It applies to POST only: `auth` (login,
+  register, refresh, logout), `admin-bootstrap`, `credential-issuance`, `ballot-submission`. It is keyed by
+  `getRemoteAddr()`, which `server.forward-headers-strategy=native` resolves from `X-Forwarded-For` when the
+  connection comes from a private-network proxy.
+- **Per-email login throttle** (`LoginThrottleService`, in-memory): after `max-failures` failures (default 5)
+  the email is locked for `lock-seconds` (900). It works the same for unknown emails, and unknown emails also
+  pay one BCrypt check, so neither timing nor the throttle reveals which accounts exist.
 
 ## CORS
 
-Origins come from `VOTETRUST_CORS_ALLOWED_ORIGINS` (comma-separated). The default is
-`http://localhost:5173,http://localhost:3000`. Methods are **GET, POST, PATCH, OPTIONS only** (add PUT or DELETE
-here if you ever add such endpoints). Headers: Authorization, Content-Type, Accept, X-Requested-With.
+Origins come from `VOTETRUST_CORS_ALLOWED_ORIGINS` (set in the Render dashboard; `sync: false`). Allowed methods:
+GET, POST, PUT, PATCH, DELETE, OPTIONS. Exposed headers: `X-Total-Count`, `X-Request-Id`, `Retry-After`.
 No credentials or cookies.
 
-## Configuration properties (`application.properties`)
+## Configuration (`application.properties`)
 
 | Property | Env var | Default |
 | --- | --- | --- |
-| `server.port` | `SERVER_PORT`, then `PORT` (Render) | 8080 |
+| `server.port` | `SERVER_PORT`, then `PORT` | 8080 |
 | `server.forward-headers-strategy` | `SERVER_FORWARD_HEADERS_STRATEGY` | `native` |
-| `spring.datasource.url` | `SPRING_DATASOURCE_URL` or `SPRING_DATASOURCE_HOST/PORT/NAME` | `jdbc:postgresql://localhost:5432/votetrust` |
+| `spring.datasource.url` | `SPRING_DATASOURCE_URL` or `_HOST/_PORT/_NAME` | localhost/votetrust |
 | `spring.datasource.username/password` | `SPRING_DATASOURCE_USERNAME/PASSWORD` | **required** |
 | `votetrust.security.jwt.secret` | `VOTETRUST_JWT_SECRET` | **required, ≥32** |
-| `votetrust.security.jwt.issuer` | `VOTETRUST_JWT_ISSUER` | `votetrust-api` |
 | `votetrust.security.jwt.access-token-expiration-minutes` | `VOTETRUST_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES` | 15 |
+| `votetrust.security.jwt.refresh-token-expiration-hours` | `VOTETRUST_JWT_REFRESH_TOKEN_EXPIRATION_HOURS` | 12 |
+| `votetrust.security.login-throttle.{max-failures,lock-seconds}` | `VOTETRUST_LOGIN_MAX_FAILURES/LOCK_SECONDS` | 5, 900 |
 | `votetrust.security.identity-hash-pepper` | `VOTETRUST_ID_HASH_PEPPER` | **required, ≥32** |
-| `votetrust.security.vote-credential-pepper` | `VOTETRUST_VOTE_CREDENTIAL_PEPPER` | **required, ≥32** |
-| `votetrust.security.cors.allowed-origins` | `VOTETRUST_CORS_ALLOWED_ORIGINS` (on Render: dashboard-managed, `sync: false`) | localhost:5173, :3000 |
-| `votetrust.security.rate-limit.{enabled,window-seconds,auth-limit,bootstrap-limit,credential-limit,ballot-limit}` | `VOTETRUST_RATE_LIMIT_*` | true, 60, 100, 20, 100, 100 |
-| `votetrust.admin.bootstrap.{enabled,token}` | `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED/TOKEN` | false, empty |
-| `votetrust.lifecycle.scheduling-enabled` | `VOTETRUST_LIFECYCLE_SCHEDULING_ENABLED` | true |
-| `votetrust.lifecycle.poll-interval-ms` | `VOTETRUST_LIFECYCLE_POLL_INTERVAL_MS` | 5000 |
+| `votetrust.security.vote-credential-pepper` | `VOTETRUST_VOTE_CREDENTIAL_PEPPER` | **required, ≥32** (also derives the ballot-key encryption key) |
+| `votetrust.security.cors.allowed-origins` | `VOTETRUST_CORS_ALLOWED_ORIGINS` | localhost:5173, :3000 |
+| `votetrust.security.rate-limit.*` | `VOTETRUST_RATE_LIMIT_*` | enabled, 60 s window, 100/20/100/100 |
+| `votetrust.admin.bootstrap.{enabled,token}` | `VOTETRUST_ADMIN_BOOTSTRAP_*` | false, empty (token ≥32 when enabled) |
+| `votetrust.lifecycle.{scheduling-enabled,poll-interval-ms}` | `VOTETRUST_LIFECYCLE_*` | true, 5000 |
+| `votetrust.logging.format` | `VOTETRUST_LOG_FORMAT` | `text` (`json` = one JSON object per line; any other value fails startup) |
 
-Property classes live in `security/` (`JwtProperties`, `IdentityHashProperties`, `VoteCredentialProperties`,
-`CorsProperties`, `AdminBootstrapProperties`, `RateLimitProperties`). They are registered via
-`@EnableConfigurationProperties` on `SecurityConfig`, and most are `@Validated`, so bad values fail at startup.
+Property records live in `security/` and `config/LoggingProperties`. They are registered on `SecurityConfig` and
+validated at startup. `spring-boot-configuration-processor` generates IDE metadata for them.
 
-Rotating either pepper makes every existing hash unverifiable: ID duplicate detection stops working and outstanding
-voting credentials stop matching. Rotating the JWT secret only logs everyone out.
+Rotating a pepper is destructive: the ID pepper breaks duplicate-ID detection, and the vote-credential pepper
+breaks spent-token checks *and* decryption of open contests' ballot keys.

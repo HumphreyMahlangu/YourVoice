@@ -140,11 +140,19 @@ class ElectionLifecycleServiceTest {
 
         when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
         when(contestRepository.findByElectionId(electionId)).thenReturn(List.of());
-        when(lifecycleEventRepository.existsByElectionIdAndPreviousStatusAndOutcome(
+        ElectionLifecycleEvent recordedFailure = new ElectionLifecycleEvent(
                 electionId,
                 ElectionStatus.DRAFT,
-                ElectionLifecycleOutcome.FAILURE
-        )).thenReturn(false, true);
+                ElectionStatus.REGISTRATION_OPEN,
+                ElectionLifecycleTrigger.AUTOMATIC,
+                ElectionLifecycleOutcome.FAILURE,
+                null,
+                null,
+                "Election must have at least one contest before registration opens",
+                NOW
+        );
+        when(lifecycleEventRepository.findTopByElectionIdOrderByEventSequenceDesc(electionId))
+                .thenReturn(Optional.empty(), Optional.of(recordedFailure));
 
         lifecycleService.advanceElection(electionId);
         lifecycleService.advanceElection(electionId);

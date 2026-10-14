@@ -73,43 +73,50 @@ VoteTrust is built around five fundamental principles.
 ### Stateless Authentication and Authorization
 
 * Spring Security operates without server-side HTTP sessions and authenticates requests with short-lived JWT access tokens.
-* Passwords are hashed with BCrypt using a cost factor of 12.
-* Role-based authorization separates voter operations from election administration.
-* The first-administrator bootstrap flow is disabled by default, token-protected, rate-limited, and permanently closes after an administrator exists.
+* Rotating refresh tokens (stored hashed, grouped in families) keep sessions alive across page reloads; reusing a rotated token revokes the whole family, and logout revokes it explicitly.
+* Passwords are hashed with BCrypt using a cost factor of 12. Unknown emails still pay for one BCrypt check, so response timing does not reveal which accounts exist.
+* Repeated failed sign-ins lock an email address temporarily, in addition to per-IP rate limits. The lock applies equally to unknown emails.
+* Role-based authorization separates voter operations from election administration. The first-administrator bootstrap is disabled by default, token-protected, and closes after an administrator exists; administrators can then add further administrators, and each addition is audited.
 
 ### Controlled Voter Registration
 
 * Voter onboarding creates the platform account and voter profile together, collecting the legal name, contact email, South African ID, identity-document type, and voting district once.
 * Election registration is accepted only while the configured registration window is open and the election is in the correct lifecycle state. It always uses the voting district captured at onboarding, so voters cannot choose a different ward or province per election.
-* South African ID numbers are validated during onboarding and stored as peppered HMAC-SHA-256 hashes rather than plaintext identifiers. Election registration reuses the authenticated voter profile instead of asking for the ID again.
+* South African ID numbers are validated during onboarding and stored as peppered HMAC-SHA-256 hashes rather than plaintext identifiers.
 * Voting-district and contest-scope checks model national, provincial, municipal proportional-representation, and ward eligibility.
+
+### Unlinkable Ballot Credentials (Blind Signatures)
+
+* Each contest has its own RSA key. The voter's browser generates a random ballot token, blinds it, and asks the server to sign the blinded value after the eligibility checks.
+* The browser removes the blinding and casts the ballot with the token and signature, without the voter's login token. The server can verify the signature but cannot link the ballot to the voter it signed for.
+* Each voter can obtain one signature per contest; repeating a request with the same blinded token returns the same signature, so a lost response can be retried safely.
+* Private keys are encrypted at rest (AES-256-GCM), and every voter can compare the contest key fingerprint.
 
 ### One Person, One Vote
 
-* Database uniqueness constraints prevent duplicate election registrations, voting rights, anonymous credentials, and ballot positions.
-* Pessimistic database locks serialize voting-right, credential-consumption, and ledger-state updates under concurrent requests.
-* Each eligible voter receives a one-time anonymous credential for a contest. A successful ballot consumes that credential atomically, preventing replay or duplicate voting.
+* Database uniqueness constraints prevent duplicate election registrations, voting rights, spent ballot tokens, and ledger positions.
+* Pessimistic locks and race-free inserts serialize voting rights, token spending, and ledger appends. Dedicated concurrency tests release many simultaneous requests against PostgreSQL and require exactly one success.
 
 ### Ballot Privacy
 
-* Ballot ledger records contain no account, voter-profile, election-registration, or voting-right foreign key.
-* Anonymous credential values are stored as peppered HMAC-SHA-256 hashes and are separated from ballot selections.
-* Ballot responses avoid returning ledger positions, hashes, or ballot identifiers that could act as voting receipts.
-* Public ledger metadata exposes a coarse recording date rather than an exact cast timestamp to reduce timing correlation.
+* Ballot ledgers contain no account, voter-profile, election-registration, or voting-right reference.
+* The public ledger is published after voting closes with ballots shuffled into a random order, so ledger positions say nothing about when (or by whom) a ballot was cast.
+* The database stores only the day each ballot was recorded, never the exact time.
+* Ballot responses contain no receipt, and no metric is broken down by option.
 
-### Tamper-Evident SHA-256 Ledger
+### Tamper-Evident, Publicly Verifiable Ledgers
 
-* Every accepted ballot becomes a ledger entry whose SHA-256 hash includes the previous entry hash and canonical ballot data.
-* Per-contest ledger state is locked while appending entries, preserving a deterministic chain under concurrent voting.
-* Audit operations recompute the chain and compare it with stored ledger state to detect modified, reordered, inserted, or deleted entries.
-* The hash chain is tamper-evident, not a blockchain or independently immutable storage system. Stronger real-world assurance would require restricted database administration, external hash anchoring, signed exports, and independent operational oversight.
+* Ballots are chained with SHA-256 in an internal ledger (cast order) and, after closing, in a published ledger (shuffled order) whose hash inputs are all public.
+* Anyone can recompute the published chain; the public ledger page does it in the browser. The server audit also checks the internal chain and that both ledgers contain the same ballots.
+* The hash chains are tamper-evident, not a blockchain. Stronger real-world assurance would require restricted database administration, external hash anchoring, signed exports, and independent operational oversight.
 
 ### Results, Auditing, and Operations
 
-* Results and public ledger views become available only after the election is completed, the contest is closed, and voting has ended.
+* Results and ledgers become available only after the election is completed, the contest is closed, and voting has ended. Turnout is computed against the voters eligible for each contest.
 * Blank and spoilt ballots are represented explicitly and are excluded from valid-vote winner calculations.
-* Security audit events record authentication, bootstrap, and rate-limit outcomes without linking anonymous ballot submissions to voter identities.
-* OpenAPI documentation, health probes, Flyway migrations, Docker packaging, Postman artifacts, and CI checks support repeatable development and review.
+* Election stages advance automatically on schedule; administrators can correct draft ballots, reschedule draft elections, or cancel an election, and every change is recorded.
+* Security audit events record authentication, session, bootstrap, administrator, and rate-limit outcomes without linking ballots to voters.
+* Every response carries a request ID that also appears in logs; Prometheus metrics (admin only), optional JSON logs, health probes, Flyway migrations, Docker packaging, Postman artifacts, and CI for backend and frontend support operations.
 
 ## Technology Stack
 
@@ -150,15 +157,18 @@ The system uses a centralized PostgreSQL ledger. It applies cryptographic chaini
 | Method | Endpoint | Access | Purpose |
 | --- | --- | --- | --- |
 | `POST` | `/api/v1/auth/register` | Public | Create a voter account and protected voter profile, then return a JWT. |
-| `POST` | `/api/v1/auth/login` | Public | Authenticate an account and return a JWT. |
+| `POST` | `/api/v1/auth/login` | Public | Authenticate an account and return an access and refresh token. |
+| `POST` | `/api/v1/auth/refresh` | Refresh token | Rotate the refresh token and issue a new access token. |
+| `POST` | `/api/v1/auth/logout` | Refresh token | Revoke the session. |
 | `GET` | `/api/v1/auth/me` | Authenticated | Return the current account. |
 | `POST` | `/api/v1/admin/bootstrap` | Controlled bootstrap | Create the first administrator during a temporary bootstrap window. |
-| `POST` | `/api/v1/admin/voting-districts` | Administrator | Create a voting district. |
+| `GET`, `POST` | `/api/v1/admin/accounts` | Administrator | List or add administrators. |
+| `POST`, `PUT`, `DELETE` | `/api/v1/admin/voting-districts[/{id}]` | Administrator | Manage voting districts (geography is locked once voters use a district). |
 | `POST` | `/api/v1/admin/elections` | Administrator | Create an election. |
-| `PATCH` | `/api/v1/admin/elections/{electionId}/status` | Administrator | Advance the election lifecycle. |
-| `POST` | `/api/v1/admin/elections/{electionId}/contests` | Administrator | Create a geographically scoped contest. |
-| `POST` | `/api/v1/admin/elections/{electionId}/contests/{contestId}/options` | Administrator | Add a candidate, party, blank, or spoilt option. |
-| `PATCH` | `/api/v1/admin/elections/{electionId}/contests/{contestId}/status` | Administrator | Advance the contest lifecycle. |
+| `PUT` | `/api/v1/admin/elections/{electionId}` | Administrator | Rename or reschedule a draft election. |
+| `PATCH` | `/api/v1/admin/elections/{electionId}/status` | Administrator | Emergency-cancel an election (other transitions are automatic). |
+| `POST`, `PUT`, `DELETE` | `/api/v1/admin/elections/{electionId}/contests[/{contestId}]` | Administrator | Manage geographically scoped contests while the ballot is a draft. |
+| `POST`, `PUT`, `DELETE` | `/api/v1/admin/elections/{electionId}/contests/{contestId}/options[/{optionId}]` | Administrator | Manage party, candidate, blank, or spoilt options while the ballot is a draft. |
 | `GET` | `/api/v1/admin/security-audit-events` | Administrator | Review recent security audit events. |
 | `GET` | `/api/v1/voting-districts` | Public | List voting districts available during registration. |
 | `GET` | `/api/v1/elections` | Public | List elections. |
@@ -166,11 +176,14 @@ The system uses a centralized PostgreSQL ledger. It applies cryptographic chaini
 | `POST` | `/api/v1/elections/{electionId}/registrations` | Authenticated voter | Register the existing voter profile, in its onboarding voting district, during the election registration window. |
 | `GET` | `/api/v1/me/registrations` | Authenticated voter | List the current voter's registrations. |
 | `GET` | `/api/v1/elections/{electionId}/contests` | Public | List contests and options for an election. |
-| `POST` | `/api/v1/elections/{electionId}/contests/{contestId}/credentials` | Authenticated voter | Issue a one-time anonymous voting credential after eligibility checks. |
-| `POST` | `/api/v1/ballots` | Anonymous credential | Cast a ballot without attaching the voter's JWT identity. |
+| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/ballot-key` | Public once voting opens | Return the contest's public RSA key for blinding. |
+| `POST` | `/api/v1/elections/{electionId}/contests/{contestId}/credentials` | Authenticated voter | Blind-sign the voter's blinded ballot token after eligibility checks. |
+| `POST` | `/api/v1/ballots` | Ballot token and signature | Cast a ballot without attaching the voter's identity. |
 | `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/results` | Public after closure | Return final contest results. |
-| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/audit` | Public after closure | Recompute and verify the contest hash chain. |
-| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/ledger` | Public after closure | Return privacy-reduced ledger entries. |
+| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/audit` | Public after closure | Verify both hash chains and that they contain the same ballots. |
+| `GET` | `/api/v1/elections/{electionId}/contests/{contestId}/ledger` | Public after closure | Return the shuffled, publicly verifiable ledger. |
+
+List endpoints accept optional `page` and `size` parameters and return the total in the `X-Total-Count` header.
 
 Interactive API documentation is available at `/swagger-ui.html`; the OpenAPI document is available at `/api-docs`.
 
@@ -244,16 +257,17 @@ The repository also includes Docker Compose and verified Postman artifacts for a
 
 ## Project Status
 
-VoteTrust is a functional portfolio MVP. The implemented backend covers account security, controlled election registration, geographic eligibility, anonymous one-time voting credentials, concurrent duplicate-vote prevention, ballot casting, final tallying, SHA-256 ledger verification, OpenAPI documentation, automated tests, and local container packaging.
+VoteTrust is a functional portfolio MVP. The implemented system covers account security with rotating sessions, controlled election registration, geographic eligibility, blind-signature ballot credentials, concurrency-tested duplicate-vote prevention, ballot casting, per-contest tallying, shuffled and publicly verifiable ledgers, administrator tooling, observability, OpenAPI documentation, automated backend and frontend tests, and container packaging.
 
 The project compiles and passes its automated CI quality gates. The API and PostgreSQL database are deployed to Render through the `render.yaml` Blueprint, and the React frontend is deployed to Vercel. The repository should not be presented as a certified or operational public-election platform.
 
 ## Roadmap
 
-* Add refresh-token rotation, explicit token revocation, and stronger account recovery controls.
+* Add email verification and stronger account recovery controls.
+* Replace the internal cast-order ledger with a verifiable shuffle (mix-net) so not even database administrators can correlate ballot order.
 * Move rate limiting to a distributed gateway or Redis-backed implementation for horizontal scaling.
 * Separate application and migration database roles using least privilege.
-* Add centralized observability, alerting, backup restoration tests, and disaster-recovery exercises.
+* Add alerting on the exported metrics, backup restoration tests, and disaster-recovery exercises.
 * Anchor signed ledger checkpoints outside the primary database and commission independent cryptographic and penetration testing.
 * Expand simulation coverage only where rules can be traced to authoritative South African electoral requirements.
 

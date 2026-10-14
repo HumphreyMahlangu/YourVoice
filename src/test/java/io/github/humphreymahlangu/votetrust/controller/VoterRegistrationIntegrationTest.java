@@ -3,6 +3,7 @@ package io.github.humphreymahlangu.votetrust.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,9 +37,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -262,6 +263,30 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
         mockMvc.perform(get("/api/v1/voting-districts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(district.getId().toString()));
+    }
+
+    @Test
+    void listEndpointsArePaginatedWithTheTotalInAHeader() throws Exception {
+        createOpenElection();
+        electionRepository.save(new Election(
+                "2026 By-Election",
+                ElectionType.MUNICIPAL,
+                Instant.parse("2026-09-01T00:00:00Z"),
+                Instant.parse("2026-09-10T00:00:00Z"),
+                Instant.parse("2026-10-01T07:00:00Z"),
+                Instant.parse("2026-10-01T21:00:00Z"),
+                ElectionStatus.DRAFT
+        ));
+
+        mockMvc.perform(get("/api/v1/elections").param("page", "0").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("X-Total-Count", "2"))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("2026 By-Election"));
+        mockMvc.perform(get("/api/v1/elections").param("page", "1").param("size", "1"))
+                .andExpect(jsonPath("$[0].name").value("2026 Local Government Election"));
+        mockMvc.perform(get("/api/v1/elections").param("size", "501"))
+                .andExpect(status().isBadRequest());
     }
 
     private Election createOpenElection() {

@@ -1,147 +1,149 @@
 # Domain model and core flows
 
-All IDs are UUIDs (`GenerationType.UUID`). All timestamps are `Instant` / `TIMESTAMPTZ`, UTC.
+All IDs are UUIDs. All timestamps are `Instant` / `TIMESTAMPTZ`, in UTC. The latest migration is **V14**.
 
-## Entities → tables
+## Entities and tables
 
-| Entity | Table | Key fields / constraints | Introduced |
+| Entity | Table | Key fields / constraints | Migrations |
 | --- | --- | --- | --- |
-| `UserAccount` | `user_accounts` | email (unique, + unique `LOWER(email)` index), `password_hash` (BCrypt-12), role `VOTER`/`ADMIN`, enabled | V1 |
+| `UserAccount` | `user_accounts` | email (unique, plus a unique `LOWER(email)` index), `password_hash` (BCrypt-12), role `VOTER`/`ADMIN`, enabled | V1 |
 | `VotingDistrict` | `voting_districts` | `code` unique (stored upper-case), name, province, municipality, `ward_number` | V2 |
-| `Election` | `elections` | name, type `NATIONAL`/`PROVINCIAL`/`MUNICIPAL`, 4 window instants, status. DB checks start<end for both windows | V2 |
-| `VoterProfile` | `voter_profiles` | 1:1 `user_account_id` (unique), `id_number_hash` (unique, HMAC hex 64), `date_of_birth`, `voting_district_id`, `full_name`, `id_document_type` (V10, nullable in DB) | V2/V4/V10 |
-| `ElectionRegistration` | `election_registrations` | (voter_profile, election) unique, `voting_district_id`, status `ACTIVE`/`CANCELLED`, registered_at | V2 |
-| `Contest` | `contests` | election, name (unique per election), type, status `DRAFT`/`OPEN`/`CLOSED`, display_order, `scope_province/municipality/ward_number` with a DB check per type | V3/V5 |
-| `ContestOption` | `contest_options` | contest, name + display_order unique per contest, `option_type`. Partial unique index: at most one `BLANK_BALLOT` and one `SPOILT_BALLOT` per contest | V3/V8 |
-| `VotingRight` | `voting_rights` | (voter_profile, contest) unique, `credential_issued` boolean. **No timestamps** (dropped in V6 for privacy) | V3/V6 |
-| `AnonymousVotingCredential` | `anonymous_voting_credentials` | contest, `credential_hash` unique, `expires_at`, `used` boolean. **No voter link, no issued/used timestamps** | V3/V6 |
-| `LedgerState` | `ledger_states` | 1 per contest: `current_hash` (starts at 64 zeros = `GENESIS_HASH`), `next_ledger_index` | V3 |
-| `BallotLedgerEntry` | `ballot_ledger_entries` | contest, contest_option, ledger_index (unique per contest), previous_hash, current_hash, nonce, cast_at. **No voter link** | V3 |
-| `SecurityAuditEvent` | `security_audit_events` | event_type, outcome `SUCCESS`/`FAILURE`/`BLOCKED`, principal id/email, client_ip, user_agent, detail, occurred_at | V7 |
-| `ElectionLifecycleEvent` | `election_lifecycle_events` | `event_sequence` (DB identity, read-only in JPA), election_id (plain UUID column, not a relation), previous/new status, trigger `AUTOMATIC`/`ADMINISTRATOR`, outcome `SUCCESS`/`FAILURE`, actor, detail | V9 |
-
-`ContestOptionType.isValidVote()` is true for `PARTY` and `INDEPENDENT_CANDIDATE`, false for `BLANK_BALLOT` and `SPOILT_BALLOT`.
+| `Election` | `elections` | name, type `NATIONAL`/`PROVINCIAL`/`MUNICIPAL`, four window instants, status | V2 |
+| `VoterProfile` | `voter_profiles` | 1:1 user account, `id_number_hash` (unique HMAC hex), `date_of_birth`, `voting_district_id`, `full_name`, `id_document_type` | V2/V4/V10 |
+| `ElectionRegistration` | `election_registrations` | (profile, election) unique, `voting_district_id` (always the profile's district), status, registered_at | V2 |
+| `Contest` | `contests` | election, name and display_order unique per election, type, status `DRAFT`/`OPEN`/`CLOSED`, scope columns (DB check per type) | V3/V5 |
+| `ContestOption` | `contest_options` | name and display_order unique per contest, `option_type`; at most one BLANK and one SPOILT per contest | V3/V8 |
+| `VotingRight` | `voting_rights` | (profile, contest) unique, `credential_issued`, `blinded_token_hash`. **No timestamps** | V3/V6/V12 |
+| `AnonymousVotingCredential` | `anonymous_voting_credentials` | Now records **spent ballot tokens**: contest, `credential_hash` = HMAC(pepper, contestId\|token), unique, `used`. No voter link | V3/V6 |
+| `ContestSigningKey` | `contest_signing_keys` | one per contest: RSA modulus and exponent (base64url), AES-GCM-encrypted PKCS#8 private key. Read-only entity, inserted natively | V12 |
+| `LedgerState` | `ledger_states` | per contest: internal `current_hash`, `next_ledger_index`, plus `published_head_hash` and `published_entry_count` once published | V3/V11 |
+| `BallotLedgerEntry` | `ballot_ledger_entries` | internal chain in cast order: option, ledger_index, previous/current hash, nonce, `cast_at`, `hash_version` (1 or 2) | V3/V11 |
+| `PublishedBallotEntry` | `published_ballot_entries` | public chain in **shuffled** order: option, position, previous/current hash, fresh nonce | V11 |
+| `RefreshToken` | `refresh_tokens` | user, `family_id`, SHA-256 `token_hash` (unique), expires_at, revoked_at | V13 |
+| `SecurityAuditEvent` | `security_audit_events` | event_type (no DB check, so new enum values need no migration), outcome, principal, client_ip, user_agent, detail | V7 |
+| `ElectionLifecycleEvent` | `election_lifecycle_events` | `event_sequence` identity, election_id, previous/new status, trigger, outcome, actor, detail | V9 |
+| (ShedLock) | `shedlock` | distributed lock for the lifecycle scheduler | V14 |
 
 ## Election lifecycle (automatic)
 
 ```
 DRAFT ──(now ≥ registrationStartAt, ballot ready)──▶ REGISTRATION_OPEN
       ──(now ≥ registrationEndAt)──────────────────▶ REGISTRATION_CLOSED
-      ──(now ≥ votingStartAt; all DRAFT contests→OPEN)▶ VOTING_OPEN
-      ──(now ≥ votingEndAt; all contests→CLOSED)────▶ COMPLETED
-any non-COMPLETED ──(admin PATCH status=CANCELLED; OPEN contests→CLOSED)──▶ CANCELLED
+      ──(now ≥ votingStartAt; DRAFT contests→OPEN, ballot keys generated)▶ VOTING_OPEN
+      ──(now ≥ votingEndAt; contests→CLOSED, ledgers published)────────▶ COMPLETED
+any non-COMPLETED ──(admin cancel; OPEN contests→CLOSED)──▶ CANCELLED
 ```
 
-- `ElectionLifecycleCoordinator` is `@Scheduled` with a fixed delay of `votetrust.lifecycle.poll-interval-ms` (default 5000).
-  On each tick it loads the IDs of elections in DRAFT/REG_OPEN/REG_CLOSED/VOTING_OPEN and calls
-  `ElectionLifecycleService.advanceElection(id)`, one transaction per election, with `SELECT … FOR UPDATE` on the election.
-  The coordinator is disabled with `votetrust.lifecycle.scheduling-enabled=false`, which the test profile sets.
-- `advanceDueTransitions` runs its `if` blocks in sequence, so one tick can cascade through several states if the
-  service was down for a while.
-- **Ballot ready** means at least 1 contest, and every contest has at least 2 *valid-vote* options (party or
-  independent). This is checked before REGISTRATION_OPEN and again before VOTING_OPEN. Voting also refuses to open if
-  any contest is already CLOSED. Completion requires at least 1 contest.
-- **Fail closed**: an `ElectionLifecycleException` during an automatic transition leaves the status unchanged and
-  records **one** `FAILURE` event per (election, previousStatus). After that it retries silently every tick.
-- Every successful transition writes a `SUCCESS` lifecycle event. Admin cancellation records the actor's id and email.
-- Admin `PATCH /admin/elections/{id}/status` accepts only `CANCELLED`; anything else is a 409. Cancelling a CANCELLED
-  election is an idempotent no-op; cancelling a COMPLETED one is a 409.
-- Admin `PATCH …/contests/{cid}/status` is effectively a check: it returns 200 if the requested status equals the
-  current one and 409 otherwise.
+- `ElectionLifecycleCoordinator` runs every `votetrust.lifecycle.poll-interval-ms` (default 5 s) under a ShedLock
+  lock, so only one instance polls at a time. Each election advances in its own transaction with
+  `SELECT … FOR UPDATE`, and one tick can cascade through several states.
+- **Ballot ready** means at least one contest, and every contest has at least two party or independent options.
+  This is checked before registration opens and before voting opens.
+- **Fail closed:** a failed transition leaves the status unchanged and writes a `FAILURE` event, unless the
+  election's *latest* event is already the same failure. Any later event, such as an admin reschedule, re-arms
+  recording. The `votetrust.elections.stuck` gauge counts active elections whose latest event is a failure from
+  their current status.
+- Admins can cancel (PATCH status `CANCELLED`) and can **rename or reschedule a DRAFT election**
+  (`PUT /admin/elections/{id}`). A reschedule needs a registration window ending in the future, and it is
+  recorded as an `ADMINISTRATOR` lifecycle event with status unchanged. Rescheduling is how an election that
+  missed its registration window gets a new one.
 
-## Ballot configuration rules (admin)
+## Ballot configuration (admin)
 
-- Election creation: name unique (case-insensitive), `regStart < regEnd ≤ votingStart < votingEnd`. Created as DRAFT.
-- Contest and option creation is allowed only while the election is `DRAFT` **and** `now < registrationEndAt`.
-  Options also require the contest to be `DRAFT`. Configuring after `registrationStartAt` is the recovery path for
-  an election whose automatic opening failed because the ballot wasn't ready: the next scheduler tick opens
-  registration once it is. After `registrationEndAt`, a still-DRAFT election can only be cancelled.
-  Messages: "…locked once registration opens" (not DRAFT) and "…closed because the registration window has ended…".
+- Allowed while the election is `DRAFT` **and** `now < registrationEndAt`. Configuring after
+  `registrationStartAt` is the recovery path for an election that wasn't ready in time: the next scheduler tick
+  opens registration once it is.
+- Contests and options can be created, replaced (PUT, full body) and deleted. Deleting a contest deletes its
+  options. Option changes also require the contest to be `DRAFT`.
 - Contest types allowed per election type: NATIONAL → NATIONAL or PROVINCIAL; PROVINCIAL → PROVINCIAL;
-  MUNICIPAL → MUNICIPAL_PR or MUNICIPAL_WARD.
-- Required scope per contest type (matches the V5 DB check):
+  MUNICIPAL → MUNICIPAL_PR or MUNICIPAL_WARD. Scope rules (also enforced by a DB check):
 
   | Contest type | scopeProvince | scopeMunicipality | scopeWardNumber |
   | --- | --- | --- | --- |
   | NATIONAL | null | null | null |
-  | PROVINCIAL | ✔ | null | null |
-  | MUNICIPAL_PR | ✔ | ✔ | null |
-  | MUNICIPAL_WARD | ✔ | ✔ | ✔ |
+  | PROVINCIAL | required | null | null |
+  | MUNICIPAL_PR | required | required | null |
+  | MUNICIPAL_WARD | required | required | required |
 
-- Contest names and display orders are unique per election. Option names and display orders are unique per contest.
-  There is at most one BLANK and one SPOILT option per contest.
-- Nothing can be updated or deleted: there are no edit or delete endpoints for any admin resource.
+- Districts can be edited and deleted. Once any voter profile or registration uses a district, only its code and
+  name may change, because geography drives eligibility, and it can't be deleted.
+- Admins: the first comes from the bootstrap. After that, admins create admins (`POST /admin/accounts`), and
+  each creation is audited as `ADMIN_ACCOUNT_CREATED` with the acting admin.
 
 ## Voter onboarding and registration
 
-1. **Account registration** (`AuthService.register`) creates the `UserAccount` (role VOTER) and the `VoterProfile`
-   together. `SouthAfricanIdNumberValidator` requires 13 digits, a valid YYMMDD date of birth (century inferred: 20YY
-   unless that's in the future, then 19YY), a valid Luhn-style checksum, citizenship digit (index 10) == `0`, and
-   **age ≥ 16** at registration. The raw ID is HMAC-hashed with `VOTETRUST_ID_HASH_PEPPER`, and a duplicate hash
-   gives a 409. Returns a JWT immediately.
-2. **Election registration** (`VoterRegistrationService`) requires election `REGISTRATION_OPEN` **and** `now` within
-   `[registrationStartAt, registrationEndAt]` (inclusive). The registration **always uses the `VoterProfile`'s
-   district**. The request body is optional (`{}` or none). If it includes a `votingDistrictId` that differs from
-   the profile's, the result is 422 "Voting district must match the district on your voter profile". There's no
-   API to change a profile's district yet. One registration per (profile, election).
+1. **Account registration** creates the `UserAccount` (VOTER) and the `VoterProfile` together. The SA ID is
+   validated (13 digits, a real date of birth, Luhn-style checksum, citizenship digit `0`, age ≥ 16), then
+   HMAC-hashed. A duplicate email *or* ID returns the same generic 409 message.
+2. **Election registration** requires `REGISTRATION_OPEN` and `now` inside the window. It **always uses the
+   profile's district**. The body is optional; a `votingDistrictId` that differs from the profile's gets a 422.
 
-## Voting flow (anonymity design)
+## Voting flow: blind signatures
+
+The server issues a credential to an authenticated voter but can't link the resulting ballot to them.
 
 ```
-Voter (JWT) ── POST /elections/{e}/contests/{c}/credentials ──▶ VotingService.issueVotingCredential
-   checks: contest∈election; election VOTING_OPEN & contest OPEN & now∈[votingStart, votingEnd];
-           ACTIVE registration; age ≥ 18 on votingStartAt's UTC date; registration district matches contest scope
-   VotingRight (profile,contest) locked FOR UPDATE / created; if credentialIssued → 409
-   raw = 32 random bytes base64url; store HMAC(raw, VOTE_CREDENTIAL_PEPPER) + expiresAt = votingEndAt
-   VotingRight.credentialIssued = true   ← the only link between voter and contest; says nothing about the ballot
-   ◀── { votingCredential: raw, expiresAt }   (the only time raw is ever visible)
+GET  /elections/{e}/contests/{c}/ballot-key            (public, once the contest is OPEN)
+     ◀── { modulus n, publicExponent e, keyFingerprint, tokenDomain }
 
-Anyone (no JWT) ── POST /ballots { contestId, contestOptionId, votingCredential } ──▶ VotingService.castBallot
-   option∈contest; voting open (same checks); credential looked up by HMAC + contest FOR UPDATE
-   used → 409 "already been used"; unknown/expired → 401
-   credential.markUsed(); VoteHashChainService.appendVote(...)
-   ◀── { contestId, accepted: true, message }   (no receipt)
+Browser: t = 32 random bytes (base64url); r random, coprime with n
+         H(t) = MGF1-SHA256("votetrust-ballot-token-v1|{contestId}|{t}", len(n)+16 bytes) mod n
+         blinded = H(t) · r^e mod n
+
+POST /elections/{e}/contests/{c}/credentials  { blindedToken }   (JWT)
+     checks: voting open; ACTIVE registration; age ≥ 18 on votingStart's date; district eligible
+     VotingRight inserted ON CONFLICT DO NOTHING, then locked FOR UPDATE
+       already issued with the same blindedTokenHash → re-sign (idempotent retry)
+       already issued with a different one          → 409
+     s' = blinded^d mod n   (JCA raw RSA, which applies RSA blinding against timing attacks)
+     ◀── { blindSignature, keyFingerprint, expiresAt }
+
+Browser: s = s' · r^-1 mod n; checks s^e ≡ H(t) before using it
+
+POST /ballots  { contestId, contestOptionId, ballotToken: t, signature: s }   (no JWT)
+     verify s^e ≡ H(t) (mod n) for that contest's key, else 401
+     insert HMAC(contestId|t) into anonymous_voting_credentials ON CONFLICT DO NOTHING; 0 rows → 409 "already been used"
+     append to the internal ledger
 ```
 
-District eligibility: NATIONAL is always eligible. Province, municipality and ward are compared case-insensitively
-after trimming, against the registration's voting district, which is always the profile's district.
+Notes:
+- The blinded token is uniformly random given `r`, so storing its hash on `VotingRight` reveals nothing about `t`.
+- Keys are per contest (generated when the contest opens, or lazily for older open contests). The private key
+  is encrypted with AES-256-GCM under `HMAC-SHA256(vote-credential pepper, "votetrust-ballot-signing-key-encryption-v1")`,
+  with the contest id as associated data. **Rotating the vote-credential pepper makes the keys of open contests
+  undecryptable.**
+- One key per contest is what stops the server from tagging voters with different keys. Voters can compare
+  `keyFingerprint`, which the vote page shows after a successful ballot.
 
-## Hash-chain ledger
+## Ledgers
 
-`VoteHashChainService.appendVote` locks the contest's `LedgerState` (creating it at genesis on the first vote), then computes
+**Internal ledger** (cast order, server-side tamper evidence):
+`SHA-256("votetrust-ledger-v{1|2}|contestId|optionId|ledgerIndex|previousHash|nonce|castAt")`.
+New entries are v2, which stores and hashes `cast_at` truncated to the UTC day. v1 entries (exact instant)
+still verify. `VoteHashChainService.lockLedgerState` creates the state with `ON CONFLICT DO NOTHING`, locks it
+`FOR UPDATE`, then **refreshes the entity**. Without that refresh, an instance already cached in the persistence
+context would hide another transaction's changes; the concurrency tests caught this.
 
-```
-SHA-256( "votetrust-ledger-v1|{contestId}|{optionId}|{ledgerIndex}|{previousHash}|{nonce}|{castAt ISO-8601}" )  → lowercase hex
-```
+**Published ledger** (built once per contest when the election completes, or lazily on the first
+results/audit/ledger read): the ballots are shuffled with `SecureRandom`, given fresh nonces, and chained as
+`SHA-256("votetrust-public-ledger-v1|contestId|optionId|position|previousHash|nonce")`. Every input is public, so
+anyone can verify it, and the frontend ledger page does so in the browser. Its order reveals nothing about cast
+order. Appends check the published flag under the ledger-state lock, so no ballot can land after publication.
 
-The nonce is 24 random bytes, base64url without padding. It saves the entry and advances the state (`currentHash`,
-`nextLedgerIndex++`). This is tamper-*evident* only. Anyone with DB access can rewrite the whole chain consistently.
-
-`TallyAuditService.verifyContestLedger` replays entries in index order and reports violations for index gaps,
-`previousHash` mismatch, recomputed hash mismatch, a missing state, a stored head ≠ computed head, or a stored
-next index ≠ entry count. `chainValid = violations.isEmpty()`.
+**Audit** (`TallyAuditService.verifyContestLedger`) checks the internal chain, the published chain, the stored
+heads and counts, and that both ledgers hold the same multiset of options.
 
 ## Results
 
-`TallyAuditService.getContestResult` uses a JPQL left join from options to ledger entries, grouped per option.
-- `validVotes` = sum over PARTY and INDEPENDENT options. Blank and spoilt are counted separately and excluded from
-  `options[]` in the response.
-- `ballotsCast` = all ledger entries for the contest. `registeredVoterCount` = ACTIVE registrations for the
-  **whole election**, which is also the turnout denominator.
-- Percentages are `BigDecimal`, scale 2, HALF_UP. `leading` = voteCount equals the max and the max is > 0, so ties
-  give several leaders.
-- The public ledger (`listContestLedger`) exposes `recordedDate` (a UTC `LocalDate`) instead of `castAt`, to reduce
-  timing correlation. Note that a client can't recompute hashes from the public ledger alone because `castAt` is needed.
+- `validVotes` covers PARTY and INDEPENDENT options. Blank and spoilt ballots are counted separately and
+  excluded from `options[]`.
+- `registeredVoterCount` and `turnoutPercentage` count **only registrations eligible for that contest**
+  (grouped by district, filtered by `ContestEligibility`, the same rule credential issuance uses).
+- `ledgerHeadHash` is the **published** ledger head.
+- Results, audit and ledger stay hidden until the election is COMPLETED, the contest CLOSED, and `now > votingEndAt`.
 
 ## Security audit events
 
-`SecurityAuditService.record` runs in `REQUIRES_NEW`, so the audit row persists even if the caller's transaction
-rolls back. Events: `USER_REGISTER`, `USER_LOGIN`, `ADMIN_BOOTSTRAP`, `RATE_LIMIT_BLOCKED`. Voting and credential
-actions are **intentionally not audited**, for anonymity. Admins read the latest N events (capped at 100).
-
-## Admin bootstrap
-
-`POST /api/v1/admin/bootstrap` with header `X-VoteTrust-Bootstrap-Token`. It requires
-`votetrust.admin.bootstrap.enabled=true` (default false; startup fails if enabled with a token under 32 chars),
-a constant-time token match, no existing ADMIN, and an unused email. Disabled → 403, bad token → 401, admin exists → 409.
-It's the only way to create an admin. There is no admin-management API.
+`USER_REGISTER`, `USER_LOGIN` (including BLOCKED when throttled), `ADMIN_BOOTSTRAP`, `RATE_LIMIT_BLOCKED`,
+`TOKEN_REFRESH` (including BLOCKED on reuse), `USER_LOGOUT`, `ADMIN_ACCOUNT_CREATED`. Writes use `REQUIRES_NEW`.
+Voting and credential actions are intentionally **not** audited.

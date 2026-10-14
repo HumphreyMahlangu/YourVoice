@@ -9,6 +9,7 @@ import io.github.humphreymahlangu.votetrust.dto.CreateElectionRequest;
 import io.github.humphreymahlangu.votetrust.dto.CreateVotingDistrictRequest;
 import io.github.humphreymahlangu.votetrust.dto.ElectionResponse;
 import io.github.humphreymahlangu.votetrust.dto.ElectionStatusUpdateRequest;
+import io.github.humphreymahlangu.votetrust.dto.UpdateElectionRequest;
 import io.github.humphreymahlangu.votetrust.dto.VotingDistrictResponse;
 import io.github.humphreymahlangu.votetrust.entity.Contest;
 import io.github.humphreymahlangu.votetrust.entity.ContestOption;
@@ -23,7 +24,9 @@ import io.github.humphreymahlangu.votetrust.exception.ElectionLifecycleException
 import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
 import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
+import io.github.humphreymahlangu.votetrust.repository.ElectionRegistrationRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
 import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -40,6 +43,8 @@ public class AdminElectionManagementService {
     private final ContestRepository contestRepository;
     private final ContestOptionRepository contestOptionRepository;
     private final ElectionLifecycleService electionLifecycleService;
+    private final VoterProfileRepository voterProfileRepository;
+    private final ElectionRegistrationRepository electionRegistrationRepository;
     private final Clock clock;
 
     public AdminElectionManagementService(
@@ -48,6 +53,8 @@ public class AdminElectionManagementService {
             ContestRepository contestRepository,
             ContestOptionRepository contestOptionRepository,
             ElectionLifecycleService electionLifecycleService,
+            VoterProfileRepository voterProfileRepository,
+            ElectionRegistrationRepository electionRegistrationRepository,
             Clock clock
     ) {
         this.votingDistrictRepository = votingDistrictRepository;
@@ -55,6 +62,8 @@ public class AdminElectionManagementService {
         this.contestRepository = contestRepository;
         this.contestOptionRepository = contestOptionRepository;
         this.electionLifecycleService = electionLifecycleService;
+        this.voterProfileRepository = voterProfileRepository;
+        this.electionRegistrationRepository = electionRegistrationRepository;
         this.clock = clock;
     }
 
@@ -72,7 +81,7 @@ public class AdminElectionManagementService {
                 request.municipality().trim(),
                 request.wardNumber()
         ));
-        return toVotingDistrictResponse(votingDistrict);
+        return VotingDistrictResponse.from(votingDistrict);
     }
 
     @Transactional
@@ -93,7 +102,7 @@ public class AdminElectionManagementService {
                 request.votingEndAt(),
                 ElectionStatus.DRAFT
         ));
-        return toElectionResponse(election);
+        return ElectionResponse.from(election);
     }
 
     @Transactional
@@ -109,7 +118,7 @@ public class AdminElectionManagementService {
             );
         }
         Election election = electionLifecycleService.cancelElection(electionId, actorUserId, actorEmail);
-        return toElectionResponse(election);
+        return ElectionResponse.from(election);
     }
 
     @Transactional
@@ -153,9 +162,7 @@ public class AdminElectionManagementService {
         Election election = getElectionForUpdateOrThrow(electionId);
         Contest contest = getContestOrThrow(electionId, contestId);
         ensureElectionAllowsBallotConfiguration(election);
-        if (contest.getStatus() != ContestStatus.DRAFT) {
-            throw new ElectionLifecycleException("Contest ballot options can be changed only while the contest is DRAFT");
-        }
+        ensureContestIsDraft(contest);
 
         String name = request.name().trim();
         if (contestOptionRepository.existsByContestIdAndNameIgnoreCase(contestId, name)) {
@@ -177,7 +184,7 @@ public class AdminElectionManagementService {
                 request.optionType(),
                 request.displayOrder()
         ));
-        return toOptionResponse(contestOption);
+        return ContestOptionResponse.from(contestOption);
     }
 
     @Transactional
@@ -196,14 +203,202 @@ public class AdminElectionManagementService {
         );
     }
 
+    /**
+     * Renames or reschedules an election that has not opened yet. Rescheduling is how an administrator rescues an
+     * election whose registration window passed before its ballot was ready.
+     */
+    @Transactional
+    public ElectionResponse updateElection(
+            UUID electionId,
+            UpdateElectionRequest request,
+            UUID actorUserId,
+            String actorEmail
+    ) {
+        Election election = getElectionForUpdateOrThrow(electionId);
+        if (election.getStatus() != ElectionStatus.DRAFT) {
+            throw new ElectionLifecycleException("Only DRAFT elections can be edited; cancel an election that has already opened");
+        }
+        validateElectionWindows(
+                request.registrationStartAt(),
+                request.registrationEndAt(),
+                request.votingStartAt(),
+                request.votingEndAt()
+        );
+        if (!Instant.now(clock).isBefore(request.registrationEndAt())) {
+            throw new ElectionLifecycleException("The registration window must end in the future");
+        }
+
+        String name = request.name().trim();
+        if (electionRepository.existsByNameIgnoreCaseAndIdNot(name, electionId)) {
+            throw new DuplicateResourceException("An election with this name already exists");
+        }
+
+        election.updateDetails(
+                name,
+                request.registrationStartAt(),
+                request.registrationEndAt(),
+                request.votingStartAt(),
+                request.votingEndAt()
+        );
+        electionLifecycleService.recordAdministratorUpdate(
+                election,
+                actorUserId,
+                actorEmail,
+                "Election name or schedule updated by an administrator"
+        );
+        return ElectionResponse.from(election);
+    }
+
+    @Transactional
+    public ContestResponse updateContest(UUID electionId, UUID contestId, CreateContestRequest request) {
+        Election election = getElectionForUpdateOrThrow(electionId);
+        Contest contest = getContestOrThrow(electionId, contestId);
+        ensureElectionAllowsBallotConfiguration(election);
+        ensureContestIsDraft(contest);
+        validateContestTypeForElection(election.getType(), request.type());
+
+        String name = request.name().trim();
+        String scopeProvince = normalizeOptional(request.scopeProvince());
+        String scopeMunicipality = normalizeOptional(request.scopeMunicipality());
+        Integer scopeWardNumber = request.scopeWardNumber();
+        validateContestScope(request.type(), scopeProvince, scopeMunicipality, scopeWardNumber);
+
+        if (contestRepository.existsByElectionIdAndNameIgnoreCaseAndIdNot(electionId, name, contestId)) {
+            throw new DuplicateResourceException("A contest with this name already exists for this election");
+        }
+        if (contestRepository.existsByElectionIdAndDisplayOrderAndIdNot(electionId, request.displayOrder(), contestId)) {
+            throw new DuplicateResourceException("A contest with this display order already exists for this election");
+        }
+
+        contest.updateDetails(name, request.type(), request.displayOrder(), scopeProvince, scopeMunicipality, scopeWardNumber);
+        return toContestResponse(contest);
+    }
+
+    @Transactional
+    public void deleteContest(UUID electionId, UUID contestId) {
+        Election election = getElectionForUpdateOrThrow(electionId);
+        Contest contest = getContestOrThrow(electionId, contestId);
+        ensureElectionAllowsBallotConfiguration(election);
+        ensureContestIsDraft(contest);
+
+        contestOptionRepository.deleteAll(contestOptionRepository.findByContestId(contestId));
+        contestRepository.delete(contest);
+    }
+
+    @Transactional
+    public ContestOptionResponse updateContestOption(
+            UUID electionId,
+            UUID contestId,
+            UUID optionId,
+            CreateContestOptionRequest request
+    ) {
+        Election election = getElectionForUpdateOrThrow(electionId);
+        Contest contest = getContestOrThrow(electionId, contestId);
+        ensureElectionAllowsBallotConfiguration(election);
+        ensureContestIsDraft(contest);
+        ContestOption option = getOptionOrThrow(contestId, optionId);
+
+        String name = request.name().trim();
+        if (contestOptionRepository.existsByContestIdAndNameIgnoreCaseAndIdNot(contestId, name, optionId)) {
+            throw new DuplicateResourceException("A ballot option with this name already exists for this contest");
+        }
+        if (contestOptionRepository.existsByContestIdAndDisplayOrderAndIdNot(contestId, request.displayOrder(), optionId)) {
+            throw new DuplicateResourceException("A ballot option with this display order already exists for this contest");
+        }
+        if (request.optionType().isNonValidBallot()
+                && contestOptionRepository.existsByContestIdAndOptionTypeAndIdNot(contestId, request.optionType(), optionId)) {
+            throw new DuplicateResourceException("A " + request.optionType().name() + " option already exists for this contest");
+        }
+
+        option.updateDetails(name, request.optionType(), request.displayOrder());
+        return ContestOptionResponse.from(option);
+    }
+
+    @Transactional
+    public void deleteContestOption(UUID electionId, UUID contestId, UUID optionId) {
+        Election election = getElectionForUpdateOrThrow(electionId);
+        Contest contest = getContestOrThrow(electionId, contestId);
+        ensureElectionAllowsBallotConfiguration(election);
+        ensureContestIsDraft(contest);
+        contestOptionRepository.delete(getOptionOrThrow(contestId, optionId));
+    }
+
+    /**
+     * Updates a district. Once voters are registered in it, only the code and name may change: the province,
+     * municipality and ward decide which contests those voters are eligible for.
+     */
+    @Transactional
+    public VotingDistrictResponse updateVotingDistrict(UUID votingDistrictId, CreateVotingDistrictRequest request) {
+        VotingDistrict votingDistrict = votingDistrictRepository.findById(votingDistrictId)
+                .orElseThrow(() -> new ResourceNotFoundException("Voting district not found"));
+        String code = request.code().trim().toUpperCase(Locale.ROOT);
+        String province = request.province().trim();
+        String municipality = request.municipality().trim();
+        if (votingDistrictRepository.existsByCodeIgnoreCaseAndIdNot(code, votingDistrictId)) {
+            throw new DuplicateResourceException("A voting district with this code already exists");
+        }
+
+        boolean geographyChanged = !province.equals(votingDistrict.getProvince())
+                || !municipality.equals(votingDistrict.getMunicipality())
+                || !request.wardNumber().equals(votingDistrict.getWardNumber());
+        if (geographyChanged && isVotingDistrictInUse(votingDistrictId)) {
+            throw new DuplicateResourceException(
+                    "This voting district has registered voters; only its code and name can be changed"
+            );
+        }
+
+        votingDistrict.updateDetails(code, request.name().trim(), province, municipality, request.wardNumber());
+        return VotingDistrictResponse.from(votingDistrict);
+    }
+
+    @Transactional
+    public void deleteVotingDistrict(UUID votingDistrictId) {
+        VotingDistrict votingDistrict = votingDistrictRepository.findById(votingDistrictId)
+                .orElseThrow(() -> new ResourceNotFoundException("Voting district not found"));
+        if (isVotingDistrictInUse(votingDistrictId)) {
+            throw new DuplicateResourceException("This voting district has registered voters and cannot be deleted");
+        }
+        votingDistrictRepository.delete(votingDistrict);
+    }
+
+    private boolean isVotingDistrictInUse(UUID votingDistrictId) {
+        return voterProfileRepository.existsByVotingDistrictId(votingDistrictId)
+                || electionRegistrationRepository.existsByVotingDistrictId(votingDistrictId);
+    }
+
+    private void ensureContestIsDraft(Contest contest) {
+        if (contest.getStatus() != ContestStatus.DRAFT) {
+            throw new ElectionLifecycleException("Contest ballot options can be changed only while the contest is DRAFT");
+        }
+    }
+
+    private ContestOption getOptionOrThrow(UUID contestId, UUID optionId) {
+        return contestOptionRepository.findByIdAndContestId(optionId, contestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Contest option not found"));
+    }
+
     private void validateElectionWindows(CreateElectionRequest request) {
-        if (!request.registrationStartAt().isBefore(request.registrationEndAt())) {
+        validateElectionWindows(
+                request.registrationStartAt(),
+                request.registrationEndAt(),
+                request.votingStartAt(),
+                request.votingEndAt()
+        );
+    }
+
+    private void validateElectionWindows(
+            Instant registrationStartAt,
+            Instant registrationEndAt,
+            Instant votingStartAt,
+            Instant votingEndAt
+    ) {
+        if (!registrationStartAt.isBefore(registrationEndAt)) {
             throw new ElectionLifecycleException("Registration window must start before it ends");
         }
-        if (!request.votingStartAt().isBefore(request.votingEndAt())) {
+        if (!votingStartAt.isBefore(votingEndAt)) {
             throw new ElectionLifecycleException("Voting window must start before it ends");
         }
-        if (request.registrationEndAt().isAfter(request.votingStartAt())) {
+        if (registrationEndAt.isAfter(votingStartAt)) {
             throw new ElectionLifecycleException("Registration must end before voting starts");
         }
     }
@@ -276,54 +471,10 @@ public class AdminElectionManagementService {
                 .orElseThrow(() -> new ResourceNotFoundException("Contest not found"));
     }
 
-    private VotingDistrictResponse toVotingDistrictResponse(VotingDistrict votingDistrict) {
-        return new VotingDistrictResponse(
-                votingDistrict.getId(),
-                votingDistrict.getCode(),
-                votingDistrict.getName(),
-                votingDistrict.getProvince(),
-                votingDistrict.getMunicipality(),
-                votingDistrict.getWardNumber()
-        );
-    }
-
-    private ElectionResponse toElectionResponse(Election election) {
-        return new ElectionResponse(
-                election.getId(),
-                election.getName(),
-                election.getType().name(),
-                election.getStatus().name(),
-                election.getRegistrationStartAt(),
-                election.getRegistrationEndAt(),
-                election.getVotingStartAt(),
-                election.getVotingEndAt()
-        );
-    }
-
     private ContestResponse toContestResponse(Contest contest) {
-        return new ContestResponse(
-                contest.getId(),
-                contest.getElection().getId(),
-                contest.getName(),
-                contest.getType().name(),
-                contest.getStatus().name(),
-                contest.getDisplayOrder(),
-                contest.getScopeProvince(),
-                contest.getScopeMunicipality(),
-                contest.getScopeWardNumber(),
+        return ContestResponse.from(
+                contest,
                 contestOptionRepository.findByContestIdOrderByDisplayOrderAscNameAsc(contest.getId())
-                        .stream()
-                        .map(this::toOptionResponse)
-                        .toList()
-        );
-    }
-
-    private ContestOptionResponse toOptionResponse(ContestOption contestOption) {
-        return new ContestOptionResponse(
-                contestOption.getId(),
-                contestOption.getName(),
-                contestOption.getOptionType().name(),
-                contestOption.getDisplayOrder()
         );
     }
 }

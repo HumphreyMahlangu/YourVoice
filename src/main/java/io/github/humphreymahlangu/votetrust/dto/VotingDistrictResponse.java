@@ -1,5 +1,6 @@
 package io.github.humphreymahlangu.votetrust.dto;
 
+import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
 
@@ -23,4 +24,15 @@ public record VotingDistrictResponse(
         @Schema(description = "Municipal ward number", example = "12")
         Integer wardNumber
 ) {
+
+    public static VotingDistrictResponse from(VotingDistrict votingDistrict) {
+        return new VotingDistrictResponse(
+                votingDistrict.getId(),
+                votingDistrict.getCode(),
+                votingDistrict.getName(),
+                votingDistrict.getProvince(),
+                votingDistrict.getMunicipality(),
+                votingDistrict.getWardNumber()
+        );
+    }
 }

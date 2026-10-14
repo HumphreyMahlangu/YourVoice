@@ -6,6 +6,8 @@ import io.github.humphreymahlangu.votetrust.entity.RegistrationStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -25,7 +27,7 @@ public interface ElectionRegistrationRepository extends JpaRepository<ElectionRe
     long countByElectionIdAndStatus(UUID electionId, RegistrationStatus status);
 
     @EntityGraph(attributePaths = {"election", "votingDistrict"})
-    List<ElectionRegistration> findByVoterProfileUserAccountIdOrderByRegisteredAtDesc(UUID userAccountId);
+    Page<ElectionRegistration> findByVoterProfileUserAccountIdOrderByRegisteredAtDesc(UUID userAccountId, Pageable pageable);
 
     @Query("""
             select new io.github.humphreymahlangu.votetrust.dto.DistrictRegistrationCount(
@@ -44,4 +46,6 @@ public interface ElectionRegistrationRepository extends JpaRepository<ElectionRe
             @Param("electionId") UUID electionId,
             @Param("status") RegistrationStatus status
     );
+
+    boolean existsByVotingDistrictId(UUID votingDistrictId);
 }

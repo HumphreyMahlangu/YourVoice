@@ -17,8 +17,9 @@ import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
 import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,15 +73,13 @@ public class VoterRegistrationService {
                 Instant.now(clock)
         );
 
-        return toResponse(electionRegistrationRepository.save(registration));
+        return ElectionRegistrationResponse.from(electionRegistrationRepository.save(registration));
     }
 
     @Transactional(readOnly = true)
-    public List<ElectionRegistrationResponse> listMyRegistrations(UUID userAccountId) {
-        return electionRegistrationRepository.findByVoterProfileUserAccountIdOrderByRegisteredAtDesc(userAccountId)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<ElectionRegistrationResponse> listMyRegistrations(UUID userAccountId, Pageable pageable) {
+        return electionRegistrationRepository.findByVoterProfileUserAccountIdOrderByRegisteredAtDesc(userAccountId, pageable)
+                .map(ElectionRegistrationResponse::from);
     }
 
     private void assertRegistrationPeriodOpen(Election election) {
@@ -91,22 +90,5 @@ public class VoterRegistrationService {
         if (election.getStatus() != ElectionStatus.REGISTRATION_OPEN || !withinRegistrationWindow) {
             throw new RegistrationClosedException("Election registration period is closed");
         }
-    }
-
-    private ElectionRegistrationResponse toResponse(ElectionRegistration registration) {
-        Election election = registration.getElection();
-        VotingDistrict votingDistrict = registration.getVotingDistrict();
-        return new ElectionRegistrationResponse(
-                registration.getId(),
-                election.getId(),
-                election.getName(),
-                election.getType().name(),
-                registration.getStatus().name(),
-                registration.getRegisteredAt(),
-                votingDistrict.getId(),
-                votingDistrict.getCode(),
-                votingDistrict.getName(),
-                votingDistrict.getProvince()
-        );
     }
 }

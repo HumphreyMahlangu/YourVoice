@@ -1,5 +1,6 @@
 package io.github.humphreymahlangu.votetrust.dto;
 
+import io.github.humphreymahlangu.votetrust.entity.Election;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.UUID;
@@ -30,4 +31,17 @@ public record ElectionResponse(
         @Schema(description = "UTC instant when voting closes", example = "2026-08-07T19:00:00Z")
         Instant votingEndAt
 ) {
+
+    public static ElectionResponse from(Election election) {
+        return new ElectionResponse(
+                election.getId(),
+                election.getName(),
+                election.getType().name(),
+                election.getStatus().name(),
+                election.getRegistrationStartAt(),
+                election.getRegistrationEndAt(),
+                election.getVotingStartAt(),
+                election.getVotingEndAt()
+        );
+    }
 }

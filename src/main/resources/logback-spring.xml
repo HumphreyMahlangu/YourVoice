@@ -2,24 +2,11 @@
 <!--
   Console logging in one of two formats, chosen by votetrust.logging.format (env VOTETRUST_LOG_FORMAT):
   "text" (default) is Spring Boot's console pattern with the request ID; "json" writes one JSON object per line,
-  including the MDC request ID, for log aggregation.
+  including the MDC request ID, for log aggregation. Only the selected appender is defined, so Logback has no
+  unreferenced appender to warn about. LoggingProperties rejects any other value at startup.
 -->
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     <springProperty scope="context" name="logFormat" source="votetrust.logging.format" defaultValue="text"/>
-
-    <appender name="text" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
-            <charset>${CONSOLE_LOG_CHARSET}</charset>
-        </encoder>
-    </appender>
-
-    <appender name="json" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-    </appender>
-
-    <root level="INFO">
-        <appender-ref ref="${logFormat}"/>
-    </root>
+    <include resource="votetrust-logging-${logFormat}.xml"/>
 </configuration>

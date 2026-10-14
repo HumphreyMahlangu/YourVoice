@@ -40,7 +40,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
         CorsProperties.class,
         AdminBootstrapProperties.class,
         RateLimitProperties.class,
-        LoginThrottleProperties.class
+        LoginThrottleProperties.class,
+        LoggingProperties.class
 })
 public class SecurityConfig {
 
@@ -98,13 +99,15 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(corsProperties.allowedOriginList());
-        configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
                 HttpHeaders.AUTHORIZATION,
                 HttpHeaders.CONTENT_TYPE,
                 HttpHeaders.ACCEPT,
                 "X-Requested-With"
         ));
+        // Let browser clients read pagination totals, request IDs, and rate-limit hints.
+        configuration.setExposedHeaders(List.of("X-Total-Count", "X-Request-Id", HttpHeaders.RETRY_AFTER));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
 

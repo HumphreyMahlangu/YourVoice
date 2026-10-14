@@ -27,3 +27,12 @@ export interface CreateElectionRequest {
   votingStartAt: string
   votingEndAt: string
 }
+
+/** Replacement name and schedule for a DRAFT election; the type cannot change. */
+export interface UpdateElectionRequest {
+  name: string
+  registrationStartAt: string
+  registrationEndAt: string
+  votingStartAt: string
+  votingEndAt: string
+}
