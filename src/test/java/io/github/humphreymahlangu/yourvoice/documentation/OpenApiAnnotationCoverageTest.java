@@ -1,18 +1,18 @@
-package io.github.humphreymahlangu.votetrust.documentation;
+package io.github.humphreymahlangu.yourvoice.documentation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.humphreymahlangu.votetrust.controller.AdminAccountController;
-import io.github.humphreymahlangu.votetrust.controller.AdminBootstrapController;
-import io.github.humphreymahlangu.votetrust.controller.AdminElectionManagementController;
-import io.github.humphreymahlangu.votetrust.controller.AdminSecurityAuditController;
-import io.github.humphreymahlangu.votetrust.controller.AuthController;
-import io.github.humphreymahlangu.votetrust.controller.BallotController;
-import io.github.humphreymahlangu.votetrust.controller.ContestController;
-import io.github.humphreymahlangu.votetrust.controller.ContestResultController;
-import io.github.humphreymahlangu.votetrust.controller.ElectionController;
-import io.github.humphreymahlangu.votetrust.controller.MyRegistrationController;
-import io.github.humphreymahlangu.votetrust.controller.VotingDistrictController;
+import io.github.humphreymahlangu.yourvoice.controller.AdminAccountController;
+import io.github.humphreymahlangu.yourvoice.controller.AdminBootstrapController;
+import io.github.humphreymahlangu.yourvoice.controller.AdminElectionManagementController;
+import io.github.humphreymahlangu.yourvoice.controller.AdminSecurityAuditController;
+import io.github.humphreymahlangu.yourvoice.controller.AuthController;
+import io.github.humphreymahlangu.yourvoice.controller.BallotController;
+import io.github.humphreymahlangu.yourvoice.controller.ContestController;
+import io.github.humphreymahlangu.yourvoice.controller.ContestResultController;
+import io.github.humphreymahlangu.yourvoice.controller.ElectionController;
+import io.github.humphreymahlangu.yourvoice.controller.MyRegistrationController;
+import io.github.humphreymahlangu.yourvoice.controller.VotingDistrictController;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -95,19 +95,19 @@ class OpenApiAnnotationCoverageTest {
         assertThat(AdminAccountController.class.getAnnotation(SecurityRequirement.class).name())
                 .isEqualTo("bearerAuth");
 
-        assertBearerSecurity(AuthController.class.getDeclaredMethod("me", io.github.humphreymahlangu.votetrust.security.UserPrincipal.class));
+        assertBearerSecurity(AuthController.class.getDeclaredMethod("me", io.github.humphreymahlangu.yourvoice.security.UserPrincipal.class));
         assertBearerSecurity(ElectionController.class.getDeclaredMethod(
                 "registerForElection",
-                io.github.humphreymahlangu.votetrust.security.UserPrincipal.class,
+                io.github.humphreymahlangu.yourvoice.security.UserPrincipal.class,
                 java.util.UUID.class,
-                io.github.humphreymahlangu.votetrust.dto.ElectionRegistrationRequest.class
+                io.github.humphreymahlangu.yourvoice.dto.ElectionRegistrationRequest.class
         ));
         assertBearerSecurity(ContestController.class.getDeclaredMethod(
                 "issueVotingCredential",
-                io.github.humphreymahlangu.votetrust.security.UserPrincipal.class,
+                io.github.humphreymahlangu.yourvoice.security.UserPrincipal.class,
                 java.util.UUID.class,
                 java.util.UUID.class,
-                io.github.humphreymahlangu.votetrust.dto.VotingCredentialRequest.class
+                io.github.humphreymahlangu.yourvoice.dto.VotingCredentialRequest.class
         ));
     }
 

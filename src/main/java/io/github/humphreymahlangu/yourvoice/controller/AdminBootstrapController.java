@@ -1,10 +1,10 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
-import io.github.humphreymahlangu.votetrust.dto.AdminBootstrapRequest;
-import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
-import io.github.humphreymahlangu.votetrust.dto.AuthResponse;
-import io.github.humphreymahlangu.votetrust.security.SecurityAuditMetadata;
-import io.github.humphreymahlangu.votetrust.service.AdminBootstrapService;
+import io.github.humphreymahlangu.yourvoice.dto.AdminBootstrapRequest;
+import io.github.humphreymahlangu.yourvoice.dto.ApiErrorResponse;
+import io.github.humphreymahlangu.yourvoice.dto.AuthResponse;
+import io.github.humphreymahlangu.yourvoice.security.SecurityAuditMetadata;
+import io.github.humphreymahlangu.yourvoice.service.AdminBootstrapService;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,7 +53,7 @@ import org.springframework.web.bind.annotation.RestController;
 })
 public class AdminBootstrapController {
 
-    public static final String BOOTSTRAP_TOKEN_HEADER = "X-VoteTrust-Bootstrap-Token";
+    public static final String BOOTSTRAP_TOKEN_HEADER = "X-YourVoice-Bootstrap-Token";
 
     private final AdminBootstrapService adminBootstrapService;
 

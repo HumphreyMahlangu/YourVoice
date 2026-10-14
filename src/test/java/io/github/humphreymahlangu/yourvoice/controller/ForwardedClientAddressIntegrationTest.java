@@ -1,12 +1,12 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEvent;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEventType;
-import io.github.humphreymahlangu.votetrust.repository.SecurityAuditEventRepository;
-import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
-import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditEvent;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditEventType;
+import io.github.humphreymahlangu.yourvoice.repository.SecurityAuditEventRepository;
+import io.github.humphreymahlangu.yourvoice.support.DatabaseCleaner;
+import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -29,9 +29,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
-                "votetrust.security.rate-limit.auth-limit=1",
+                "yourvoice.security.rate-limit.auth-limit=1",
                 // A long fixed window keeps the two same-client requests from straddling a window boundary.
-                "votetrust.security.rate-limit.window-seconds=3600"
+                "yourvoice.security.rate-limit.window-seconds=3600"
         }
 )
 @ActiveProfiles("test")

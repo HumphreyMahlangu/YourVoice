@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.dto;
+package io.github.humphreymahlangu.yourvoice.dto;
 
-import io.github.humphreymahlangu.votetrust.security.RequestIdFilter;
+import io.github.humphreymahlangu.yourvoice.security.RequestIdFilter;
 import java.time.Instant;
 import java.util.Map;
 import io.swagger.v3.oas.annotations.media.Schema;

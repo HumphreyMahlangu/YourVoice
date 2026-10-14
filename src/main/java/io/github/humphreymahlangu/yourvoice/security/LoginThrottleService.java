@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
 import java.time.Clock;
 import java.util.concurrent.atomic.AtomicLong;

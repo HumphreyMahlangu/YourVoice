@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.observability;
+package io.github.humphreymahlangu.yourvoice.observability;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  * a voter cast their ballot recover their choice.
  */
 @Component
-public class VoteTrustMetrics {
+public class YourVoiceMetrics {
 
     private final Counter ballotsCast;
     private final Counter credentialsIssued;
@@ -20,21 +20,21 @@ public class VoteTrustMetrics {
     private final Counter lifecycleFailures;
     private final MeterRegistry meterRegistry;
 
-    public VoteTrustMetrics(MeterRegistry meterRegistry) {
+    public YourVoiceMetrics(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
-        this.ballotsCast = Counter.builder("votetrust.ballots.cast")
+        this.ballotsCast = Counter.builder("yourvoice.ballots.cast")
                 .description("Ballots accepted into a contest ledger")
                 .register(meterRegistry);
-        this.credentialsIssued = Counter.builder("votetrust.credentials.issued")
+        this.credentialsIssued = Counter.builder("yourvoice.credentials.issued")
                 .description("Ballot credentials signed for the first time")
                 .register(meterRegistry);
-        this.loginsThrottled = Counter.builder("votetrust.auth.logins.throttled")
+        this.loginsThrottled = Counter.builder("yourvoice.auth.logins.throttled")
                 .description("Sign-in attempts rejected because the email is temporarily locked")
                 .register(meterRegistry);
-        this.refreshTokenReuse = Counter.builder("votetrust.auth.refresh.token.reuse")
+        this.refreshTokenReuse = Counter.builder("yourvoice.auth.refresh.token.reuse")
                 .description("Revoked refresh tokens presented again (possible token theft)")
                 .register(meterRegistry);
-        this.lifecycleFailures = Counter.builder("votetrust.lifecycle.failures")
+        this.lifecycleFailures = Counter.builder("yourvoice.lifecycle.failures")
                 .description("Automatic election transitions that failed closed")
                 .register(meterRegistry);
     }
@@ -60,7 +60,7 @@ public class VoteTrustMetrics {
     }
 
     public void rateLimitBlocked(String bucket) {
-        Counter.builder("votetrust.ratelimit.blocked")
+        Counter.builder("yourvoice.ratelimit.blocked")
                 .description("Requests rejected by the IP rate limiter")
                 .tag("bucket", bucket)
                 .register(meterRegistry)

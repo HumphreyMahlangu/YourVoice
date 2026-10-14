@@ -1,9 +1,9 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.humphreymahlangu.votetrust.exception.EligibilityException;
+import io.github.humphreymahlangu.yourvoice.exception.EligibilityException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;

@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.support;
+package io.github.humphreymahlangu.yourvoice.support;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -8,14 +8,14 @@ import org.testcontainers.utility.DockerImageName;
 public abstract class PostgreSqlTestContainerSupport {
 
     private static final DockerImageName POSTGRES_IMAGE = DockerImageName.parse("postgres:16-alpine");
-    private static final String TEST_DATASOURCE_URL = "VOTETRUST_TEST_DATASOURCE_URL";
-    private static final String TEST_DATASOURCE_USERNAME = "VOTETRUST_TEST_DATASOURCE_USERNAME";
-    private static final String TEST_DATASOURCE_PASSWORD = "VOTETRUST_TEST_DATASOURCE_PASSWORD";
+    private static final String TEST_DATASOURCE_URL = "YOURVOICE_TEST_DATASOURCE_URL";
+    private static final String TEST_DATASOURCE_USERNAME = "YOURVOICE_TEST_DATASOURCE_USERNAME";
+    private static final String TEST_DATASOURCE_PASSWORD = "YOURVOICE_TEST_DATASOURCE_PASSWORD";
 
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(POSTGRES_IMAGE)
-            .withDatabaseName("votetrust_test")
-            .withUsername("votetrust")
-            .withPassword("votetrust");
+            .withDatabaseName("yourvoice_test")
+            .withUsername("yourvoice")
+            .withPassword("yourvoice");
 
     @DynamicPropertySource
     static void configurePostgreSql(DynamicPropertyRegistry registry) {

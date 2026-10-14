@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.dto;
+package io.github.humphreymahlangu.yourvoice.dto;
 
 /**
  * Number of registrations in an election grouped by the geographic fields used for contest eligibility.

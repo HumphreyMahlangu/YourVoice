@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.dto;
+package io.github.humphreymahlangu.yourvoice.dto;
 
-import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 

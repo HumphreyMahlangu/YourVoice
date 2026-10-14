@@ -1,12 +1,12 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.entity.BallotLedgerEntry;
-import io.github.humphreymahlangu.votetrust.entity.Contest;
-import io.github.humphreymahlangu.votetrust.entity.ContestOption;
-import io.github.humphreymahlangu.votetrust.entity.LedgerState;
-import io.github.humphreymahlangu.votetrust.exception.VotingClosedException;
-import io.github.humphreymahlangu.votetrust.repository.BallotLedgerEntryRepository;
-import io.github.humphreymahlangu.votetrust.repository.LedgerStateRepository;
+import io.github.humphreymahlangu.yourvoice.entity.BallotLedgerEntry;
+import io.github.humphreymahlangu.yourvoice.entity.Contest;
+import io.github.humphreymahlangu.yourvoice.entity.ContestOption;
+import io.github.humphreymahlangu.yourvoice.entity.LedgerState;
+import io.github.humphreymahlangu.yourvoice.exception.VotingClosedException;
+import io.github.humphreymahlangu.yourvoice.repository.BallotLedgerEntryRepository;
+import io.github.humphreymahlangu.yourvoice.repository.LedgerStateRepository;
 import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

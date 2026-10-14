@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;

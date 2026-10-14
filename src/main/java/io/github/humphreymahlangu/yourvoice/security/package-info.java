@@ -1,4 +1,4 @@
 /**
  * Authentication, authorization, JWT, and password-security components.
  */
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;

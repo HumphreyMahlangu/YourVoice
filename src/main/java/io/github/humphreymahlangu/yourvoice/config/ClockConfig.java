@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.config;
+package io.github.humphreymahlangu.yourvoice.config;
 
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;

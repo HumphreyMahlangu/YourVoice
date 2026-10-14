@@ -1,7 +1,7 @@
-package io.github.humphreymahlangu.votetrust.exception;
+package io.github.humphreymahlangu.yourvoice.exception;
 
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
-import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
+import io.github.humphreymahlangu.yourvoice.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.LinkedHashMap;

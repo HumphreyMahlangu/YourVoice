@@ -1,8 +1,8 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.dto.DistrictRegistrationCount;
-import io.github.humphreymahlangu.votetrust.entity.ElectionRegistration;
-import io.github.humphreymahlangu.votetrust.entity.RegistrationStatus;
+import io.github.humphreymahlangu.yourvoice.dto.DistrictRegistrationCount;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionRegistration;
+import io.github.humphreymahlangu.yourvoice.entity.RegistrationStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,7 +30,7 @@ public interface ElectionRegistrationRepository extends JpaRepository<ElectionRe
     Page<ElectionRegistration> findByVoterProfileUserAccountIdOrderByRegisteredAtDesc(UUID userAccountId, Pageable pageable);
 
     @Query("""
-            select new io.github.humphreymahlangu.votetrust.dto.DistrictRegistrationCount(
+            select new io.github.humphreymahlangu.yourvoice.dto.DistrictRegistrationCount(
                 district.province,
                 district.municipality,
                 district.wardNumber,

@@ -1,7 +1,7 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.entity.Contest;
-import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
+import io.github.humphreymahlangu.yourvoice.entity.Contest;
+import io.github.humphreymahlangu.yourvoice.entity.VotingDistrict;
 
 /**
  * Geographic eligibility rule shared by credential issuance and turnout calculation, so both always agree on

@@ -21,7 +21,7 @@ import { AuthContext } from './context'
 // the user out. It is scoped to this tab and cleared when the tab closes. The
 // access token stays in memory only. Cookies are not an option because the
 // frontend and API run on different sites.
-const REFRESH_TOKEN_KEY = 'votetrust.refreshToken'
+const REFRESH_TOKEN_KEY = 'yourvoice.refreshToken'
 const REFRESH_LEAD_MS = 60_000
 
 // Concurrent refreshes of the same token must share one request: the API treats a second use of a rotated

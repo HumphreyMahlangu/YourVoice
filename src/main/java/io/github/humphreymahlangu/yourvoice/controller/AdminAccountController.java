@@ -1,11 +1,11 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
-import io.github.humphreymahlangu.votetrust.dto.AdminAccountResponse;
-import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
-import io.github.humphreymahlangu.votetrust.dto.CreateAdminAccountRequest;
-import io.github.humphreymahlangu.votetrust.security.SecurityAuditMetadata;
-import io.github.humphreymahlangu.votetrust.security.UserPrincipal;
-import io.github.humphreymahlangu.votetrust.service.AdminAccountService;
+import io.github.humphreymahlangu.yourvoice.dto.AdminAccountResponse;
+import io.github.humphreymahlangu.yourvoice.dto.ApiErrorResponse;
+import io.github.humphreymahlangu.yourvoice.dto.CreateAdminAccountRequest;
+import io.github.humphreymahlangu.yourvoice.security.SecurityAuditMetadata;
+import io.github.humphreymahlangu.yourvoice.security.UserPrincipal;
+import io.github.humphreymahlangu.yourvoice.service.AdminAccountService;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Operation;

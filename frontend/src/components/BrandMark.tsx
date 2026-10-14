@@ -5,7 +5,7 @@ interface BrandMarkProps {
 function BrandMark({ size = 'small' }: BrandMarkProps) {
   return (
     <span className={`brand-mark brand-mark--${size}`} aria-hidden="true">
-      <span>V</span>
+      <span>Y</span>
     </span>
   )
 }

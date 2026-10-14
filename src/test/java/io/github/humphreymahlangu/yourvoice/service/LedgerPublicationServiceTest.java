@@ -1,8 +1,8 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.humphreymahlangu.votetrust.entity.LedgerState;
+import io.github.humphreymahlangu.yourvoice.entity.LedgerState;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 

@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.entity.AnonymousVotingCredential;
+import io.github.humphreymahlangu.yourvoice.entity.AnonymousVotingCredential;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

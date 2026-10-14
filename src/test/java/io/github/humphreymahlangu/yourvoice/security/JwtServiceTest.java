@@ -1,9 +1,9 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.humphreymahlangu.votetrust.entity.AccountRole;
-import io.github.humphreymahlangu.votetrust.entity.UserAccount;
+import io.github.humphreymahlangu.yourvoice.entity.AccountRole;
+import io.github.humphreymahlangu.yourvoice.entity.UserAccount;
 import java.lang.reflect.Field;
 import java.time.Clock;
 import java.time.Instant;
@@ -19,7 +19,7 @@ class JwtServiceTest {
     void generateAccessTokenCreatesTokenThatCanBeParsedBackToUserId() throws Exception {
         JwtProperties properties = new JwtProperties(
                 "unit-test-secret-value-that-is-long-enough",
-                "votetrust-test",
+                "yourvoice-test",
                 15,
                 12
         );

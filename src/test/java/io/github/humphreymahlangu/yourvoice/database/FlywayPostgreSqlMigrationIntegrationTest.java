@@ -1,9 +1,9 @@
-package io.github.humphreymahlangu.votetrust.database;
+package io.github.humphreymahlangu.yourvoice.database;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
+import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;

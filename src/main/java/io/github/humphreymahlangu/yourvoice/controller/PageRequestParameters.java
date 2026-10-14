@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
 import java.util.List;
 import org.springframework.data.domain.Page;

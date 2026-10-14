@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
-import io.github.humphreymahlangu.votetrust.entity.UserAccount;
+import io.github.humphreymahlangu.yourvoice.entity.UserAccount;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;

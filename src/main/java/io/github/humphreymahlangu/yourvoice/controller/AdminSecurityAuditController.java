@@ -1,8 +1,8 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
-import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
-import io.github.humphreymahlangu.votetrust.dto.SecurityAuditEventResponse;
-import io.github.humphreymahlangu.votetrust.service.SecurityAuditService;
+import io.github.humphreymahlangu.yourvoice.dto.ApiErrorResponse;
+import io.github.humphreymahlangu.yourvoice.dto.SecurityAuditEventResponse;
+import io.github.humphreymahlangu.yourvoice.service.SecurityAuditService;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Operation;

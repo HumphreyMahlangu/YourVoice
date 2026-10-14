@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
-import io.github.humphreymahlangu.votetrust.entity.UserAccount;
+import io.github.humphreymahlangu.yourvoice.entity.UserAccount;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;

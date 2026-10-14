@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

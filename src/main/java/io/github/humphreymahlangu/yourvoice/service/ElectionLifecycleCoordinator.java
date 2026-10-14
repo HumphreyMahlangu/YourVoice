@@ -1,7 +1,7 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
-import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionStatus;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionRepository;
 import java.util.List;
 import java.util.UUID;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @ConditionalOnProperty(
-        name = "votetrust.lifecycle.scheduling-enabled",
+        name = "yourvoice.lifecycle.scheduling-enabled",
         havingValue = "true",
         matchIfMissing = true
 )
@@ -39,8 +39,8 @@ public class ElectionLifecycleCoordinator {
     }
 
     @Scheduled(
-            initialDelayString = "${votetrust.lifecycle.poll-interval-ms:5000}",
-            fixedDelayString = "${votetrust.lifecycle.poll-interval-ms:5000}"
+            initialDelayString = "${yourvoice.lifecycle.poll-interval-ms:5000}",
+            fixedDelayString = "${yourvoice.lifecycle.poll-interval-ms:5000}"
     )
     @SchedulerLock(name = "electionLifecycleCoordinator", lockAtMostFor = "PT1M", lockAtLeastFor = "PT1S")
     public void synchronizeElectionStates() {

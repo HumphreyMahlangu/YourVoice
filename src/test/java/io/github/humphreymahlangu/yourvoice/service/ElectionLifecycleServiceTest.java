@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -7,20 +7,20 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.github.humphreymahlangu.votetrust.entity.Contest;
-import io.github.humphreymahlangu.votetrust.entity.ContestStatus;
-import io.github.humphreymahlangu.votetrust.entity.ContestType;
-import io.github.humphreymahlangu.votetrust.entity.Election;
-import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleEvent;
-import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleOutcome;
-import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleTrigger;
-import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
-import io.github.humphreymahlangu.votetrust.entity.ElectionType;
-import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
-import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
-import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
-import io.github.humphreymahlangu.votetrust.repository.ElectionLifecycleEventRepository;
-import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.github.humphreymahlangu.yourvoice.entity.Contest;
+import io.github.humphreymahlangu.yourvoice.entity.ContestStatus;
+import io.github.humphreymahlangu.yourvoice.entity.ContestType;
+import io.github.humphreymahlangu.yourvoice.entity.Election;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionLifecycleEvent;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionLifecycleOutcome;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionLifecycleTrigger;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionStatus;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionType;
+import io.github.humphreymahlangu.yourvoice.observability.YourVoiceMetrics;
+import io.github.humphreymahlangu.yourvoice.repository.ContestOptionRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ContestRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionLifecycleEventRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.lang.reflect.Field;
 import java.time.Clock;
@@ -70,7 +70,7 @@ class ElectionLifecycleServiceTest {
                 lifecycleEventRepository,
                 ledgerPublicationService,
                 ballotSigningKeyService,
-                new VoteTrustMetrics(new SimpleMeterRegistry()),
+                new YourVoiceMetrics(new SimpleMeterRegistry()),
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }

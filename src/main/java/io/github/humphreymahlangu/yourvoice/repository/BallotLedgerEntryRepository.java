@@ -1,7 +1,7 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.dto.ContestOptionTallyRow;
-import io.github.humphreymahlangu.votetrust.entity.BallotLedgerEntry;
+import io.github.humphreymahlangu.yourvoice.dto.ContestOptionTallyRow;
+import io.github.humphreymahlangu.yourvoice.entity.BallotLedgerEntry;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -17,7 +17,7 @@ public interface BallotLedgerEntryRepository extends JpaRepository<BallotLedgerE
     long countByContestId(UUID contestId);
 
     @Query("""
-            select new io.github.humphreymahlangu.votetrust.dto.ContestOptionTallyRow(
+            select new io.github.humphreymahlangu.yourvoice.dto.ContestOptionTallyRow(
                 contestOption.id,
                 contestOption.name,
                 contestOption.optionType,

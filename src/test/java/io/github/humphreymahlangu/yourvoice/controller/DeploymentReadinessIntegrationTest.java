@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -7,7 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
+import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -19,7 +19,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest(properties = "votetrust.security.cors.allowed-origins=https://portfolio.example")
+@SpringBootTest(properties = "yourvoice.security.cors.allowed-origins=https://portfolio.example")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Testcontainers(disabledWithoutDocker = true)
@@ -58,7 +58,7 @@ class DeploymentReadinessIntegrationTest extends PostgreSqlTestContainerSupport 
     void openApiDocsArePublicAndDescribeCoreSecurityAndVotingEndpoints() throws Exception {
         mockMvc.perform(get("/api-docs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.info.title").value("VoteTrust API"))
+                .andExpect(jsonPath("$.info.title").value("YourVoice API"))
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
                 .andExpect(jsonPath("$.paths['/api/v1/ballots'].post.summary").value("Cast an anonymous ballot"))
                 .andExpect(jsonPath("$.paths['/api/v1/admin/security-audit-events'].get.security[0].bearerAuth").isArray());

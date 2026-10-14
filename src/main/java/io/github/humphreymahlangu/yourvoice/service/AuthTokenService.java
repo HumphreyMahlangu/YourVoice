@@ -1,16 +1,16 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.dto.AuthResponse;
-import io.github.humphreymahlangu.votetrust.entity.RefreshToken;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEventType;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditOutcome;
-import io.github.humphreymahlangu.votetrust.entity.UserAccount;
-import io.github.humphreymahlangu.votetrust.exception.InvalidRefreshTokenException;
-import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
-import io.github.humphreymahlangu.votetrust.repository.RefreshTokenRepository;
-import io.github.humphreymahlangu.votetrust.security.JwtProperties;
-import io.github.humphreymahlangu.votetrust.security.JwtService;
-import io.github.humphreymahlangu.votetrust.security.SecurityAuditMetadata;
+import io.github.humphreymahlangu.yourvoice.dto.AuthResponse;
+import io.github.humphreymahlangu.yourvoice.entity.RefreshToken;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditEventType;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditOutcome;
+import io.github.humphreymahlangu.yourvoice.entity.UserAccount;
+import io.github.humphreymahlangu.yourvoice.exception.InvalidRefreshTokenException;
+import io.github.humphreymahlangu.yourvoice.observability.YourVoiceMetrics;
+import io.github.humphreymahlangu.yourvoice.repository.RefreshTokenRepository;
+import io.github.humphreymahlangu.yourvoice.security.JwtProperties;
+import io.github.humphreymahlangu.yourvoice.security.JwtService;
+import io.github.humphreymahlangu.yourvoice.security.SecurityAuditMetadata;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -40,7 +40,7 @@ public class AuthTokenService {
     private final JwtProperties jwtProperties;
     private final RefreshTokenRepository refreshTokenRepository;
     private final SecurityAuditService securityAuditService;
-    private final VoteTrustMetrics metrics;
+    private final YourVoiceMetrics metrics;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -49,7 +49,7 @@ public class AuthTokenService {
             JwtProperties jwtProperties,
             RefreshTokenRepository refreshTokenRepository,
             SecurityAuditService securityAuditService,
-            VoteTrustMetrics metrics,
+            YourVoiceMetrics metrics,
             Clock clock
     ) {
         this.jwtService = jwtService;

@@ -1,13 +1,13 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.entity.BallotLedgerEntry;
-import io.github.humphreymahlangu.votetrust.entity.Contest;
-import io.github.humphreymahlangu.votetrust.entity.ContestOption;
-import io.github.humphreymahlangu.votetrust.entity.LedgerState;
-import io.github.humphreymahlangu.votetrust.entity.PublishedBallotEntry;
-import io.github.humphreymahlangu.votetrust.repository.BallotLedgerEntryRepository;
-import io.github.humphreymahlangu.votetrust.repository.LedgerStateRepository;
-import io.github.humphreymahlangu.votetrust.repository.PublishedBallotEntryRepository;
+import io.github.humphreymahlangu.yourvoice.entity.BallotLedgerEntry;
+import io.github.humphreymahlangu.yourvoice.entity.Contest;
+import io.github.humphreymahlangu.yourvoice.entity.ContestOption;
+import io.github.humphreymahlangu.yourvoice.entity.LedgerState;
+import io.github.humphreymahlangu.yourvoice.entity.PublishedBallotEntry;
+import io.github.humphreymahlangu.yourvoice.repository.BallotLedgerEntryRepository;
+import io.github.humphreymahlangu.yourvoice.repository.LedgerStateRepository;
+import io.github.humphreymahlangu.yourvoice.repository.PublishedBallotEntryRepository;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;

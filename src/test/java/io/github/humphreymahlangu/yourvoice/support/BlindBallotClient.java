@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.support;
+package io.github.humphreymahlangu.yourvoice.support;
 
-import io.github.humphreymahlangu.votetrust.security.BlindSignatureService;
+import io.github.humphreymahlangu.yourvoice.security.BlindSignatureService;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Base64;

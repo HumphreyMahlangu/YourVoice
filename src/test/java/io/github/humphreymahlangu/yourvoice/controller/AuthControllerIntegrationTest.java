@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -8,14 +8,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
-import io.github.humphreymahlangu.votetrust.entity.VoterProfile;
-import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
-import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
-import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
-import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
-import io.github.humphreymahlangu.votetrust.security.IdentityHashService;
-import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
-import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
+import io.github.humphreymahlangu.yourvoice.entity.VoterProfile;
+import io.github.humphreymahlangu.yourvoice.entity.VotingDistrict;
+import io.github.humphreymahlangu.yourvoice.repository.UserAccountRepository;
+import io.github.humphreymahlangu.yourvoice.repository.VoterProfileRepository;
+import io.github.humphreymahlangu.yourvoice.repository.VotingDistrictRepository;
+import io.github.humphreymahlangu.yourvoice.security.IdentityHashService;
+import io.github.humphreymahlangu.yourvoice.support.DatabaseCleaner;
+import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

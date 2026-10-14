@@ -1,8 +1,8 @@
-package io.github.humphreymahlangu.votetrust.observability;
+package io.github.humphreymahlangu.yourvoice.observability;
 
-import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleOutcome;
-import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
-import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionLifecycleOutcome;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionStatus;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionRepository;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
@@ -23,7 +23,7 @@ public class StuckElectionsGauge {
     );
 
     public StuckElectionsGauge(MeterRegistry meterRegistry, ElectionRepository electionRepository) {
-        Gauge.builder("votetrust.elections.stuck", electionRepository,
+        Gauge.builder("yourvoice.elections.stuck", electionRepository,
                         repository -> repository.countWithFailedTransitionFromCurrentStatus(
                                 ACTIVE_STATUSES,
                                 ElectionLifecycleOutcome.FAILURE

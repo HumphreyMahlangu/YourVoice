@@ -1,8 +1,8 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.entity.Election;
-import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleOutcome;
-import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
+import io.github.humphreymahlangu.yourvoice.entity.Election;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionLifecycleOutcome;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionStatus;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;

@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.entity.VoterProfile;
+import io.github.humphreymahlangu.yourvoice.entity.VoterProfile;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;

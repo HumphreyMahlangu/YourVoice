@@ -1,4 +1,4 @@
 /**
  * Request and response DTO contracts.
  */
-package io.github.humphreymahlangu.votetrust.dto;
+package io.github.humphreymahlangu.yourvoice.dto;

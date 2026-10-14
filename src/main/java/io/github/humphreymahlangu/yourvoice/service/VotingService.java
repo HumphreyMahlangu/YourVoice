@@ -1,35 +1,35 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.dto.BallotCastRequest;
-import io.github.humphreymahlangu.votetrust.dto.BallotCastResponse;
-import io.github.humphreymahlangu.votetrust.dto.BallotKeyResponse;
-import io.github.humphreymahlangu.votetrust.dto.VotingCredentialRequest;
-import io.github.humphreymahlangu.votetrust.dto.VotingCredentialResponse;
-import io.github.humphreymahlangu.votetrust.entity.Contest;
-import io.github.humphreymahlangu.votetrust.entity.ContestOption;
-import io.github.humphreymahlangu.votetrust.entity.ContestSigningKey;
-import io.github.humphreymahlangu.votetrust.entity.ContestStatus;
-import io.github.humphreymahlangu.votetrust.entity.Election;
-import io.github.humphreymahlangu.votetrust.entity.ElectionRegistration;
-import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
-import io.github.humphreymahlangu.votetrust.entity.RegistrationStatus;
-import io.github.humphreymahlangu.votetrust.entity.VoterProfile;
-import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
-import io.github.humphreymahlangu.votetrust.entity.VotingRight;
-import io.github.humphreymahlangu.votetrust.exception.DuplicateResourceException;
-import io.github.humphreymahlangu.votetrust.exception.EligibilityException;
-import io.github.humphreymahlangu.votetrust.exception.InvalidBallotTokenException;
-import io.github.humphreymahlangu.votetrust.exception.InvalidVotingCredentialException;
-import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
-import io.github.humphreymahlangu.votetrust.exception.VotingClosedException;
-import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
-import io.github.humphreymahlangu.votetrust.repository.AnonymousVotingCredentialRepository;
-import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
-import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
-import io.github.humphreymahlangu.votetrust.repository.ElectionRegistrationRepository;
-import io.github.humphreymahlangu.votetrust.repository.VotingRightRepository;
-import io.github.humphreymahlangu.votetrust.security.BlindSignatureService;
-import io.github.humphreymahlangu.votetrust.security.VoteCredentialService;
+import io.github.humphreymahlangu.yourvoice.dto.BallotCastRequest;
+import io.github.humphreymahlangu.yourvoice.dto.BallotCastResponse;
+import io.github.humphreymahlangu.yourvoice.dto.BallotKeyResponse;
+import io.github.humphreymahlangu.yourvoice.dto.VotingCredentialRequest;
+import io.github.humphreymahlangu.yourvoice.dto.VotingCredentialResponse;
+import io.github.humphreymahlangu.yourvoice.entity.Contest;
+import io.github.humphreymahlangu.yourvoice.entity.ContestOption;
+import io.github.humphreymahlangu.yourvoice.entity.ContestSigningKey;
+import io.github.humphreymahlangu.yourvoice.entity.ContestStatus;
+import io.github.humphreymahlangu.yourvoice.entity.Election;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionRegistration;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionStatus;
+import io.github.humphreymahlangu.yourvoice.entity.RegistrationStatus;
+import io.github.humphreymahlangu.yourvoice.entity.VoterProfile;
+import io.github.humphreymahlangu.yourvoice.entity.VotingDistrict;
+import io.github.humphreymahlangu.yourvoice.entity.VotingRight;
+import io.github.humphreymahlangu.yourvoice.exception.DuplicateResourceException;
+import io.github.humphreymahlangu.yourvoice.exception.EligibilityException;
+import io.github.humphreymahlangu.yourvoice.exception.InvalidBallotTokenException;
+import io.github.humphreymahlangu.yourvoice.exception.InvalidVotingCredentialException;
+import io.github.humphreymahlangu.yourvoice.exception.ResourceNotFoundException;
+import io.github.humphreymahlangu.yourvoice.exception.VotingClosedException;
+import io.github.humphreymahlangu.yourvoice.observability.YourVoiceMetrics;
+import io.github.humphreymahlangu.yourvoice.repository.AnonymousVotingCredentialRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ContestOptionRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ContestRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionRegistrationRepository;
+import io.github.humphreymahlangu.yourvoice.repository.VotingRightRepository;
+import io.github.humphreymahlangu.yourvoice.security.BlindSignatureService;
+import io.github.humphreymahlangu.yourvoice.security.VoteCredentialService;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -55,7 +55,7 @@ public class VotingService {
     private final BlindSignatureService blindSignatureService;
     private final BallotSigningKeyService ballotSigningKeyService;
     private final VoteHashChainService voteHashChainService;
-    private final VoteTrustMetrics metrics;
+    private final YourVoiceMetrics metrics;
     private final Clock clock;
 
     public VotingService(
@@ -68,7 +68,7 @@ public class VotingService {
             BlindSignatureService blindSignatureService,
             BallotSigningKeyService ballotSigningKeyService,
             VoteHashChainService voteHashChainService,
-            VoteTrustMetrics metrics,
+            YourVoiceMetrics metrics,
             Clock clock
     ) {
         this.contestRepository = contestRepository;

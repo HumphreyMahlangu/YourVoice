@@ -1,8 +1,8 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.entity.ContestSigningKey;
-import io.github.humphreymahlangu.votetrust.repository.ContestSigningKeyRepository;
-import io.github.humphreymahlangu.votetrust.security.BlindSignatureService;
+import io.github.humphreymahlangu.yourvoice.entity.ContestSigningKey;
+import io.github.humphreymahlangu.yourvoice.repository.ContestSigningKeyRepository;
+import io.github.humphreymahlangu.yourvoice.security.BlindSignatureService;
 import java.security.interfaces.RSAPrivateKey;
 import java.time.Clock;
 import java.time.Instant;

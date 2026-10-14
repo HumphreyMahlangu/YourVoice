@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.exception.EligibilityException;
+import io.github.humphreymahlangu.yourvoice.exception.EligibilityException;
 import java.time.Clock;
 import java.time.LocalDate;
 import org.springframework.stereotype.Component;

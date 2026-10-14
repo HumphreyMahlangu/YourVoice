@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust;
+package io.github.humphreymahlangu.yourvoice;
 
-import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
+import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -9,7 +9,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers(disabledWithoutDocker = true)
-class VoteTrustApplicationTests extends PostgreSqlTestContainerSupport {
+class YourVoiceApplicationTests extends PostgreSqlTestContainerSupport {
 
     @Test
     void contextLoads() {

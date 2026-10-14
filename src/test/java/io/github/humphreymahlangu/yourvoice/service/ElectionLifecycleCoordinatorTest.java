@@ -1,10 +1,10 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;

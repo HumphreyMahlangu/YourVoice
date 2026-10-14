@@ -17,7 +17,7 @@ Access tokens are not revocable and expire on their own.
 | POST | `/auth/refresh` `{refreshToken}` | public, `auth` bucket | 200 `AuthResponse` (new pair) | 401 invalid, expired or reused |
 | POST | `/auth/logout` `{refreshToken}` | public, `auth` bucket | 204 (idempotent) | |
 | GET | `/auth/me` | authenticated | 200 | 401 |
-| POST | `/admin/bootstrap` | public + `X-VoteTrust-Bootstrap-Token` | 201 `AuthResponse` | 401, 403 disabled, 409 |
+| POST | `/admin/bootstrap` | public + `X-YourVoice-Bootstrap-Token` | 201 `AuthResponse` | 401, 403 disabled, 409 |
 | GET/POST | `/admin/accounts` | ADMIN | 200 list / 201 | 409 email exists |
 | POST | `/admin/voting-districts` | ADMIN | 201 | 409 duplicate code |
 | PUT / DELETE | `/admin/voting-districts/{id}` | ADMIN | 200 / 204 | 409 geography change or delete while in use |
@@ -79,7 +79,7 @@ Every error body is `ApiErrorResponse { timestamp, status, error, message, path,
 
 ## CORS
 
-Origins come from `VOTETRUST_CORS_ALLOWED_ORIGINS` (set in the Render dashboard; `sync: false`). Allowed methods:
+Origins come from `YOURVOICE_CORS_ALLOWED_ORIGINS` (set in the Render dashboard; `sync: false`). Allowed methods:
 GET, POST, PUT, PATCH, DELETE, OPTIONS. Exposed headers: `X-Total-Count`, `X-Request-Id`, `Retry-After`.
 No credentials or cookies.
 
@@ -89,19 +89,19 @@ No credentials or cookies.
 | --- | --- | --- |
 | `server.port` | `SERVER_PORT`, then `PORT` | 8080 |
 | `server.forward-headers-strategy` | `SERVER_FORWARD_HEADERS_STRATEGY` | `native` |
-| `spring.datasource.url` | `SPRING_DATASOURCE_URL` or `_HOST/_PORT/_NAME` | localhost/votetrust |
+| `spring.datasource.url` | `SPRING_DATASOURCE_URL` or `_HOST/_PORT/_NAME` | localhost/yourvoice |
 | `spring.datasource.username/password` | `SPRING_DATASOURCE_USERNAME/PASSWORD` | **required** |
-| `votetrust.security.jwt.secret` | `VOTETRUST_JWT_SECRET` | **required, ≥32** |
-| `votetrust.security.jwt.access-token-expiration-minutes` | `VOTETRUST_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES` | 15 |
-| `votetrust.security.jwt.refresh-token-expiration-hours` | `VOTETRUST_JWT_REFRESH_TOKEN_EXPIRATION_HOURS` | 12 |
-| `votetrust.security.login-throttle.{max-failures,lock-seconds}` | `VOTETRUST_LOGIN_MAX_FAILURES/LOCK_SECONDS` | 5, 900 |
-| `votetrust.security.identity-hash-pepper` | `VOTETRUST_ID_HASH_PEPPER` | **required, ≥32** |
-| `votetrust.security.vote-credential-pepper` | `VOTETRUST_VOTE_CREDENTIAL_PEPPER` | **required, ≥32** (also derives the ballot-key encryption key) |
-| `votetrust.security.cors.allowed-origins` | `VOTETRUST_CORS_ALLOWED_ORIGINS` | localhost:5173, :3000 |
-| `votetrust.security.rate-limit.*` | `VOTETRUST_RATE_LIMIT_*` | enabled, 60 s window, 100/20/100/100 |
-| `votetrust.admin.bootstrap.{enabled,token}` | `VOTETRUST_ADMIN_BOOTSTRAP_*` | false, empty (token ≥32 when enabled) |
-| `votetrust.lifecycle.{scheduling-enabled,poll-interval-ms}` | `VOTETRUST_LIFECYCLE_*` | true, 5000 |
-| `votetrust.logging.format` | `VOTETRUST_LOG_FORMAT` | `text` (`json` = one JSON object per line; any other value fails startup) |
+| `yourvoice.security.jwt.secret` | `YOURVOICE_JWT_SECRET` | **required, ≥32** |
+| `yourvoice.security.jwt.access-token-expiration-minutes` | `YOURVOICE_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES` | 15 |
+| `yourvoice.security.jwt.refresh-token-expiration-hours` | `YOURVOICE_JWT_REFRESH_TOKEN_EXPIRATION_HOURS` | 12 |
+| `yourvoice.security.login-throttle.{max-failures,lock-seconds}` | `YOURVOICE_LOGIN_MAX_FAILURES/LOCK_SECONDS` | 5, 900 |
+| `yourvoice.security.identity-hash-pepper` | `YOURVOICE_ID_HASH_PEPPER` | **required, ≥32** |
+| `yourvoice.security.vote-credential-pepper` | `YOURVOICE_VOTE_CREDENTIAL_PEPPER` | **required, ≥32** (also derives the ballot-key encryption key) |
+| `yourvoice.security.cors.allowed-origins` | `YOURVOICE_CORS_ALLOWED_ORIGINS` | localhost:5173, :3000 |
+| `yourvoice.security.rate-limit.*` | `YOURVOICE_RATE_LIMIT_*` | enabled, 60 s window, 100/20/100/100 |
+| `yourvoice.admin.bootstrap.{enabled,token}` | `YOURVOICE_ADMIN_BOOTSTRAP_*` | false, empty (token ≥32 when enabled) |
+| `yourvoice.lifecycle.{scheduling-enabled,poll-interval-ms}` | `YOURVOICE_LIFECYCLE_*` | true, 5000 |
+| `yourvoice.logging.format` | `YOURVOICE_LOG_FORMAT` | `text` (`json` = one JSON object per line; any other value fails startup) |
 
 Property records live in `security/` and `config/LoggingProperties`. They are registered on `SecurityConfig` and
 validated at startup. `spring-boot-configuration-processor` generates IDE metadata for them.

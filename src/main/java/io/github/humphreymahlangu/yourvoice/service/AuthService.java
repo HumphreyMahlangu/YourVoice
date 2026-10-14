@@ -1,25 +1,25 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.dto.AuthResponse;
-import io.github.humphreymahlangu.votetrust.dto.LoginRequest;
-import io.github.humphreymahlangu.votetrust.dto.RegisterRequest;
-import io.github.humphreymahlangu.votetrust.entity.AccountRole;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEventType;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditOutcome;
-import io.github.humphreymahlangu.votetrust.entity.UserAccount;
-import io.github.humphreymahlangu.votetrust.entity.VoterProfile;
-import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
-import io.github.humphreymahlangu.votetrust.exception.DuplicateResourceException;
-import io.github.humphreymahlangu.votetrust.exception.InvalidCredentialsException;
-import io.github.humphreymahlangu.votetrust.exception.LoginThrottledException;
-import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
-import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
-import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
-import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
-import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
-import io.github.humphreymahlangu.votetrust.security.IdentityHashService;
-import io.github.humphreymahlangu.votetrust.security.LoginThrottleService;
-import io.github.humphreymahlangu.votetrust.security.SecurityAuditMetadata;
+import io.github.humphreymahlangu.yourvoice.dto.AuthResponse;
+import io.github.humphreymahlangu.yourvoice.dto.LoginRequest;
+import io.github.humphreymahlangu.yourvoice.dto.RegisterRequest;
+import io.github.humphreymahlangu.yourvoice.entity.AccountRole;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditEventType;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditOutcome;
+import io.github.humphreymahlangu.yourvoice.entity.UserAccount;
+import io.github.humphreymahlangu.yourvoice.entity.VoterProfile;
+import io.github.humphreymahlangu.yourvoice.entity.VotingDistrict;
+import io.github.humphreymahlangu.yourvoice.exception.DuplicateResourceException;
+import io.github.humphreymahlangu.yourvoice.exception.InvalidCredentialsException;
+import io.github.humphreymahlangu.yourvoice.exception.LoginThrottledException;
+import io.github.humphreymahlangu.yourvoice.exception.ResourceNotFoundException;
+import io.github.humphreymahlangu.yourvoice.observability.YourVoiceMetrics;
+import io.github.humphreymahlangu.yourvoice.repository.UserAccountRepository;
+import io.github.humphreymahlangu.yourvoice.repository.VoterProfileRepository;
+import io.github.humphreymahlangu.yourvoice.repository.VotingDistrictRepository;
+import io.github.humphreymahlangu.yourvoice.security.IdentityHashService;
+import io.github.humphreymahlangu.yourvoice.security.LoginThrottleService;
+import io.github.humphreymahlangu.yourvoice.security.SecurityAuditMetadata;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,7 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthTokenService authTokenService;
     private final LoginThrottleService loginThrottleService;
-    private final VoteTrustMetrics metrics;
+    private final YourVoiceMetrics metrics;
     private final SecurityAuditService securityAuditService;
     private final SouthAfricanIdNumberValidator idNumberValidator;
     private final IdentityHashService identityHashService;
@@ -57,7 +57,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             AuthTokenService authTokenService,
             LoginThrottleService loginThrottleService,
-            VoteTrustMetrics metrics,
+            YourVoiceMetrics metrics,
             SecurityAuditService securityAuditService,
             SouthAfricanIdNumberValidator idNumberValidator,
             IdentityHashService identityHashService
@@ -72,7 +72,7 @@ public class AuthService {
         this.securityAuditService = securityAuditService;
         this.idNumberValidator = idNumberValidator;
         this.identityHashService = identityHashService;
-        this.timingEqualizationHash = passwordEncoder.encode("votetrust-timing-equalization-" + UUID.randomUUID());
+        this.timingEqualizationHash = passwordEncoder.encode("yourvoice-timing-equalization-" + UUID.randomUUID());
     }
 
     @Transactional

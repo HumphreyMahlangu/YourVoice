@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleEvent;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionLifecycleEvent;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

@@ -1,4 +1,4 @@
 /**
  * Application-level Spring configuration.
  */
-package io.github.humphreymahlangu.votetrust.config;
+package io.github.humphreymahlangu.yourvoice.config;

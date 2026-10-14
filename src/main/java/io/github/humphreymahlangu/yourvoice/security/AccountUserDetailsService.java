@@ -1,7 +1,7 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
-import io.github.humphreymahlangu.votetrust.entity.UserAccount;
-import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
+import io.github.humphreymahlangu.yourvoice.entity.UserAccount;
+import io.github.humphreymahlangu.yourvoice.repository.UserAccountRepository;
 import java.util.Locale;
 import java.util.UUID;
 import org.springframework.security.core.userdetails.UserDetails;

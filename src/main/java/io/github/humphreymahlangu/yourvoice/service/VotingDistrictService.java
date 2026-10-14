@@ -1,7 +1,7 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.dto.VotingDistrictResponse;
-import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
+import io.github.humphreymahlangu.yourvoice.dto.VotingDistrictResponse;
+import io.github.humphreymahlangu.yourvoice.repository.VotingDistrictRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;

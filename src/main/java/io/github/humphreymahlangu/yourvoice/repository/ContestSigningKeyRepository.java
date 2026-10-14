@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.entity.ContestSigningKey;
+import io.github.humphreymahlangu.yourvoice.entity.ContestSigningKey;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;

@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.entity.VotingRight;
+import io.github.humphreymahlangu.yourvoice.entity.VotingRight;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import java.util.UUID;

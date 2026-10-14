@@ -1,7 +1,7 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.entity.ContestOption;
-import io.github.humphreymahlangu.votetrust.entity.ContestOptionType;
+import io.github.humphreymahlangu.yourvoice.entity.ContestOption;
+import io.github.humphreymahlangu.yourvoice.entity.ContestOptionType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;

@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.dto;
+package io.github.humphreymahlangu.yourvoice.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.github.humphreymahlangu.votetrust.entity.IdDocumentType;
+import io.github.humphreymahlangu.yourvoice.entity.IdDocumentType;
 import java.util.UUID;
 
 @Schema(description = "Request body for creating a voter platform account")

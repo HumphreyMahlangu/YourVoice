@@ -50,7 +50,7 @@ to `/login`, and the wrong role sends them to `/dashboard` or `/`.
 
 - `AuthSession` = backend `AuthResponse`, including `refreshToken` and `refreshTokenExpiresAt`.
 - The access token lives in React state only. The **refresh token is kept in `sessionStorage`**
-  (`votetrust.refreshToken`): tab-scoped, it survives reloads and is cleared when the tab closes. Cookies aren't
+  (`yourvoice.refreshToken`): tab-scoped, it survives reloads and is cleared when the tab closes. Cookies aren't
   used because the frontend (Vercel) and API (Render) are different sites. The trade-off is that XSS could read it.
 - On load, a stored refresh token is exchanged at `/auth/refresh`. While a session exists, it's refreshed 60 s
   before the access token expires. A failed refresh signs the user out.

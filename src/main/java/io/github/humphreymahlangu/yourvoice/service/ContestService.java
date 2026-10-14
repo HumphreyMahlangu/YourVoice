@@ -1,12 +1,12 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.dto.ContestResponse;
-import io.github.humphreymahlangu.votetrust.entity.Contest;
-import io.github.humphreymahlangu.votetrust.entity.ContestOption;
-import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
-import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
-import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
-import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.github.humphreymahlangu.yourvoice.dto.ContestResponse;
+import io.github.humphreymahlangu.yourvoice.entity.Contest;
+import io.github.humphreymahlangu.yourvoice.entity.ContestOption;
+import io.github.humphreymahlangu.yourvoice.exception.ResourceNotFoundException;
+import io.github.humphreymahlangu.yourvoice.repository.ContestOptionRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ContestRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;

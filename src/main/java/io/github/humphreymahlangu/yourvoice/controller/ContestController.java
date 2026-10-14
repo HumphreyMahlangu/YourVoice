@@ -1,13 +1,13 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
-import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
-import io.github.humphreymahlangu.votetrust.dto.BallotKeyResponse;
-import io.github.humphreymahlangu.votetrust.dto.ContestResponse;
-import io.github.humphreymahlangu.votetrust.dto.VotingCredentialRequest;
-import io.github.humphreymahlangu.votetrust.dto.VotingCredentialResponse;
-import io.github.humphreymahlangu.votetrust.security.UserPrincipal;
-import io.github.humphreymahlangu.votetrust.service.ContestService;
-import io.github.humphreymahlangu.votetrust.service.VotingService;
+import io.github.humphreymahlangu.yourvoice.dto.ApiErrorResponse;
+import io.github.humphreymahlangu.yourvoice.dto.BallotKeyResponse;
+import io.github.humphreymahlangu.yourvoice.dto.ContestResponse;
+import io.github.humphreymahlangu.yourvoice.dto.VotingCredentialRequest;
+import io.github.humphreymahlangu.yourvoice.dto.VotingCredentialResponse;
+import io.github.humphreymahlangu.yourvoice.security.UserPrincipal;
+import io.github.humphreymahlangu.yourvoice.service.ContestService;
+import io.github.humphreymahlangu.yourvoice.service.VotingService;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Operation;

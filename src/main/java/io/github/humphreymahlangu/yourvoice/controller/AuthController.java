@@ -1,15 +1,15 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
-import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
-import io.github.humphreymahlangu.votetrust.dto.AuthResponse;
-import io.github.humphreymahlangu.votetrust.dto.LoginRequest;
-import io.github.humphreymahlangu.votetrust.dto.RefreshTokenRequest;
-import io.github.humphreymahlangu.votetrust.dto.RegisterRequest;
-import io.github.humphreymahlangu.votetrust.dto.UserAccountResponse;
-import io.github.humphreymahlangu.votetrust.security.SecurityAuditMetadata;
-import io.github.humphreymahlangu.votetrust.security.UserPrincipal;
-import io.github.humphreymahlangu.votetrust.service.AuthService;
-import io.github.humphreymahlangu.votetrust.service.AuthTokenService;
+import io.github.humphreymahlangu.yourvoice.dto.ApiErrorResponse;
+import io.github.humphreymahlangu.yourvoice.dto.AuthResponse;
+import io.github.humphreymahlangu.yourvoice.dto.LoginRequest;
+import io.github.humphreymahlangu.yourvoice.dto.RefreshTokenRequest;
+import io.github.humphreymahlangu.yourvoice.dto.RegisterRequest;
+import io.github.humphreymahlangu.yourvoice.dto.UserAccountResponse;
+import io.github.humphreymahlangu.yourvoice.security.SecurityAuditMetadata;
+import io.github.humphreymahlangu.yourvoice.security.UserPrincipal;
+import io.github.humphreymahlangu.yourvoice.service.AuthService;
+import io.github.humphreymahlangu.yourvoice.service.AuthTokenService;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Operation;

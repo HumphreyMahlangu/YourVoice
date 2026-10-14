@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "76d91d2d-6f35-4fd5-84f1-2bf843d097d8",
-    "name": "VoteTrust API - Verified Local Flow",
-    "description": "Clean verified collection for local Postman testing of the VoteTrust secure voting API. Import with the VoteTrust Verified Local environment and run folders in order.",
+    "name": "YourVoice API - Verified Local Flow",
+    "description": "Clean verified collection for local Postman testing of the YourVoice secure voting API. Import with the YourVoice Verified Local environment and run folders in order.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -25,7 +25,7 @@
                   "pm.environment.set('voterEmail', `voter+${runId}@example.com`);",
                   "pm.environment.set('districtCode', `WC-${runId.slice(-12)}`);",
                   "pm.environment.set('districtName', `Cape Town Demo Ward ${runId.slice(-4)}`);",
-                  "pm.environment.set('electionName', `VoteTrust Verified Election ${runId}`);",
+                  "pm.environment.set('electionName', `YourVoice Verified Election ${runId}`);",
                   "pm.environment.set('contestName', `Ward 12 Councillor ${runId}`);",
                   "['adminToken', 'adminUserId', 'voterToken', 'voterUserId', 'votingDistrictId', 'electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential', 'votingCredentialSignature', 'ballotKeyModulus', 'ballotKeyExponent', 'ballotTokenDomain', 'blindingFactor', 'blindedToken', 'secondBlindedToken', 'registrationStartAt', 'registrationEndAt', 'votingStartAt', 'votingEndAt'].forEach((key) => pm.environment.unset(key));",
                   "",
@@ -117,7 +117,7 @@
                   "if (pm.response.code !== 200) {",
                   "  throw new Error(`OpenAPI JSON is available failed (${pm.response.code}): ${pm.response.text()}`);",
                   "}",
-                  "pm.test('OpenAPI title is VoteTrust API', function () { pm.expect(pm.response.json().info.title).to.equal('VoteTrust API'); });"
+                  "pm.test('OpenAPI title is YourVoice API', function () { pm.expect(pm.response.json().info.title).to.equal('YourVoice API'); });"
                 ]
               }
             }
@@ -187,7 +187,7 @@
                 "value": "application/json"
               },
               {
-                "key": "X-VoteTrust-Bootstrap-Token",
+                "key": "X-YourVoice-Bootstrap-Token",
                 "value": "{{adminBootstrapToken}}"
               }
             ],
@@ -397,7 +397,7 @@
                   "const now = Date.now();",
                   "const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '');",
                   "const suffix = `${stamp.slice(8)}${Math.random().toString(36).slice(2, 6)}`;",
-                  "pm.environment.set('electionName', `VoteTrust Verified Election ${suffix}`);",
+                  "pm.environment.set('electionName', `YourVoice Verified Election ${suffix}`);",
                   "pm.environment.set('contestName', `Ward 12 Councillor ${suffix}`);",
                   "['electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential', 'votingCredentialSignature', 'blindingFactor', 'blindedToken', 'secondBlindedToken'].forEach((key) => pm.environment.unset(key));",
                   "const configurationGraceSeconds = Math.max(30, Number(pm.environment.get('configurationGraceSeconds') || 120));",

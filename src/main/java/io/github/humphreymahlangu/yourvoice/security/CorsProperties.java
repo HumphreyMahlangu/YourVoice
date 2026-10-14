@@ -1,11 +1,11 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.util.StringUtils;
 
-@ConfigurationProperties(prefix = "votetrust.security.cors")
+@ConfigurationProperties(prefix = "yourvoice.security.cors")
 public class CorsProperties {
 
     private String allowedOrigins = "";

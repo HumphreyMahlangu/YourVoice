@@ -1,6 +1,6 @@
-package io.github.humphreymahlangu.votetrust.repository;
+package io.github.humphreymahlangu.yourvoice.repository;
 
-import io.github.humphreymahlangu.votetrust.entity.LedgerState;
+import io.github.humphreymahlangu.yourvoice.entity.LedgerState;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Optional;

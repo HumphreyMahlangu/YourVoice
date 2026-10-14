@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.config;
+package io.github.humphreymahlangu.yourvoice.config;
 
 import javax.sql.DataSource;
 import net.javacrumbs.shedlock.core.LockProvider;

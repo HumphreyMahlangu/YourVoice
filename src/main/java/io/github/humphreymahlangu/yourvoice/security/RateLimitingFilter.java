@@ -1,11 +1,11 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEventType;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditOutcome;
-import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
-import io.github.humphreymahlangu.votetrust.service.SecurityAuditService;
+import io.github.humphreymahlangu.yourvoice.dto.ApiErrorResponse;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditEventType;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditOutcome;
+import io.github.humphreymahlangu.yourvoice.observability.YourVoiceMetrics;
+import io.github.humphreymahlangu.yourvoice.service.SecurityAuditService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,14 +26,14 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private final RateLimitProperties rateLimitProperties;
     private final ObjectMapper objectMapper;
     private final SecurityAuditService securityAuditService;
-    private final VoteTrustMetrics metrics;
+    private final YourVoiceMetrics metrics;
 
     public RateLimitingFilter(
             RateLimitService rateLimitService,
             RateLimitProperties rateLimitProperties,
             ObjectMapper objectMapper,
             SecurityAuditService securityAuditService,
-            VoteTrustMetrics metrics
+            YourVoiceMetrics metrics
     ) {
         this.rateLimitService = rateLimitService;
         this.rateLimitProperties = rateLimitProperties;

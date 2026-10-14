@@ -1,7 +1,7 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
+import io.github.humphreymahlangu.yourvoice.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;

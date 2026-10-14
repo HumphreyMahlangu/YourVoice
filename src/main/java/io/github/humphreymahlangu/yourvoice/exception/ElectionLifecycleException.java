@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.exception;
+package io.github.humphreymahlangu.yourvoice.exception;
 
 public class ElectionLifecycleException extends RuntimeException {
 

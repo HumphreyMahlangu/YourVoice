@@ -21,21 +21,21 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_DB: votetrust_test
-          POSTGRES_USER: votetrust
-          POSTGRES_PASSWORD: votetrust
+          POSTGRES_DB: yourvoice_test
+          POSTGRES_USER: yourvoice
+          POSTGRES_PASSWORD: yourvoice
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U votetrust -d votetrust_test"
+          --health-cmd "pg_isready -U yourvoice -d yourvoice_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     env:
-      VOTETRUST_TEST_DATASOURCE_URL: jdbc:postgresql://localhost:5432/votetrust_test
-      VOTETRUST_TEST_DATASOURCE_USERNAME: votetrust
-      VOTETRUST_TEST_DATASOURCE_PASSWORD: votetrust
+      YOURVOICE_TEST_DATASOURCE_URL: jdbc:postgresql://localhost:5432/yourvoice_test
+      YOURVOICE_TEST_DATASOURCE_USERNAME: yourvoice
+      YOURVOICE_TEST_DATASOURCE_PASSWORD: yourvoice
 
     steps:
       - name: Checkout
@@ -97,7 +97,7 @@ jobs:
         run: docker compose --env-file .env.example config
 
       - name: Build container image
-        run: docker build -t votetrust-api:ci .
+        run: docker build -t yourvoice-api:ci .
 
   frontend:
     name: Frontend Checks

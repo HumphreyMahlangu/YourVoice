@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.support;
+package io.github.humphreymahlangu.yourvoice.support;
 
 import java.util.List;
 import org.springframework.jdbc.core.JdbcTemplate;

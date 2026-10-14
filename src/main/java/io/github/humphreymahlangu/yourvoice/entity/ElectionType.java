@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.entity;
+package io.github.humphreymahlangu.yourvoice.entity;
 
 public enum ElectionType {
     NATIONAL,

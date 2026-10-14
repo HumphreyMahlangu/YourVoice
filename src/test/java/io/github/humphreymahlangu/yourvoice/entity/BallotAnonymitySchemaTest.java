@@ -1,8 +1,8 @@
-package io.github.humphreymahlangu.votetrust.entity;
+package io.github.humphreymahlangu.yourvoice.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.github.humphreymahlangu.votetrust.dto.BallotCastResponse;
+import io.github.humphreymahlangu.yourvoice.dto.BallotCastResponse;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;

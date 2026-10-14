@@ -1,9 +1,9 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.github.humphreymahlangu.votetrust.support.BlindBallotClient;
+import io.github.humphreymahlangu.yourvoice.support.BlindBallotClient;
 import java.math.BigInteger;
 import java.security.interfaces.RSAPrivateKey;
 import java.util.UUID;

@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -8,24 +8,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
-import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
-import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
-import io.github.humphreymahlangu.votetrust.entity.Election;
-import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
-import io.github.humphreymahlangu.votetrust.entity.ElectionType;
-import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
-import io.github.humphreymahlangu.votetrust.repository.ElectionLifecycleEventRepository;
-import io.github.humphreymahlangu.votetrust.repository.ElectionRegistrationRepository;
-import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
-import io.github.humphreymahlangu.votetrust.repository.AnonymousVotingCredentialRepository;
-import io.github.humphreymahlangu.votetrust.repository.BallotLedgerEntryRepository;
-import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
-import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
-import io.github.humphreymahlangu.votetrust.repository.LedgerStateRepository;
-import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
-import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
-import io.github.humphreymahlangu.votetrust.repository.VotingRightRepository;
-import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
+import io.github.humphreymahlangu.yourvoice.support.DatabaseCleaner;
+import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
+import io.github.humphreymahlangu.yourvoice.entity.Election;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionStatus;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionType;
+import io.github.humphreymahlangu.yourvoice.entity.VotingDistrict;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionLifecycleEventRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionRegistrationRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionRepository;
+import io.github.humphreymahlangu.yourvoice.repository.AnonymousVotingCredentialRepository;
+import io.github.humphreymahlangu.yourvoice.repository.BallotLedgerEntryRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ContestOptionRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ContestRepository;
+import io.github.humphreymahlangu.yourvoice.repository.LedgerStateRepository;
+import io.github.humphreymahlangu.yourvoice.repository.UserAccountRepository;
+import io.github.humphreymahlangu.yourvoice.repository.VoterProfileRepository;
+import io.github.humphreymahlangu.yourvoice.repository.VotingRightRepository;
+import io.github.humphreymahlangu.yourvoice.repository.VotingDistrictRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;

@@ -1,11 +1,11 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
 import jakarta.validation.constraints.Min;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 @Validated
-@ConfigurationProperties(prefix = "votetrust.security.rate-limit")
+@ConfigurationProperties(prefix = "yourvoice.security.rate-limit")
 public class RateLimitProperties {
 
     private boolean enabled = true;

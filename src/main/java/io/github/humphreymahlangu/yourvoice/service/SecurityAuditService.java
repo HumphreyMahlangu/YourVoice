@@ -1,12 +1,12 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.dto.SecurityAuditEventResponse;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEvent;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEventType;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditOutcome;
-import io.github.humphreymahlangu.votetrust.entity.UserAccount;
-import io.github.humphreymahlangu.votetrust.repository.SecurityAuditEventRepository;
-import io.github.humphreymahlangu.votetrust.security.SecurityAuditMetadata;
+import io.github.humphreymahlangu.yourvoice.dto.SecurityAuditEventResponse;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditEvent;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditEventType;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditOutcome;
+import io.github.humphreymahlangu.yourvoice.entity.UserAccount;
+import io.github.humphreymahlangu.yourvoice.repository.SecurityAuditEventRepository;
+import io.github.humphreymahlangu.yourvoice.security.SecurityAuditMetadata;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;

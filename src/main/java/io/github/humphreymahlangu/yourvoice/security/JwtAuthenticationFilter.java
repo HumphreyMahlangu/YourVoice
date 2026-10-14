@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.security;
+package io.github.humphreymahlangu.yourvoice.security;
 
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;

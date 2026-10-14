@@ -1,11 +1,11 @@
-# VoteTrust Postman Assets
+# YourVoice Postman Assets
 
 Import these two verified files into Postman:
 
-* `VoteTrust.verified.postman_collection.json`
-* `VoteTrust.verified-local.postman_environment.json`
+* `YourVoice.verified.postman_collection.json`
+* `YourVoice.verified-local.postman_environment.json`
 
-Select the `VoteTrust Verified Local` environment before running requests.
+Select the `YourVoice Verified Local` environment before running requests.
 
 ## Before You Start
 
@@ -18,7 +18,7 @@ docker compose up --build
 The local environment assumes:
 
 * `baseUrl`: `http://localhost:8080`
-* `adminBootstrapToken`: same value as `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN` in `.env`
+* `adminBootstrapToken`: same value as `YOURVOICE_ADMIN_BOOTSTRAP_TOKEN` in `.env`
 * `adminPassword` and `voterPassword`: `VeryStrongPassword1`
 
 ## Recommended Flow
@@ -37,4 +37,4 @@ The verified collection generates unique demo data on each reset. By default, ba
 
 Election and contest statuses advance automatically from their configured UTC timestamps. Administrators do not manually open registration, open voting, or complete an election.
 
-The older `VoteTrust.postman_collection.json` files are kept for compatibility, but use the verified pair above for manual testing.
+The older `YourVoice.postman_collection.json` files are kept for compatibility, but use the verified pair above for manual testing.

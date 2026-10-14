@@ -1,4 +1,4 @@
-package io.github.humphreymahlangu.votetrust.controller;
+package io.github.humphreymahlangu.yourvoice.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -10,20 +10,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.github.humphreymahlangu.votetrust.entity.AccountRole;
-import io.github.humphreymahlangu.votetrust.entity.Election;
-import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleEvent;
-import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleOutcome;
-import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleTrigger;
-import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
-import io.github.humphreymahlangu.votetrust.entity.ElectionType;
-import io.github.humphreymahlangu.votetrust.entity.UserAccount;
-import io.github.humphreymahlangu.votetrust.repository.ElectionLifecycleEventRepository;
-import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
-import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
-import io.github.humphreymahlangu.votetrust.security.JwtService;
-import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
-import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
+import io.github.humphreymahlangu.yourvoice.entity.AccountRole;
+import io.github.humphreymahlangu.yourvoice.entity.Election;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionLifecycleEvent;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionLifecycleOutcome;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionLifecycleTrigger;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionStatus;
+import io.github.humphreymahlangu.yourvoice.entity.ElectionType;
+import io.github.humphreymahlangu.yourvoice.entity.UserAccount;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionLifecycleEventRepository;
+import io.github.humphreymahlangu.yourvoice.repository.ElectionRepository;
+import io.github.humphreymahlangu.yourvoice.repository.UserAccountRepository;
+import io.github.humphreymahlangu.yourvoice.security.JwtService;
+import io.github.humphreymahlangu.yourvoice.support.DatabaseCleaner;
+import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.UUID;
@@ -116,8 +116,8 @@ class ObservabilityIntegrationTest extends PostgreSqlTestContainerSupport {
         mockMvc.perform(get("/actuator/prometheus")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token(AccountRole.ADMIN)))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("votetrust_ballots_cast_total")))
-                .andExpect(content().string(containsString("votetrust_elections_stuck")));
+                .andExpect(content().string(containsString("yourvoice_ballots_cast_total")))
+                .andExpect(content().string(containsString("yourvoice_elections_stuck")));
     }
 
     @Test
@@ -143,7 +143,7 @@ class ObservabilityIntegrationTest extends PostgreSqlTestContainerSupport {
                 Instant.parse("2026-01-01T00:00:05Z")
         ));
 
-        assertThat(meterRegistry.get("votetrust.elections.stuck").gauge().value()).isEqualTo(1.0);
+        assertThat(meterRegistry.get("yourvoice.elections.stuck").gauge().value()).isEqualTo(1.0);
     }
 
     private String token(AccountRole role) {

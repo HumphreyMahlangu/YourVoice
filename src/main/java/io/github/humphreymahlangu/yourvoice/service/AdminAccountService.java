@@ -1,15 +1,15 @@
-package io.github.humphreymahlangu.votetrust.service;
+package io.github.humphreymahlangu.yourvoice.service;
 
-import io.github.humphreymahlangu.votetrust.dto.AdminAccountResponse;
-import io.github.humphreymahlangu.votetrust.dto.CreateAdminAccountRequest;
-import io.github.humphreymahlangu.votetrust.entity.AccountRole;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEventType;
-import io.github.humphreymahlangu.votetrust.entity.SecurityAuditOutcome;
-import io.github.humphreymahlangu.votetrust.entity.UserAccount;
-import io.github.humphreymahlangu.votetrust.exception.DuplicateResourceException;
-import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
-import io.github.humphreymahlangu.votetrust.security.SecurityAuditMetadata;
-import io.github.humphreymahlangu.votetrust.security.UserPrincipal;
+import io.github.humphreymahlangu.yourvoice.dto.AdminAccountResponse;
+import io.github.humphreymahlangu.yourvoice.dto.CreateAdminAccountRequest;
+import io.github.humphreymahlangu.yourvoice.entity.AccountRole;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditEventType;
+import io.github.humphreymahlangu.yourvoice.entity.SecurityAuditOutcome;
+import io.github.humphreymahlangu.yourvoice.entity.UserAccount;
+import io.github.humphreymahlangu.yourvoice.exception.DuplicateResourceException;
+import io.github.humphreymahlangu.yourvoice.repository.UserAccountRepository;
+import io.github.humphreymahlangu.yourvoice.security.SecurityAuditMetadata;
+import io.github.humphreymahlangu.yourvoice.security.UserPrincipal;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.security.crypto.password.PasswordEncoder;

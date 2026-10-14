@@ -1,6 +1,6 @@
-# VoteTrust Deployment Checklist
+# YourVoice Deployment Checklist
 
-VoteTrust is deployable as a Spring Boot container backed by PostgreSQL. This checklist is for portfolio/demo deployments and does not certify the system for binding public elections.
+YourVoice is deployable as a Spring Boot container backed by PostgreSQL. This checklist is for portfolio/demo deployments and does not certify the system for binding public elections.
 
 ## Required Runtime Inputs
 
@@ -9,23 +9,23 @@ Set these values through a secret manager, platform environment variables, or a 
 * `SPRING_DATASOURCE_URL`
 * `SPRING_DATASOURCE_USERNAME`
 * `SPRING_DATASOURCE_PASSWORD`
-* `VOTETRUST_JWT_SECRET`
-* `VOTETRUST_ID_HASH_PEPPER`
-* `VOTETRUST_VOTE_CREDENTIAL_PEPPER`
+* `YOURVOICE_JWT_SECRET`
+* `YOURVOICE_ID_HASH_PEPPER`
+* `YOURVOICE_VOTE_CREDENTIAL_PEPPER`
 
 Optional but recommended:
 
-* `VOTETRUST_CORS_ALLOWED_ORIGINS`
-* `VOTETRUST_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES`
-* `VOTETRUST_RATE_LIMIT_*`
-* `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED`
-* `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN`
-* `VOTETRUST_JWT_REFRESH_TOKEN_EXPIRATION_HOURS` (default 12)
-* `VOTETRUST_LOGIN_MAX_FAILURES` and `VOTETRUST_LOGIN_LOCK_SECONDS` (defaults 5 and 900)
-* `VOTETRUST_LOG_FORMAT` (`text` or `json`)
+* `YOURVOICE_CORS_ALLOWED_ORIGINS`
+* `YOURVOICE_JWT_ACCESS_TOKEN_EXPIRATION_MINUTES`
+* `YOURVOICE_RATE_LIMIT_*`
+* `YOURVOICE_ADMIN_BOOTSTRAP_ENABLED`
+* `YOURVOICE_ADMIN_BOOTSTRAP_TOKEN`
+* `YOURVOICE_JWT_REFRESH_TOKEN_EXPIRATION_HOURS` (default 12)
+* `YOURVOICE_LOGIN_MAX_FAILURES` and `YOURVOICE_LOGIN_LOCK_SECONDS` (defaults 5 and 900)
+* `YOURVOICE_LOG_FORMAT` (`text` or `json`)
 * `SERVER_FORWARD_HEADERS_STRATEGY` (default `native`; trusts `X-Forwarded-For` only from private-network proxies)
 
-Never regenerate `VOTETRUST_ID_HASH_PEPPER` or `VOTETRUST_VOTE_CREDENTIAL_PEPPER` once voters exist. The ID
+Never regenerate `YOURVOICE_ID_HASH_PEPPER` or `YOURVOICE_VOTE_CREDENTIAL_PEPPER` once voters exist. The ID
 pepper protects duplicate-registration detection; the vote-credential pepper protects spent ballot tokens and
 encrypts each open contest's ballot signing key, so changing it during an election stops voting for that
 election.
@@ -62,32 +62,34 @@ The GitHub Actions workflow must pass:
 
 * Health probes: `/actuator/health/readiness` and `/actuator/health/liveness` (public).
 * Metrics: `/actuator/prometheus` in Prometheus format, available to administrator tokens only. Alert on
-  `votetrust_elections_stuck > 0` (an election could not advance and needs an administrator) and watch
-  `votetrust_auth_refresh_token_reuse_total` (possible session theft) and `votetrust_ratelimit_blocked_total`.
+  `yourvoice_elections_stuck > 0` (an election could not advance and needs an administrator) and watch
+  `yourvoice_auth_refresh_token_reuse_total` (possible session theft) and `yourvoice_ratelimit_blocked_total`.
 * Every response includes an `X-Request-Id` header; the same ID appears in error bodies and log lines. Set
-  `VOTETRUST_LOG_FORMAT=json` for one JSON log object per line.
+  `YOURVOICE_LOG_FORMAT=json` for one JSON log object per line.
 
 ## Render Backend Deployment
 
-The root `render.yaml` defines a Render Blueprint with the Dockerized Spring Boot API (`votetrust-api`) and a managed PostgreSQL database (`votetrust-db`).
+The root `render.yaml` defines a Render Blueprint with the Dockerized Spring Boot API (`votetrust-api`) and a managed PostgreSQL database (`votetrust-db`). These Render service names predate the YourVoice name and are kept deliberately: renaming them would make Render create a new service, URL, and empty database.
 
 Deploy it from the Render dashboard:
 
 1. Push the repository to GitHub with `render.yaml` on the deployment branch.
 2. In Render, choose **New > Blueprint**, connect the repository, and apply the Blueprint.
-3. When prompted, set `VOTETRUST_CORS_ALLOWED_ORIGINS` to the frontend origin(s), for example `https://<project>.vercel.app`. The variable is declared with `sync: false`, so later Blueprint syncs never overwrite the dashboard value.
+3. When prompted, set the dashboard-managed variables (all declared with `sync: false`, so later Blueprint syncs never overwrite them):
+   * `YOURVOICE_JWT_SECRET`, `YOURVOICE_ID_HASH_PEPPER`, `YOURVOICE_VOTE_CREDENTIAL_PEPPER`: three independent random values of at least 32 characters, for example from `openssl rand -base64 48`.
+   * `YOURVOICE_CORS_ALLOWED_ORIGINS`: the frontend origin(s), for example `https://<project>.vercel.app`.
 4. Wait for `votetrust-db` and `votetrust-api` to finish deploying.
 5. Verify `https://<api-host>/actuator/health/readiness` and `https://<api-host>/swagger-ui.html`.
 
 How the Blueprint is wired:
 
 * Database connection values are injected as `SPRING_DATASOURCE_HOST`, `SPRING_DATASOURCE_PORT`, `SPRING_DATASOURCE_NAME`, `SPRING_DATASOURCE_USERNAME`, and `SPRING_DATASOURCE_PASSWORD`; `application.properties` builds the JDBC URL from them when `SPRING_DATASOURCE_URL` is not set.
-* `VOTETRUST_JWT_SECRET`, `VOTETRUST_ID_HASH_PEPPER`, and `VOTETRUST_VOTE_CREDENTIAL_PEPPER` are generated by Render. Do not regenerate the peppers after voters register: existing ID hashes and outstanding voting credentials would stop matching.
+* `YOURVOICE_JWT_SECRET`, `YOURVOICE_ID_HASH_PEPPER`, and `YOURVOICE_VOTE_CREDENTIAL_PEPPER` are managed in the Render dashboard rather than generated by the Blueprint, so a Blueprint sync can never replace them. Do not change the peppers after voters register: existing ID hashes, spent ballot tokens, and ballot keys depend on them.
 * Render injects `PORT`, which the application uses when `SERVER_PORT` is not set.
 * `autoDeployTrigger: checksPass` deploys a commit only after its GitHub checks, including the CI workflow, pass.
 * `server.forward-headers-strategy=native` makes rate limiting and security audit events use the client IP from `X-Forwarded-For` set by Render's proxy. After deploying, confirm that `GET /api/v1/admin/security-audit-events` shows real client IPs rather than private proxy addresses.
 
-For a controlled first-admin bootstrap, set `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=true` and a strong `VOTETRUST_ADMIN_BOOTSTRAP_TOKEN` (at least 32 characters) on the API service, call `POST /api/v1/admin/bootstrap` with the `X-VoteTrust-Bootstrap-Token` header, then set `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=false` and redeploy.
+For a controlled first-admin bootstrap, set `YOURVOICE_ADMIN_BOOTSTRAP_ENABLED=true` and a strong `YOURVOICE_ADMIN_BOOTSTRAP_TOKEN` (at least 32 characters) on the API service, call `POST /api/v1/admin/bootstrap` with the `X-YourVoice-Bootstrap-Token` header, then set `YOURVOICE_ADMIN_BOOTSTRAP_ENABLED=false` and redeploy.
 
 The free Render plan suspends the web service when it is idle. The election lifecycle scheduler only runs while the service is awake; pending transitions are applied on the first scheduler tick after it wakes. To keep the service awake during an election, set the GitHub repository variable `RENDER_KEEPALIVE_URL` to the readiness URL; the `keep-alive.yml` workflow then pings it every 10 minutes. Remove the variable afterwards.
 
@@ -99,11 +101,11 @@ The React frontend in `frontend/` deploys to Vercel with `frontend` as the proje
 
 * `frontend/vercel.json` rewrites every path to `index.html` so client-side routes work on reload.
 * `VITE_API_BASE_URL` is read at build time from `frontend/.env.production` (or a Vercel project environment variable, which takes precedence) and must point at the Render API URL.
-* The Vercel origin must be listed in the API's `VOTETRUST_CORS_ALLOWED_ORIGINS`, otherwise browser requests fail CORS preflight.
+* The Vercel origin must be listed in the API's `YOURVOICE_CORS_ALLOWED_ORIGINS`, otherwise browser requests fail CORS preflight.
 
 ## Production Hardening Notes
 
-* Keep `VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=false` except during a controlled first-admin bootstrap window.
+* Keep `YOURVOICE_ADMIN_BOOTSTRAP_ENABLED=false` except during a controlled first-admin bootstrap window.
 * Rotate the bootstrap token immediately after first-admin creation.
 * Use managed PostgreSQL with backups, point-in-time recovery, and encrypted storage.
 * Restrict public exposure to the REST API and health endpoints required by the platform.

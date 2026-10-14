@@ -17,10 +17,10 @@ function App() {
 
       <header className="app-header">
         <div className="app-header__inner">
-          <NavLink className="brand" to="/" aria-label="VoteTrust home">
+          <NavLink className="brand" to="/" aria-label="YourVoice home">
             <BrandMark />
             <span className="brand__copy">
-              <strong>VoteTrust</strong>
+              <strong>YourVoice</strong>
               <span>Confidence by design</span>
             </span>
           </NavLink>
@@ -91,7 +91,7 @@ function App() {
           <div className="app-footer__brand">
             <BrandMark />
             <div>
-              <strong>VoteTrust</strong>
+              <strong>YourVoice</strong>
               <p>Transparent participation. Verifiable outcomes.</p>
             </div>
           </div>
