@@ -11,7 +11,6 @@ import io.github.humphreymahlangu.votetrust.exception.DuplicateResourceException
 import io.github.humphreymahlangu.votetrust.exception.InvalidBootstrapTokenException;
 import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
 import io.github.humphreymahlangu.votetrust.security.AdminBootstrapProperties;
-import io.github.humphreymahlangu.votetrust.security.JwtService;
 import io.github.humphreymahlangu.votetrust.security.SecurityAuditMetadata;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -27,20 +26,20 @@ public class AdminBootstrapService {
     private final AdminBootstrapProperties adminBootstrapProperties;
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
+    private final AuthTokenService authTokenService;
     private final SecurityAuditService securityAuditService;
 
     public AdminBootstrapService(
             AdminBootstrapProperties adminBootstrapProperties,
             UserAccountRepository userAccountRepository,
             PasswordEncoder passwordEncoder,
-            JwtService jwtService,
+            AuthTokenService authTokenService,
             SecurityAuditService securityAuditService
     ) {
         this.adminBootstrapProperties = adminBootstrapProperties;
         this.userAccountRepository = userAccountRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
+        this.authTokenService = authTokenService;
         this.securityAuditService = securityAuditService;
     }
 
@@ -84,7 +83,7 @@ public class AdminBootstrapService {
                 true
         ));
 
-        JwtService.TokenResult tokenResult = jwtService.generateAccessToken(adminAccount);
+        AuthResponse response = authTokenService.issueTokens(adminAccount);
         securityAuditService.record(
                 SecurityAuditEventType.ADMIN_BOOTSTRAP,
                 SecurityAuditOutcome.SUCCESS,
@@ -92,14 +91,7 @@ public class AdminBootstrapService {
                 metadata,
                 "First admin created"
         );
-        return new AuthResponse(
-                tokenResult.token(),
-                "Bearer",
-                tokenResult.expiresAt(),
-                adminAccount.getId(),
-                adminAccount.getEmail(),
-                adminAccount.getRole().name()
-        );
+        return response;
     }
 
     private void auditBootstrapFailure(String email, SecurityAuditMetadata metadata, String detail) {

@@ -20,7 +20,8 @@ class JwtServiceTest {
         JwtProperties properties = new JwtProperties(
                 "unit-test-secret-value-that-is-long-enough",
                 "votetrust-test",
-                15
+                15,
+                12
         );
         JwtService jwtService = new JwtService(properties, FIXED_CLOCK);
         UUID userId = UUID.randomUUID();

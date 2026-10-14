@@ -14,12 +14,15 @@ import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
 import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
 import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
 import io.github.humphreymahlangu.votetrust.security.IdentityHashService;
+import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,6 +49,14 @@ class AuthControllerIntegrationTest extends PostgreSqlTestContainerSupport {
 
     @Autowired
     private IdentityHashService identityHashService;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void cleanDatabase() {
+        DatabaseCleaner.clean(jdbcTemplate);
+    }
 
     @Test
     void registerLoginAndReadCurrentAccount() throws Exception {
@@ -101,6 +112,66 @@ class AuthControllerIntegrationTest extends PostgreSqlTestContainerSupport {
     }
 
     @Test
+    void refreshRotatesTokensAndReuseOfARotatedTokenRevokesTheSession() throws Exception {
+        String firstRefreshToken = registerAndReturnRefreshToken("refresh.rotation@example.com", "9001015000085", "AUTH-101");
+
+        MvcResult refreshed = mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(firstRefreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isNotEmpty())
+                .andExpect(jsonPath("$.email").value("refresh.rotation@example.com"))
+                .andReturn();
+        String secondRefreshToken = JsonPath.read(refreshed.getResponse().getContentAsString(), "$.refreshToken");
+        org.assertj.core.api.Assertions.assertThat(secondRefreshToken).isNotEqualTo(firstRefreshToken);
+
+        // Replaying the rotated token looks like theft: it fails and revokes the whole family.
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(firstRefreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid or expired refresh token"));
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(secondRefreshToken)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void logoutRevokesTheRefreshToken() throws Exception {
+        String refreshToken = registerAndReturnRefreshToken("logout.voter@example.com", "8506154000085", "AUTH-102");
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(refreshToken)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(refreshToken)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void repeatedFailedLoginsLockTheEmailEvenWhenNoAccountExists() throws Exception {
+        String body = """
+                {
+                  "email": "throttled.unknown@example.com",
+                  "password": "WrongPassword1"
+                }
+                """;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists(HttpHeaders.RETRY_AFTER))
+                .andExpect(jsonPath("$.message").value("Too many failed sign-in attempts. Try again in 15 minute(s)."));
+    }
+
+    @Test
     void currentAccountRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/v1/auth/me"))
                 .andExpect(status().isUnauthorized())
@@ -128,7 +199,8 @@ class AuthControllerIntegrationTest extends PostgreSqlTestContainerSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registerBody))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("A user account with this email already exists"));
+                .andExpect(jsonPath("$.message").value(
+                        "An account cannot be created with these details. If you already have an account, sign in instead."));
     }
 
     @Test
@@ -178,7 +250,7 @@ class AuthControllerIntegrationTest extends PostgreSqlTestContainerSupport {
                         )))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message")
-                        .value("This South African ID number is already linked to another account"));
+                        .value("An account cannot be created with these details. If you already have an account, sign in instead."));
     }
 
     @Test
@@ -196,6 +268,26 @@ class AuthControllerIntegrationTest extends PostgreSqlTestContainerSupport {
                         )))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.message").value("Voters must be at least 16 years old to register"));
+    }
+
+    private String registerAndReturnRefreshToken(String email, String idNumber, String districtCode) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registerBody("Refresh Voter", email, "VeryStrongPassword1", idNumber,
+                                createVotingDistrict(districtCode))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.refreshTokenExpiresAt").isNotEmpty())
+                .andReturn();
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.refreshToken");
+    }
+
+    private String refreshBody(String refreshToken) {
+        return """
+                {
+                  "refreshToken": "%s"
+                }
+                """.formatted(refreshToken);
     }
 
     private VotingDistrict createVotingDistrict(String code) {

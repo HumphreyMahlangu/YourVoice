@@ -5,6 +5,7 @@ import io.github.humphreymahlangu.votetrust.security.CorsProperties;
 import io.github.humphreymahlangu.votetrust.security.IdentityHashProperties;
 import io.github.humphreymahlangu.votetrust.security.JwtAuthenticationFilter;
 import io.github.humphreymahlangu.votetrust.security.JwtProperties;
+import io.github.humphreymahlangu.votetrust.security.LoginThrottleProperties;
 import io.github.humphreymahlangu.votetrust.security.RateLimitProperties;
 import io.github.humphreymahlangu.votetrust.security.RateLimitingFilter;
 import io.github.humphreymahlangu.votetrust.security.RestAccessDeniedHandler;
@@ -38,7 +39,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
         VoteCredentialProperties.class,
         CorsProperties.class,
         AdminBootstrapProperties.class,
-        RateLimitProperties.class
+        RateLimitProperties.class,
+        LoginThrottleProperties.class
 })
 public class SecurityConfig {
 
@@ -61,6 +63,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
+                                "/api/v1/auth/refresh",
+                                "/api/v1/auth/logout",
                                 "/api/v1/ballots",
                                 "/actuator/health",
                                 "/actuator/health/**",

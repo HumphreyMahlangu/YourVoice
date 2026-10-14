@@ -84,7 +84,10 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
 
         String path = request.getServletPath();
-        if ("/api/v1/auth/login".equals(path) || "/api/v1/auth/register".equals(path)) {
+        if ("/api/v1/auth/login".equals(path)
+                || "/api/v1/auth/register".equals(path)
+                || "/api/v1/auth/refresh".equals(path)
+                || "/api/v1/auth/logout".equals(path)) {
             return Optional.of(new RateLimitedEndpoint("auth", rateLimitProperties.getAuthLimit()));
         }
 

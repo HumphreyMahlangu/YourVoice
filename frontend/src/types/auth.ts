@@ -9,6 +9,8 @@ export interface AuthSession {
   userId: string
   email: string
   role: AccountRole
+  refreshToken: string
+  refreshTokenExpiresAt: string
 }
 
 export interface LoginCredentials {

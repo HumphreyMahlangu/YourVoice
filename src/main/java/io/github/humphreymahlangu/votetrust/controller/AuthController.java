@@ -3,11 +3,13 @@ package io.github.humphreymahlangu.votetrust.controller;
 import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
 import io.github.humphreymahlangu.votetrust.dto.AuthResponse;
 import io.github.humphreymahlangu.votetrust.dto.LoginRequest;
+import io.github.humphreymahlangu.votetrust.dto.RefreshTokenRequest;
 import io.github.humphreymahlangu.votetrust.dto.RegisterRequest;
 import io.github.humphreymahlangu.votetrust.dto.UserAccountResponse;
 import io.github.humphreymahlangu.votetrust.security.SecurityAuditMetadata;
 import io.github.humphreymahlangu.votetrust.security.UserPrincipal;
 import io.github.humphreymahlangu.votetrust.service.AuthService;
+import io.github.humphreymahlangu.votetrust.service.AuthTokenService;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,9 +56,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthTokenService authTokenService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, AuthTokenService authTokenService) {
         this.authService = authService;
+        this.authTokenService = authTokenService;
     }
 
     @PostMapping("/register")
@@ -76,6 +80,25 @@ public class AuthController {
     )
     public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
         return authService.login(request, SecurityAuditMetadata.from(servletRequest));
+    }
+
+    @PostMapping("/refresh")
+    @Operation(
+            summary = "Rotate a refresh token",
+            description = "Exchanges a refresh token for a new access token and a new refresh token. The presented token is revoked; reusing a revoked token revokes every session in its family."
+    )
+    public AuthResponse refresh(@Valid @RequestBody RefreshTokenRequest request, HttpServletRequest servletRequest) {
+        return authTokenService.refresh(request.refreshToken(), SecurityAuditMetadata.from(servletRequest));
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Sign out",
+            description = "Revokes the refresh token and every token rotated from it. Access tokens already issued stay valid until they expire (at most the configured access-token lifetime)."
+    )
+    public void logout(@Valid @RequestBody RefreshTokenRequest request, HttpServletRequest servletRequest) {
+        authTokenService.logout(request.refreshToken(), SecurityAuditMetadata.from(servletRequest));
     }
 
     @GetMapping("/me")
