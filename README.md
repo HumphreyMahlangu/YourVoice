@@ -80,7 +80,7 @@ VoteTrust is built around five fundamental principles.
 ### Controlled Voter Registration
 
 * Voter onboarding creates the platform account and voter profile together, collecting the legal name, contact email, South African ID, identity-document type, and voting district once.
-* Election registration is accepted only while the configured registration window is open and the election is in the correct lifecycle state.
+* Election registration is accepted only while the configured registration window is open and the election is in the correct lifecycle state. It always uses the voting district captured at onboarding, so voters cannot choose a different ward or province per election.
 * South African ID numbers are validated during onboarding and stored as peppered HMAC-SHA-256 hashes rather than plaintext identifiers. Election registration reuses the authenticated voter profile instead of asking for the ID again.
 * Voting-district and contest-scope checks model national, provincial, municipal proportional-representation, and ward eligibility.
 
@@ -163,7 +163,7 @@ The system uses a centralized PostgreSQL ledger. It applies cryptographic chaini
 | `GET` | `/api/v1/voting-districts` | Public | List voting districts available during registration. |
 | `GET` | `/api/v1/elections` | Public | List elections. |
 | `GET` | `/api/v1/elections/{electionId}` | Public | Retrieve an election. |
-| `POST` | `/api/v1/elections/{electionId}/registrations` | Authenticated voter | Register the existing voter profile during the election registration window and confirm the voting district. |
+| `POST` | `/api/v1/elections/{electionId}/registrations` | Authenticated voter | Register the existing voter profile, in its onboarding voting district, during the election registration window. |
 | `GET` | `/api/v1/me/registrations` | Authenticated voter | List the current voter's registrations. |
 | `GET` | `/api/v1/elections/{electionId}/contests` | Public | List contests and options for an election. |
 | `POST` | `/api/v1/elections/{electionId}/contests/{contestId}/credentials` | Authenticated voter | Issue a one-time anonymous voting credential after eligibility checks. |
@@ -240,17 +240,16 @@ On Linux or macOS, use `./mvnw` instead of `.\mvnw.cmd`.
 * Swagger UI: `http://localhost:8080/swagger-ui.html`
 * OpenAPI JSON: `http://localhost:8080/api-docs`
 
-The repository also includes Docker Compose and verified Postman artifacts for an end-to-end local demonstration. See [`postman/README.md`](postman/README.md) and [`DEPLOYMENT.md`](DEPLOYMENT.md).
+The repository also includes Docker Compose and verified Postman artifacts for an end-to-end local demonstration. See [`postman/README.md`](postman/README.md) and [`DEPLOYMENT.md`](DEPLOYMENT.md), which also covers the Render (API) and Vercel (frontend) deployments.
 
 ## Project Status
 
 VoteTrust is a functional portfolio MVP. The implemented backend covers account security, controlled election registration, geographic eligibility, anonymous one-time voting credentials, concurrent duplicate-vote prevention, ballot casting, final tallying, SHA-256 ledger verification, OpenAPI documentation, automated tests, and local container packaging.
 
-The project compiles and passes its automated CI quality gates. Cloud deployment automation is present but deployment is currently paused because ACR Tasks are unavailable on the selected Azure free-credit subscription. The repository should not be presented as a certified or operational public-election platform.
+The project compiles and passes its automated CI quality gates. The API and PostgreSQL database are deployed to Render through the `render.yaml` Blueprint, and the React frontend is deployed to Vercel. The repository should not be presented as a certified or operational public-election platform.
 
 ## Roadmap
 
-* Select a cloud deployment pipeline compatible with the target Azure subscription and add an entitlement check before provisioning billable resources.
 * Add refresh-token rotation, explicit token revocation, and stronger account recovery controls.
 * Move rate limiting to a distributed gateway or Redis-backed implementation for horizontal scaling.
 * Separate application and migration database roles using least privilege.

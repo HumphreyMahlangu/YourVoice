@@ -9,12 +9,12 @@ import io.github.humphreymahlangu.votetrust.entity.RegistrationStatus;
 import io.github.humphreymahlangu.votetrust.entity.VoterProfile;
 import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
 import io.github.humphreymahlangu.votetrust.exception.DuplicateResourceException;
+import io.github.humphreymahlangu.votetrust.exception.EligibilityException;
 import io.github.humphreymahlangu.votetrust.exception.RegistrationClosedException;
 import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRegistrationRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
 import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
-import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -26,20 +26,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class VoterRegistrationService {
 
     private final ElectionRepository electionRepository;
-    private final VotingDistrictRepository votingDistrictRepository;
     private final VoterProfileRepository voterProfileRepository;
     private final ElectionRegistrationRepository electionRegistrationRepository;
     private final Clock clock;
 
     public VoterRegistrationService(
             ElectionRepository electionRepository,
-            VotingDistrictRepository votingDistrictRepository,
             VoterProfileRepository voterProfileRepository,
             ElectionRegistrationRepository electionRegistrationRepository,
             Clock clock
     ) {
         this.electionRepository = electionRepository;
-        this.votingDistrictRepository = votingDistrictRepository;
         this.voterProfileRepository = voterProfileRepository;
         this.electionRegistrationRepository = electionRegistrationRepository;
         this.clock = clock;
@@ -55,10 +52,13 @@ public class VoterRegistrationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Election not found"));
         assertRegistrationPeriodOpen(election);
 
-        VotingDistrict votingDistrict = votingDistrictRepository.findById(request.votingDistrictId())
-                .orElseThrow(() -> new ResourceNotFoundException("Voting district not found"));
         VoterProfile voterProfile = voterProfileRepository.findByUserAccountId(userAccountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Voter profile not found"));
+        VotingDistrict votingDistrict = voterProfile.getVotingDistrict();
+        UUID confirmedDistrictId = request == null ? null : request.votingDistrictId();
+        if (confirmedDistrictId != null && !confirmedDistrictId.equals(votingDistrict.getId())) {
+            throw new EligibilityException("Voting district must match the district on your voter profile");
+        }
 
         if (electionRegistrationRepository.existsByVoterProfileIdAndElectionId(voterProfile.getId(), electionId)) {
             throw new DuplicateResourceException("Voter is already registered for this election");

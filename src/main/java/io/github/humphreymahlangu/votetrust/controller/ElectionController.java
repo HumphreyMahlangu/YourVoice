@@ -83,13 +83,13 @@ public class ElectionController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(
             summary = "Register authenticated voter for an election",
-            description = "Registers the authenticated voter during the registration window after South African ID and voting district validation.",
+            description = "Registers the authenticated voter during the registration window in the voting district on their voter profile. The request body is optional; a votingDistrictId that differs from the profile district is rejected with 422.",
             security = @SecurityRequirement(name = "bearerAuth")
     )
     public ElectionRegistrationResponse registerForElection(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID electionId,
-            @Valid @RequestBody ElectionRegistrationRequest request
+            @Valid @RequestBody(required = false) ElectionRegistrationRequest request
     ) {
         return voterRegistrationService.registerForElection(principal.id(), electionId, request);
     }

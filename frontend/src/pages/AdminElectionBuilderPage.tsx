@@ -98,9 +98,17 @@ function AdminElectionBuilderPage() {
     )
   }
 
-  const isConfigurationOpen =
-    builderData?.election.status === 'DRAFT' &&
-    new Date(builderData.election.registrationStartAt).getTime() > Date.now()
+  // Mirrors the API: a DRAFT election stays configurable until its registration window ends,
+  // so a ballot that was not ready when registration was due to open can still be completed.
+  const isDraft = builderData?.election.status === 'DRAFT'
+  const registrationWindowEnded =
+    builderData !== null &&
+    new Date(builderData.election.registrationEndAt).getTime() <= Date.now()
+  const isConfigurationOpen = isDraft && !registrationWindowEnded
+  const isRegistrationOverdue =
+    isConfigurationOpen &&
+    builderData !== null &&
+    new Date(builderData.election.registrationStartAt).getTime() <= Date.now()
 
   return (
     <section className="page admin-page workflow-page" aria-labelledby="election-builder-heading">
@@ -133,10 +141,31 @@ function AdminElectionBuilderPage() {
             </Link>
           </p>
 
+          {isRegistrationOverdue && (
+            <p role="status">
+              Registration was due to open but this ballot is not ready yet.
+              Every contest needs at least two party or independent candidate
+              options. Registration opens automatically once the ballot is
+              complete.
+            </p>
+          )}
+
           {!isConfigurationOpen ? (
             <p>
-              Ballot configuration is locked because this election is no
-              longer an upcoming draft.
+              {isDraft ? (
+                <>
+                  The registration window ended before the ballot was ready, so
+                  this election can no longer open.{' '}
+                  <Link
+                    to={`/admin/elections/${builderData.election.id}/operations`}
+                  >
+                    Cancel it from election operations
+                  </Link>{' '}
+                  and create a new election.
+                </>
+              ) : (
+                'Ballot configuration is locked because registration has opened.'
+              )}
             </p>
           ) : session ? (
             <AdminContestForm

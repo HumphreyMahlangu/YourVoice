@@ -55,11 +55,13 @@ class DeploymentArtifactTest {
     void applicationConfigurationHasNoHardcodedDatasourceSecretsAndSupportsGracefulShutdown() throws IOException {
         String applicationProperties = read("src/main/resources/application.properties");
 
-        assertThat(applicationProperties).contains("spring.datasource.url=${SPRING_DATASOURCE_URL}");
+        assertThat(applicationProperties).contains(
+                "spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://${SPRING_DATASOURCE_HOST:localhost}:${SPRING_DATASOURCE_PORT:5432}/${SPRING_DATASOURCE_NAME:votetrust}}");
         assertThat(applicationProperties).contains("spring.datasource.username=${SPRING_DATASOURCE_USERNAME}");
         assertThat(applicationProperties).contains("spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}");
-        assertThat(applicationProperties).doesNotContain("SPRING_DATASOURCE_PASSWORD:votetrust");
+        assertThat(applicationProperties).doesNotContainPattern("SPRING_DATASOURCE_(USERNAME|PASSWORD):");
         assertThat(applicationProperties).contains("server.shutdown=graceful");
+        assertThat(applicationProperties).contains("server.forward-headers-strategy=${SERVER_FORWARD_HEADERS_STRATEGY:native}");
         assertThat(applicationProperties).contains("management.endpoint.health.group.readiness.include=readinessState,db");
     }
 
@@ -85,71 +87,26 @@ class DeploymentArtifactTest {
         assertThat(deployment).contains("SPRING_DATASOURCE_URL");
         assertThat(deployment).contains("VOTETRUST_JWT_SECRET");
         assertThat(deployment).contains("docker compose --env-file .env config");
-        assertThat(deployment).contains("Azure ACR Tasks Deployment");
-        assertThat(deployment).contains("provision-acr-tasks-deployment.ps1");
+        assertThat(deployment).contains("Render Backend Deployment");
+        assertThat(deployment).contains("VOTETRUST_CORS_ALLOWED_ORIGINS");
         assertThat(deployment).contains("/actuator/health/readiness");
         assertThat(deployment).contains("CI Deployment Gates");
     }
 
     @Test
-    void acrTaskBuildsPushesAndDeploysCommitTaggedContainerAppImage() throws IOException {
-        String acrTask = read("infra/azure/acr-task.yaml");
+    void renderBlueprintDeploysDockerImageWithDatabaseSecretsAndGatedAutoDeploy() throws IOException {
+        String blueprint = read("render.yaml");
 
-        assertThat(acrTask).contains("version: v1.1.0");
-        assertThat(acrTask).contains("-t $Registry/{{.Values.imageRepository}}:{{.Run.Commit}}");
-        assertThat(acrTask).contains("-t $Registry/{{.Values.imageRepository}}:main");
-        assertThat(acrTask).contains("push:");
-        assertThat(acrTask).contains("az login --identity");
-        assertThat(acrTask).contains("az containerapp update");
-        assertThat(acrTask).contains("--image $Registry/{{.Values.imageRepository}}:{{.Run.Commit}}");
-        assertThat(acrTask).doesNotContain("SPRING_DATASOURCE_PASSWORD");
-        assertThat(acrTask).doesNotContain("VOTETRUST_JWT_SECRET");
-        assertThat(acrTask).doesNotContain("keyvaultref:");
-    }
-
-    @Test
-    void azureProvisioningUsesPrivateNetworkManagedIdentityAndKeyVaultReferences() throws IOException {
-        String script = read("infra/azure/provision-acr-tasks-deployment.ps1");
-
-        assertThat(script).contains("$Location = \"spaincentral\"");
-        assertThat(script).contains("type: Microsoft.App/containerApps");
-        assertThat(script).contains("Microsoft.App/environments");
-        assertThat(script).contains("Microsoft.DBforPostgreSQL/flexibleServers");
-        assertThat(script).doesNotContain("\"--public-access\", \"Disabled\"");
-        assertThat(script).containsSubsequence(
-                "\"--subnet\", $postgresSubnetId",
-                "\"--private-dns-zone\", $privateDnsZoneId");
-        assertThat(script).doesNotContain("\"--database-name\", $DatabaseName");
-        assertThat(script).containsSubsequence(
-                "\"db\", \"show\", \"--name\", $DatabaseName",
-                "\"db\", \"create\"",
-                "\"--name\", $DatabaseName");
-        assertThat(script).contains("--admin-enabled\", \"false\"");
-        assertThat(script).contains("Key Vault Secrets User");
-        assertThat(script).contains("AcrPull");
-        assertThat(script).contains("Contributor");
-        assertThat(script).contains("keyVaultUrl:");
-        assertThat(script).contains("identity: \"$IdentityId\"");
-        assertThat(script).contains("secretRef: db-url");
-        assertThat(script).contains("/actuator/health/readiness");
-        assertThat(script).contains("/actuator/health/liveness");
-        assertThat(script).contains("--git-access-token\", $GitToken");
-        assertThat(script).contains("public_repo and repo:status");
-    }
-
-    @Test
-    void azureRunbookDocumentsValidationBootstrapOperationsAndRollback() throws IOException {
-        String runbook = read("infra/azure/README.md");
-
-        assertThat(runbook).contains("spaincentral");
-        assertThat(runbook).contains("az acr task list-runs");
-        assertThat(runbook).contains("az acr task logs");
-        assertThat(runbook).contains("az acr task run");
-        assertThat(runbook).contains("VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=true");
-        assertThat(runbook).contains("VOTETRUST_ADMIN_BOOTSTRAP_ENABLED=false");
-        assertThat(runbook).contains("/actuator/health/readiness");
-        assertThat(runbook).contains("swagger-ui.html");
-        assertThat(runbook).contains("<previous-commit-sha>");
+        assertThat(blueprint).contains("runtime: docker");
+        assertThat(blueprint).contains("healthCheckPath: /actuator/health/readiness");
+        assertThat(blueprint).contains("autoDeployTrigger: checksPass");
+        assertThat(blueprint).contains("fromDatabase:");
+        assertThat(blueprint).containsSubsequence(
+                "- key: VOTETRUST_JWT_SECRET", "generateValue: true",
+                "- key: VOTETRUST_ID_HASH_PEPPER", "generateValue: true",
+                "- key: VOTETRUST_VOTE_CREDENTIAL_PEPPER", "generateValue: true");
+        assertThat(blueprint).containsSubsequence("- key: VOTETRUST_CORS_ALLOWED_ORIGINS", "sync: false");
+        assertThat(blueprint).containsSubsequence("- key: VOTETRUST_ADMIN_BOOTSTRAP_ENABLED", "value: \"false\"");
     }
 
     private String read(String relativePath) throws IOException {

@@ -1,10 +1,13 @@
 package io.github.humphreymahlangu.votetrust.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.github.humphreymahlangu.votetrust.dto.ContestResponse;
 import io.github.humphreymahlangu.votetrust.dto.ContestStatusUpdateRequest;
 import io.github.humphreymahlangu.votetrust.dto.CreateContestOptionRequest;
 import io.github.humphreymahlangu.votetrust.dto.CreateContestRequest;
@@ -88,32 +91,48 @@ class AdminElectionManagementServiceTest {
     }
 
     @Test
-    void ballotConfigurationLocksAtRegistrationBoundaryBeforeSchedulerRuns() {
+    void draftElectionPastRegistrationStartCanStillBeConfiguredSoItIsNotStuck() {
+        UUID electionId = UUID.randomUUID();
+        Election election = draftElection(FIXED_NOW.minusSeconds(60), FIXED_NOW.plusSeconds(3600));
+        when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
+        when(contestRepository.save(any(Contest.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ContestResponse response = adminElectionManagementService.createContest(electionId, wardContestRequest());
+
+        assertThat(response.name()).isEqualTo("Ward 1 Councillor");
+        assertThat(response.status()).isEqualTo(ContestStatus.DRAFT.name());
+    }
+
+    @Test
+    void ballotConfigurationClosesOnceTheRegistrationWindowHasEnded() {
+        UUID electionId = UUID.randomUUID();
+        Election election = draftElection(FIXED_NOW.minusSeconds(3600), FIXED_NOW);
+        when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
+
+        assertThatThrownBy(() -> adminElectionManagementService.createContest(electionId, wardContestRequest()))
+                .isInstanceOf(ElectionLifecycleException.class)
+                .hasMessage("Ballot configuration is closed because the registration window has ended; cancel this election and create a new one");
+        verify(contestRepository, never()).save(any(Contest.class));
+    }
+
+    @Test
+    void ballotConfigurationIsLockedOnceRegistrationHasOpened() {
         UUID electionId = UUID.randomUUID();
         Election election = new Election(
-                "Boundary Election",
+                "Open Election",
                 ElectionType.MUNICIPAL,
-                FIXED_NOW,
+                FIXED_NOW.minusSeconds(60),
                 FIXED_NOW.plusSeconds(3600),
                 FIXED_NOW.plusSeconds(7200),
                 FIXED_NOW.plusSeconds(10800),
-                ElectionStatus.DRAFT
+                ElectionStatus.REGISTRATION_OPEN
         );
         when(electionRepository.findByIdForUpdate(electionId)).thenReturn(Optional.of(election));
 
-        CreateContestRequest request = new CreateContestRequest(
-                "Ward 1 Councillor",
-                ContestType.MUNICIPAL_WARD,
-                1,
-                "Western Cape",
-                "City of Cape Town",
-                1
-        );
-
-        assertThatThrownBy(() -> adminElectionManagementService.createContest(electionId, request))
+        assertThatThrownBy(() -> adminElectionManagementService.createContest(electionId, wardContestRequest()))
                 .isInstanceOf(ElectionLifecycleException.class)
-                .hasMessage("Ballot configuration is locked once registration starts");
-        verify(contestRepository, never()).save(org.mockito.ArgumentMatchers.any(Contest.class));
+                .hasMessage("Ballot configuration is locked once registration opens");
+        verify(contestRepository, never()).save(any(Contest.class));
     }
 
     @Test
@@ -138,7 +157,30 @@ class AdminElectionManagementServiceTest {
         ))
                 .isInstanceOf(DuplicateResourceException.class)
                 .hasMessage("A BLANK_BALLOT option already exists for this contest");
-        verify(contestOptionRepository, never()).save(org.mockito.ArgumentMatchers.any(ContestOption.class));
+        verify(contestOptionRepository, never()).save(any(ContestOption.class));
+    }
+
+    private Election draftElection(Instant registrationStartAt, Instant registrationEndAt) {
+        return new Election(
+                "Boundary Election",
+                ElectionType.MUNICIPAL,
+                registrationStartAt,
+                registrationEndAt,
+                registrationEndAt.plusSeconds(3600),
+                registrationEndAt.plusSeconds(7200),
+                ElectionStatus.DRAFT
+        );
+    }
+
+    private CreateContestRequest wardContestRequest() {
+        return new CreateContestRequest(
+                "Ward 1 Councillor",
+                ContestType.MUNICIPAL_WARD,
+                1,
+                "Western Cape",
+                "City of Cape Town",
+                1
+        );
     }
 
     private Contest contest(ElectionStatus electionStatus, ContestStatus contestStatus) {

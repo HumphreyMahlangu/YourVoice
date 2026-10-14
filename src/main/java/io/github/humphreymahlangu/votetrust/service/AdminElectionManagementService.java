@@ -245,10 +245,17 @@ public class AdminElectionManagementService {
         }
     }
 
+    // A DRAFT election whose registration start has passed has not opened yet (the ballot was not ready),
+    // so no voter can be registered. Keep configuration open until the registration window ends so the
+    // election can still be completed and opened by the lifecycle scheduler.
     private void ensureElectionAllowsBallotConfiguration(Election election) {
-        if (election.getStatus() != ElectionStatus.DRAFT
-                || !Instant.now(clock).isBefore(election.getRegistrationStartAt())) {
-            throw new ElectionLifecycleException("Ballot configuration is locked once registration starts");
+        if (election.getStatus() != ElectionStatus.DRAFT) {
+            throw new ElectionLifecycleException("Ballot configuration is locked once registration opens");
+        }
+        if (!Instant.now(clock).isBefore(election.getRegistrationEndAt())) {
+            throw new ElectionLifecycleException(
+                    "Ballot configuration is closed because the registration window has ended; cancel this election and create a new one"
+            );
         }
     }
 

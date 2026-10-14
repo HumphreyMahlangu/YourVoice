@@ -1,5 +1,6 @@
 package io.github.humphreymahlangu.votetrust.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -130,6 +131,55 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].electionId").value(election.getId().toString()))
                 .andExpect(jsonPath("$[0].votingDistrictName").value("Cape Town Ward 1 Station"));
+    }
+
+    @Test
+    void registerForElectionUsesProfileDistrictWhenNoDistrictIsSupplied() throws Exception {
+        VotingDistrict district = createVotingDistrict();
+        Election election = createOpenElection();
+        String token = registerAccountAndReturnToken("registration.profile-district@example.com", district);
+
+        mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.votingDistrictId").value(district.getId().toString()));
+    }
+
+    @Test
+    void registerForElectionAcceptsMissingRequestBody() throws Exception {
+        VotingDistrict district = createVotingDistrict();
+        Election election = createOpenElection();
+        String token = registerAccountAndReturnToken("registration.no-body@example.com", district);
+
+        mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.votingDistrictId").value(district.getId().toString()));
+    }
+
+    @Test
+    void registerForElectionRejectsDistrictThatDiffersFromVoterProfile() throws Exception {
+        VotingDistrict profileDistrict = createVotingDistrict();
+        VotingDistrict otherDistrict = votingDistrictRepository.save(new VotingDistrict(
+                "GP001-0042",
+                "Johannesburg Ward 42 Station",
+                "Gauteng",
+                "City of Johannesburg",
+                42
+        ));
+        Election election = createOpenElection();
+        String token = registerAccountAndReturnToken("registration.other-district@example.com", profileDistrict);
+
+        mockMvc.perform(post("/api/v1/elections/{electionId}/registrations", election.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(registrationBody(otherDistrict)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value("Voting district must match the district on your voter profile"));
+
+        assertThat(electionRegistrationRepository.count()).isZero();
     }
 
     @Test

@@ -8,7 +8,8 @@ export type IdDocumentType =
   | 'TEMPORARY_ID_CERTIFICATE'
 
 export interface ElectionRegistrationRequest {
-  votingDistrictId: string
+  /** Optional confirmation; the API always registers the voter in their profile district. */
+  votingDistrictId?: string
 }
 
 export interface ElectionRegistration {
