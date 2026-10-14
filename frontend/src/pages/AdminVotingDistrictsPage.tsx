@@ -82,7 +82,7 @@ function DistrictEditForm({
           id={`${idPrefix}-code`}
           required
           maxLength={32}
-          pattern="[A-Za-z0-9-]+"
+          pattern="[A-Za-z0-9\-]+"
           value={code}
           onChange={(event) => setCode(event.target.value)}
         />

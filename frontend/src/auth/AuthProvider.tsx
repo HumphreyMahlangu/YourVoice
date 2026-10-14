@@ -24,6 +24,24 @@ import { AuthContext } from './context'
 const REFRESH_TOKEN_KEY = 'votetrust.refreshToken'
 const REFRESH_LEAD_MS = 60_000
 
+// Concurrent refreshes of the same token must share one request: the API treats a second use of a rotated
+// refresh token as theft and revokes the whole session. In development, React StrictMode runs the restore
+// effect twice, which would otherwise sign the user out on every reload.
+const inFlightRefreshes = new Map<string, Promise<AuthSession>>()
+
+function refreshOnce(refreshToken: string) {
+  const inFlight = inFlightRefreshes.get(refreshToken)
+  if (inFlight) {
+    return inFlight
+  }
+  const request = refreshSession(refreshToken)
+  inFlightRefreshes.set(refreshToken, request)
+  request
+    .finally(() => inFlightRefreshes.delete(refreshToken))
+    .catch(() => undefined)
+  return request
+}
+
 function readStoredRefreshToken() {
   try {
     return window.sessionStorage.getItem(REFRESH_TOKEN_KEY)
@@ -63,7 +81,7 @@ function AuthProvider({ children }: PropsWithChildren) {
     }
 
     let cancelled = false
-    refreshSession(storedRefreshToken)
+    refreshOnce(storedRefreshToken)
       .then((restoredSession) => {
         if (!cancelled) {
           applySession(restoredSession)
@@ -95,7 +113,7 @@ function AuthProvider({ children }: PropsWithChildren) {
       new Date(session.expiresAt).getTime() - Date.now() - REFRESH_LEAD_MS,
     )
     const refreshTimer = window.setTimeout(() => {
-      refreshSession(session.refreshToken)
+      refreshOnce(session.refreshToken)
         .then(applySession)
         .catch(() => applySession(null))
     }, refreshIn)

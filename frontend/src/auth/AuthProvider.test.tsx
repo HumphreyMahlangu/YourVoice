@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -61,6 +62,24 @@ describe('AuthProvider', () => {
     expect(window.sessionStorage.getItem('votetrust.refreshToken')).toBe(
       'rotated-refresh-token',
     )
+  })
+
+  it('sends one refresh request even when StrictMode runs the restore effect twice', async () => {
+    window.sessionStorage.setItem('votetrust.refreshToken', 'strict-mode-refresh-token')
+    vi.mocked(authApi.refreshSession).mockResolvedValue(restoredSession)
+
+    render(
+      <StrictMode>
+        <AuthProvider>
+          <SessionProbe />
+        </AuthProvider>
+      </StrictMode>,
+    )
+
+    expect(
+      await screen.findByText('signed in as voter@example.com'),
+    ).toBeInTheDocument()
+    expect(authApi.refreshSession).toHaveBeenCalledTimes(1)
   })
 
   it('signs out and forgets the stored token when it cannot be refreshed', async () => {

@@ -94,7 +94,7 @@ function ContestLedgerPage() {
       {verification !== null && (
         <p role={verification.valid ? 'status' : 'alert'}>
           {verification.valid
-            ? `Your browser recomputed all ${formatNumber(entries.length)} hashes and the chain is intact. Head hash: `
+            ? `Your browser recomputed ${entries.length === 1 ? 'the ledger hash' : `all ${formatNumber(entries.length)} hashes`} and the chain is intact. Head hash: `
             : 'Your browser found problems while recomputing the chain: '}
           {verification.valid ? (
             <code>{verification.headHash}</code>
