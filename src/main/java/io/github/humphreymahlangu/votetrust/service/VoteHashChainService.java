@@ -7,6 +7,7 @@ import io.github.humphreymahlangu.votetrust.entity.LedgerState;
 import io.github.humphreymahlangu.votetrust.exception.VotingClosedException;
 import io.github.humphreymahlangu.votetrust.repository.BallotLedgerEntryRepository;
 import io.github.humphreymahlangu.votetrust.repository.LedgerStateRepository;
+import jakarta.persistence.EntityManager;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -31,14 +32,17 @@ public class VoteHashChainService {
 
     private final LedgerStateRepository ledgerStateRepository;
     private final BallotLedgerEntryRepository ballotLedgerEntryRepository;
+    private final EntityManager entityManager;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public VoteHashChainService(
             LedgerStateRepository ledgerStateRepository,
-            BallotLedgerEntryRepository ballotLedgerEntryRepository
+            BallotLedgerEntryRepository ballotLedgerEntryRepository,
+            EntityManager entityManager
     ) {
         this.ledgerStateRepository = ledgerStateRepository;
         this.ballotLedgerEntryRepository = ballotLedgerEntryRepository;
+        this.entityManager = entityManager;
     }
 
     @Transactional
@@ -85,8 +89,12 @@ public class VoteHashChainService {
     @Transactional
     public LedgerState lockLedgerState(Contest contest, Instant now) {
         ledgerStateRepository.insertIfAbsent(UUID.randomUUID(), contest.getId(), LedgerState.GENESIS_HASH, now);
-        return ledgerStateRepository.findByContestIdForUpdate(contest.getId())
+        LedgerState ledgerState = ledgerStateRepository.findByContestIdForUpdate(contest.getId())
                 .orElseThrow(() -> new IllegalStateException("Ledger state was not created for contest " + contest.getId()));
+        // If this persistence context already held the entity, the locking query returns that cached instance
+        // unchanged. Refresh so callers always see the row as committed by whoever held the lock before us.
+        entityManager.refresh(ledgerState);
+        return ledgerState;
     }
 
     public String calculateHash(BallotLedgerEntry entry) {

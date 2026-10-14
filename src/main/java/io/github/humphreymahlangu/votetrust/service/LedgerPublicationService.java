@@ -59,9 +59,10 @@ public class LedgerPublicationService {
      */
     @Transactional
     public LedgerState ensurePublished(Contest contest) {
-        LedgerState existing = ledgerStateRepository.findByContestId(contest.getId()).orElse(null);
-        if (existing != null && existing.isPublished()) {
-            return existing;
+        // Check with a query that does not load the entity: a LedgerState loaded here would sit in the persistence
+        // context and could mask the state another transaction commits while we wait for the row lock below.
+        if (ledgerStateRepository.existsByContestIdAndPublishedHeadHashIsNotNull(contest.getId())) {
+            return ledgerStateRepository.findByContestId(contest.getId()).orElseThrow();
         }
 
         LedgerState ledgerState = voteHashChainService.lockLedgerState(contest, Instant.now(clock));

@@ -15,7 +15,7 @@ class VoteHashChainServiceTest {
     private static final UUID OPTION_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private static final Instant CAST_AT = Instant.parse("2026-08-07T10:00:00Z");
 
-    private final VoteHashChainService service = new VoteHashChainService(null, null);
+    private final VoteHashChainService service = new VoteHashChainService(null, null, null);
 
     @Test
     void hashChangesWhenPreviousHashChanges() {

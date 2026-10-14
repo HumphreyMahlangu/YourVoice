@@ -15,6 +15,8 @@ public interface LedgerStateRepository extends JpaRepository<LedgerState, UUID> 
 
     Optional<LedgerState> findByContestId(UUID contestId);
 
+    boolean existsByContestIdAndPublishedHeadHashIsNotNull(UUID contestId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select ledgerState
