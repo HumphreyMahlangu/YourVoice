@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
 import io.github.humphreymahlangu.votetrust.entity.AccountRole;
 import io.github.humphreymahlangu.votetrust.entity.BallotLedgerEntry;
@@ -38,6 +39,10 @@ import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
 import io.github.humphreymahlangu.votetrust.repository.VotingRightRepository;
 import io.github.humphreymahlangu.votetrust.security.IdentityHashService;
 import io.github.humphreymahlangu.votetrust.service.VoteHashChainService;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
+import java.util.Map;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -115,18 +120,7 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
 
     @BeforeEach
     void cleanDatabase() {
-        ballotLedgerEntryRepository.deleteAll();
-        ledgerStateRepository.deleteAll();
-        anonymousVotingCredentialRepository.deleteAll();
-        votingRightRepository.deleteAll();
-        electionLifecycleEventRepository.deleteAll();
-        contestOptionRepository.deleteAll();
-        contestRepository.deleteAll();
-        electionRegistrationRepository.deleteAll();
-        voterProfileRepository.deleteAll();
-        electionRepository.deleteAll();
-        votingDistrictRepository.deleteAll();
-        userAccountRepository.deleteAll();
+        DatabaseCleaner.clean(jdbcTemplate);
     }
 
     @Test
@@ -134,9 +128,9 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
         ClosedContestFixture fixture = createClosedContestFixture();
         appendVote(fixture.contest(), fixture.optionA(), 300);
         appendVote(fixture.contest(), fixture.optionB(), 240);
-        BallotLedgerEntry lastEntry = appendVote(fixture.contest(), fixture.optionA(), 180);
+        appendVote(fixture.contest(), fixture.optionA(), 180);
 
-        mockMvc.perform(get(
+        MvcResult resultsResult = mockMvc.perform(get(
                         "/api/v1/elections/{electionId}/contests/{contestId}/results",
                         fixture.election().getId(),
                         fixture.contest().getId()
@@ -148,7 +142,6 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
                 .andExpect(jsonPath("$.blankBallots").value(0))
                 .andExpect(jsonPath("$.spoiltBallots").value(0))
                 .andExpect(jsonPath("$.turnoutPercentage").value(100.0))
-                .andExpect(jsonPath("$.ledgerHeadHash").value(lastEntry.getCurrentHash()))
                 .andExpect(jsonPath("$.options.length()").value(2))
                 .andExpect(jsonPath("$.options[0].contestOptionId").value(fixture.optionA().getId().toString()))
                 .andExpect(jsonPath("$.options[0].voteCount").value(2))
@@ -157,7 +150,36 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
                 .andExpect(jsonPath("$.options[1].contestOptionId").value(fixture.optionB().getId().toString()))
                 .andExpect(jsonPath("$.options[1].voteCount").value(1))
                 .andExpect(jsonPath("$.options[1].percentageOfValidVotes").value(33.33))
-                .andExpect(jsonPath("$.options[1].leading").value(false));
+                .andExpect(jsonPath("$.options[1].leading").value(false))
+                .andReturn();
+
+        String ledgerHeadHash = JsonPath.read(resultsResult.getResponse().getContentAsString(), "$.ledgerHeadHash");
+        assertThat(ledgerHeadHash).isEqualTo(ledgerStateRepository.findByContestId(fixture.contest().getId())
+                .orElseThrow()
+                .getPublishedHeadHash());
+    }
+
+    @Test
+    void turnoutCountsOnlyVotersEligibleForTheWardContest() throws Exception {
+        ClosedContestFixture fixture = createClosedContestFixture();
+        VotingDistrict otherWard = votingDistrictRepository.save(new VotingDistrict(
+                "WC001-9002",
+                "Cape Town Ward 2 Results Station",
+                "Western Cape",
+                "City of Cape Town",
+                2
+        ));
+        seedRegisteredVoter(fixture.election(), otherWard, "results.other.ward@example.com");
+        appendVote(fixture.contest(), fixture.optionA(), 300);
+
+        mockMvc.perform(get(
+                        "/api/v1/elections/{electionId}/contests/{contestId}/results",
+                        fixture.election().getId(),
+                        fixture.contest().getId()
+                ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.registeredVoterCount").value(3))
+                .andExpect(jsonPath("$.turnoutPercentage").value(33.33));
     }
 
     @Test
@@ -214,6 +236,8 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
         BallotLedgerEntry firstEntry = appendVote(fixture.contest(), fixture.optionA(), 300);
         appendVote(fixture.contest(), fixture.optionB(), 240);
         BallotLedgerEntry lastEntry = appendVote(fixture.contest(), fixture.optionA(), 180);
+        assertThat(firstEntry.getHashVersion()).isEqualTo(VoteHashChainService.HASH_VERSION_RECORDING_DAY);
+        assertThat(firstEntry.getCastAt()).isEqualTo(Instant.parse("2026-08-07T00:00:00Z"));
 
         MvcResult auditResult = mockMvc.perform(get(
                         "/api/v1/elections/{electionId}/contests/{contestId}/audit",
@@ -227,24 +251,86 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
                 .andExpect(jsonPath("$.computedHeadHash").value(lastEntry.getCurrentHash()))
                 .andExpect(jsonPath("$.storedHeadHash").value(lastEntry.getCurrentHash()))
                 .andExpect(jsonPath("$.storedNextLedgerIndex").value(3))
+                .andExpect(jsonPath("$.publishedLedgerEntryCount").value(3))
                 .andReturn();
+        String auditJson = auditResult.getResponse().getContentAsString();
+        String publishedHeadHash = JsonPath.read(auditJson, "$.publishedHeadHash");
+        assertThat(publishedHeadHash).isEqualTo(JsonPath.read(auditJson, "$.computedPublishedHeadHash"));
         List<String> violations = JsonPath.read(auditResult.getResponse().getContentAsString(), "$.violations");
         assertThat(violations).isEmpty();
 
-        mockMvc.perform(get(
+        MvcResult ledgerResult = mockMvc.perform(get(
                         "/api/v1/elections/{electionId}/contests/{contestId}/ledger",
                         fixture.election().getId(),
                         fixture.contest().getId()
                 ))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].ledgerIndex").value(0))
-                .andExpect(jsonPath("$[0].contestOptionId").value(fixture.optionA().getId().toString()))
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].position").value(0))
                 .andExpect(jsonPath("$[0].previousHash").value(LedgerState.GENESIS_HASH))
-                .andExpect(jsonPath("$[0].currentHash").value(firstEntry.getCurrentHash()))
-                .andExpect(jsonPath("$[0].nonce").isNotEmpty())
-                .andExpect(jsonPath("$[0].recordedDate").value("2026-08-07"))
+                .andExpect(jsonPath("$[0].ledgerIndex").doesNotExist())
+                .andExpect(jsonPath("$[0].recordedDate").doesNotExist())
                 .andExpect(jsonPath("$[0].id").doesNotExist())
-                .andExpect(jsonPath("$[0].castAt").doesNotExist());
+                .andExpect(jsonPath("$[0].castAt").doesNotExist())
+                .andReturn();
+
+        // Verify the published ledger exactly as a third party would: from the public response alone.
+        List<Map<String, Object>> publishedEntries = JsonPath.read(ledgerResult.getResponse().getContentAsString(), "$");
+        String previousHash = LedgerState.GENESIS_HASH;
+        for (Map<String, Object> entry : publishedEntries) {
+            assertThat(entry.get("previousHash")).isEqualTo(previousHash);
+            String expectedHash = sha256Hex(String.join(
+                    "|",
+                    "votetrust-public-ledger-v1",
+                    fixture.contest().getId().toString(),
+                    (String) entry.get("contestOptionId"),
+                    entry.get("position").toString(),
+                    previousHash,
+                    (String) entry.get("nonce")
+            ));
+            assertThat(entry.get("currentHash")).isEqualTo(expectedHash);
+            assertThat(entry.get("currentHash")).isNotIn(firstEntry.getCurrentHash(), lastEntry.getCurrentHash());
+            previousHash = expectedHash;
+        }
+        assertThat(previousHash).isEqualTo(publishedHeadHash);
+        assertThat(publishedEntries)
+                .extracting(entry -> entry.get("contestOptionId"))
+                .containsExactlyInAnyOrder(
+                        fixture.optionA().getId().toString(),
+                        fixture.optionB().getId().toString(),
+                        fixture.optionA().getId().toString()
+                );
+    }
+
+    @Test
+    void auditDetectsTamperedPublishedLedgerEntry() throws Exception {
+        ClosedContestFixture fixture = createClosedContestFixture();
+        appendVote(fixture.contest(), fixture.optionA(), 300);
+        appendVote(fixture.contest(), fixture.optionB(), 240);
+        mockMvc.perform(get(
+                        "/api/v1/elections/{electionId}/contests/{contestId}/ledger",
+                        fixture.election().getId(),
+                        fixture.contest().getId()
+                ))
+                .andExpect(status().isOk());
+
+        jdbcTemplate.update(
+                "update published_ballot_entries set contest_option_id = ? where contest_id = ?",
+                fixture.optionB().getId(),
+                fixture.contest().getId()
+        );
+
+        MvcResult result = mockMvc.perform(get(
+                        "/api/v1/elections/{electionId}/contests/{contestId}/audit",
+                        fixture.election().getId(),
+                        fixture.contest().getId()
+                ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chainValid").value(false))
+                .andReturn();
+        List<String> violations = JsonPath.read(result.getResponse().getContentAsString(), "$.violations");
+        assertThat(violations).contains("Published ledger does not contain the same ballots as the internal ledger");
+        assertThat(violations).anyMatch(violation -> violation.endsWith("current hash does not match its payload"));
     }
 
     @Test
@@ -375,6 +461,10 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
                 contestOption,
                 FIXED_NOW.minusSeconds(secondsBeforeNow)
         );
+    }
+
+    private String sha256Hex(String payload) throws Exception {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(payload.getBytes(StandardCharsets.UTF_8)));
     }
 
     private record ClosedContestFixture(

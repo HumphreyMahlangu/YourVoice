@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEvent;
 import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEventType;
 import io.github.humphreymahlangu.votetrust.repository.SecurityAuditEventRepository;
+import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
 import java.io.IOException;
 import java.net.URI;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -36,6 +38,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers(disabledWithoutDocker = true)
 class ForwardedClientAddressIntegrationTest extends PostgreSqlTestContainerSupport {
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     @LocalServerPort
@@ -46,7 +51,7 @@ class ForwardedClientAddressIntegrationTest extends PostgreSqlTestContainerSuppo
 
     @BeforeEach
     void cleanDatabase() {
-        securityAuditEventRepository.deleteAll();
+        DatabaseCleaner.clean(jdbcTemplate);
     }
 
     @Test

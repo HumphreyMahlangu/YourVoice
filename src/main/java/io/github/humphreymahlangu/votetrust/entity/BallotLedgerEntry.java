@@ -53,8 +53,12 @@ public class BallotLedgerEntry {
     @Column(nullable = false, length = 96)
     private String nonce;
 
+    // Version 1 entries hold the exact cast instant; version 2 entries hold only the UTC recording day.
     @Column(name = "cast_at", nullable = false)
     private Instant castAt;
+
+    @Column(name = "hash_version", nullable = false)
+    private short hashVersion;
 
     protected BallotLedgerEntry() {
     }
@@ -66,7 +70,8 @@ public class BallotLedgerEntry {
             String previousHash,
             String currentHash,
             String nonce,
-            Instant castAt
+            Instant castAt,
+            short hashVersion
     ) {
         this.contest = contest;
         this.contestOption = contestOption;
@@ -75,6 +80,7 @@ public class BallotLedgerEntry {
         this.currentHash = currentHash;
         this.nonce = nonce;
         this.castAt = castAt;
+        this.hashVersion = hashVersion;
     }
 
     public UUID getId() {
@@ -107,5 +113,9 @@ public class BallotLedgerEntry {
 
     public Instant getCastAt() {
         return castAt;
+    }
+
+    public short getHashVersion() {
+        return hashVersion;
     }
 }

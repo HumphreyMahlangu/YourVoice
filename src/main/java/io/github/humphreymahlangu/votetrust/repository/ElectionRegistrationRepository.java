@@ -1,5 +1,6 @@
 package io.github.humphreymahlangu.votetrust.repository;
 
+import io.github.humphreymahlangu.votetrust.dto.DistrictRegistrationCount;
 import io.github.humphreymahlangu.votetrust.entity.ElectionRegistration;
 import io.github.humphreymahlangu.votetrust.entity.RegistrationStatus;
 import java.util.List;
@@ -7,6 +8,8 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ElectionRegistrationRepository extends JpaRepository<ElectionRegistration, UUID> {
 
@@ -23,4 +26,22 @@ public interface ElectionRegistrationRepository extends JpaRepository<ElectionRe
 
     @EntityGraph(attributePaths = {"election", "votingDistrict"})
     List<ElectionRegistration> findByVoterProfileUserAccountIdOrderByRegisteredAtDesc(UUID userAccountId);
+
+    @Query("""
+            select new io.github.humphreymahlangu.votetrust.dto.DistrictRegistrationCount(
+                district.province,
+                district.municipality,
+                district.wardNumber,
+                count(registration.id)
+            )
+            from ElectionRegistration registration
+            join registration.votingDistrict district
+            where registration.election.id = :electionId
+              and registration.status = :status
+            group by district.province, district.municipality, district.wardNumber
+            """)
+    List<DistrictRegistrationCount> countByDistrict(
+            @Param("electionId") UUID electionId,
+            @Param("status") RegistrationStatus status
+    );
 }

@@ -86,7 +86,7 @@ function ContestResultsPage() {
           </header>
 
           <dl>
-            <dt>Registered voters</dt>
+            <dt>Registered voters eligible for this contest</dt>
             <dd>{formatNumber(result.registeredVoterCount)}</dd>
 
             <dt>Ballots cast</dt>
@@ -111,7 +111,7 @@ function ContestResultsPage() {
               </time>
             </dd>
 
-            <dt>Ledger head hash</dt>
+            <dt>Published ledger head hash</dt>
             <dd>
               <code>{result.ledgerHeadHash}</code>
             </dd>

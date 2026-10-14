@@ -37,6 +37,7 @@ public class ElectionLifecycleService {
     private final ContestRepository contestRepository;
     private final ContestOptionRepository contestOptionRepository;
     private final ElectionLifecycleEventRepository lifecycleEventRepository;
+    private final LedgerPublicationService ledgerPublicationService;
     private final Clock clock;
 
     public ElectionLifecycleService(
@@ -44,12 +45,14 @@ public class ElectionLifecycleService {
             ContestRepository contestRepository,
             ContestOptionRepository contestOptionRepository,
             ElectionLifecycleEventRepository lifecycleEventRepository,
+            LedgerPublicationService ledgerPublicationService,
             Clock clock
     ) {
         this.electionRepository = electionRepository;
         this.contestRepository = contestRepository;
         this.contestOptionRepository = contestOptionRepository;
         this.lifecycleEventRepository = lifecycleEventRepository;
+        this.ledgerPublicationService = ledgerPublicationService;
         this.clock = clock;
     }
 
@@ -175,6 +178,7 @@ public class ElectionLifecycleService {
                 contest.transitionTo(ContestStatus.CLOSED);
                 closed++;
             }
+            ledgerPublicationService.ensurePublished(contest);
         }
         return closed;
     }

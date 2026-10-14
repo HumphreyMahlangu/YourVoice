@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
 import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
 import io.github.humphreymahlangu.votetrust.repository.AnonymousVotingCredentialRepository;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -41,6 +43,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @ActiveProfiles("test")
 @Testcontainers(disabledWithoutDocker = true)
 class AdminLifecycleIntegrationTest extends PostgreSqlTestContainerSupport {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private static final String BOOTSTRAP_TOKEN = "test-admin-bootstrap-token-at-least-32-characters";
 
@@ -85,18 +90,7 @@ class AdminLifecycleIntegrationTest extends PostgreSqlTestContainerSupport {
 
     @BeforeEach
     void cleanDatabase() {
-        ballotLedgerEntryRepository.deleteAll();
-        ledgerStateRepository.deleteAll();
-        anonymousVotingCredentialRepository.deleteAll();
-        votingRightRepository.deleteAll();
-        electionLifecycleEventRepository.deleteAll();
-        contestOptionRepository.deleteAll();
-        contestRepository.deleteAll();
-        electionRegistrationRepository.deleteAll();
-        voterProfileRepository.deleteAll();
-        electionRepository.deleteAll();
-        votingDistrictRepository.deleteAll();
-        userAccountRepository.deleteAll();
+        DatabaseCleaner.clean(jdbcTemplate);
     }
 
     @Test

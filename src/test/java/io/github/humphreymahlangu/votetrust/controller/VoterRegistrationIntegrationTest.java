@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
 import io.github.humphreymahlangu.votetrust.entity.Election;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
@@ -35,6 +36,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -47,6 +49,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @ActiveProfiles("test")
 @Testcontainers(disabledWithoutDocker = true)
 class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     private static final Instant FIXED_NOW = Instant.parse("2026-08-07T10:00:00Z");
 
@@ -91,18 +96,7 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
 
     @BeforeEach
     void cleanDatabase() {
-        ballotLedgerEntryRepository.deleteAll();
-        ledgerStateRepository.deleteAll();
-        anonymousVotingCredentialRepository.deleteAll();
-        votingRightRepository.deleteAll();
-        electionLifecycleEventRepository.deleteAll();
-        contestOptionRepository.deleteAll();
-        contestRepository.deleteAll();
-        electionRegistrationRepository.deleteAll();
-        voterProfileRepository.deleteAll();
-        electionRepository.deleteAll();
-        votingDistrictRepository.deleteAll();
-        userAccountRepository.deleteAll();
+        DatabaseCleaner.clean(jdbcTemplate);
     }
 
     @Test

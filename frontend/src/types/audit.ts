@@ -7,15 +7,18 @@ export interface ContestAudit {
   computedHeadHash: string
   storedHeadHash: string
   storedNextLedgerIndex: number | null
+  publishedLedgerEntryCount: number
+  computedPublishedHeadHash: string
+  publishedHeadHash: string
   verifiedAt: string
   violations: string[]
 }
 
+/** An entry in the published ledger. Ballots are shuffled before publication. */
 export interface ContestLedgerEntry {
-  ledgerIndex: number
+  position: number
   contestOptionId: string
   previousHash: string
   currentHash: string
   nonce: string
-  recordedDate: string
 }

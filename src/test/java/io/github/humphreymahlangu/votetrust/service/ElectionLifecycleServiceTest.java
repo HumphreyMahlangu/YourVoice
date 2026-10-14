@@ -51,6 +51,9 @@ class ElectionLifecycleServiceTest {
     @Mock
     private ElectionLifecycleEventRepository lifecycleEventRepository;
 
+    @Mock
+    private LedgerPublicationService ledgerPublicationService;
+
     private ElectionLifecycleService lifecycleService;
 
     @BeforeEach
@@ -60,6 +63,7 @@ class ElectionLifecycleServiceTest {
                 contestRepository,
                 contestOptionRepository,
                 lifecycleEventRepository,
+                ledgerPublicationService,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -87,6 +91,7 @@ class ElectionLifecycleServiceTest {
         assertThat(election.getStatus()).isEqualTo(ElectionStatus.COMPLETED);
         assertThat(contest.getStatus()).isEqualTo(ContestStatus.CLOSED);
         verify(lifecycleEventRepository, times(4)).save(any(ElectionLifecycleEvent.class));
+        verify(ledgerPublicationService).ensurePublished(contest);
     }
 
     @Test

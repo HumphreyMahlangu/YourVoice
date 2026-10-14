@@ -37,6 +37,12 @@ public class LedgerState {
     @Column(name = "next_ledger_index", nullable = false)
     private Long nextLedgerIndex;
 
+    @Column(name = "published_head_hash", length = 64)
+    private String publishedHeadHash;
+
+    @Column(name = "published_entry_count")
+    private Long publishedEntryCount;
+
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
@@ -73,5 +79,22 @@ public class LedgerState {
     public void advanceTo(String currentHash) {
         this.currentHash = currentHash;
         this.nextLedgerIndex++;
+    }
+
+    public String getPublishedHeadHash() {
+        return publishedHeadHash;
+    }
+
+    public Long getPublishedEntryCount() {
+        return publishedEntryCount;
+    }
+
+    public boolean isPublished() {
+        return publishedHeadHash != null;
+    }
+
+    public void markPublished(String publishedHeadHash, long publishedEntryCount) {
+        this.publishedHeadHash = publishedHeadHash;
+        this.publishedEntryCount = publishedEntryCount;
     }
 }

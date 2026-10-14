@@ -155,23 +155,8 @@ public class VotingService {
     }
 
     private void assertVotingDistrictEligible(Contest contest, VotingDistrict votingDistrict) {
-        boolean eligible = switch (contest.getType()) {
-            case NATIONAL -> true;
-            case PROVINCIAL -> sameText(contest.getScopeProvince(), votingDistrict.getProvince());
-            case MUNICIPAL_PR -> sameText(contest.getScopeProvince(), votingDistrict.getProvince())
-                    && sameText(contest.getScopeMunicipality(), votingDistrict.getMunicipality());
-            case MUNICIPAL_WARD -> sameText(contest.getScopeProvince(), votingDistrict.getProvince())
-                    && sameText(contest.getScopeMunicipality(), votingDistrict.getMunicipality())
-                    && contest.getScopeWardNumber() != null
-                    && contest.getScopeWardNumber().equals(votingDistrict.getWardNumber());
-        };
-
-        if (!eligible) {
+        if (!ContestEligibility.isEligible(contest, votingDistrict)) {
             throw new EligibilityException("Voter is not eligible for this contest based on registered voting district");
         }
-    }
-
-    private boolean sameText(String expected, String actual) {
-        return expected != null && actual != null && expected.trim().equalsIgnoreCase(actual.trim());
     }
 }
