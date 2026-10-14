@@ -16,10 +16,12 @@ import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleOutcome;
 import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleTrigger;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
 import io.github.humphreymahlangu.votetrust.entity.ElectionType;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionLifecycleEventRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.lang.reflect.Field;
 import java.time.Clock;
 import java.time.Instant;
@@ -68,6 +70,7 @@ class ElectionLifecycleServiceTest {
                 lifecycleEventRepository,
                 ledgerPublicationService,
                 ballotSigningKeyService,
+                new VoteTrustMetrics(new SimpleMeterRegistry()),
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }

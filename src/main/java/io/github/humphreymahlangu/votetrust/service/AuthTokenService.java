@@ -6,6 +6,7 @@ import io.github.humphreymahlangu.votetrust.entity.SecurityAuditEventType;
 import io.github.humphreymahlangu.votetrust.entity.SecurityAuditOutcome;
 import io.github.humphreymahlangu.votetrust.entity.UserAccount;
 import io.github.humphreymahlangu.votetrust.exception.InvalidRefreshTokenException;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.repository.RefreshTokenRepository;
 import io.github.humphreymahlangu.votetrust.security.JwtProperties;
 import io.github.humphreymahlangu.votetrust.security.JwtService;
@@ -39,6 +40,7 @@ public class AuthTokenService {
     private final JwtProperties jwtProperties;
     private final RefreshTokenRepository refreshTokenRepository;
     private final SecurityAuditService securityAuditService;
+    private final VoteTrustMetrics metrics;
     private final Clock clock;
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -47,12 +49,14 @@ public class AuthTokenService {
             JwtProperties jwtProperties,
             RefreshTokenRepository refreshTokenRepository,
             SecurityAuditService securityAuditService,
+            VoteTrustMetrics metrics,
             Clock clock
     ) {
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.refreshTokenRepository = refreshTokenRepository;
         this.securityAuditService = securityAuditService;
+        this.metrics = metrics;
         this.clock = clock;
     }
 
@@ -71,6 +75,7 @@ public class AuthTokenService {
 
         if (refreshToken.isRevoked()) {
             refreshTokenRepository.revokeFamily(refreshToken.getFamilyId(), now);
+            metrics.refreshTokenReused();
             securityAuditService.record(
                     SecurityAuditEventType.TOKEN_REFRESH,
                     SecurityAuditOutcome.BLOCKED,

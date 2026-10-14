@@ -22,6 +22,7 @@ import io.github.humphreymahlangu.votetrust.exception.InvalidBallotTokenExceptio
 import io.github.humphreymahlangu.votetrust.exception.InvalidVotingCredentialException;
 import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
 import io.github.humphreymahlangu.votetrust.exception.VotingClosedException;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.repository.AnonymousVotingCredentialRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
@@ -54,6 +55,7 @@ public class VotingService {
     private final BlindSignatureService blindSignatureService;
     private final BallotSigningKeyService ballotSigningKeyService;
     private final VoteHashChainService voteHashChainService;
+    private final VoteTrustMetrics metrics;
     private final Clock clock;
 
     public VotingService(
@@ -66,6 +68,7 @@ public class VotingService {
             BlindSignatureService blindSignatureService,
             BallotSigningKeyService ballotSigningKeyService,
             VoteHashChainService voteHashChainService,
+            VoteTrustMetrics metrics,
             Clock clock
     ) {
         this.contestRepository = contestRepository;
@@ -77,6 +80,7 @@ public class VotingService {
         this.blindSignatureService = blindSignatureService;
         this.ballotSigningKeyService = ballotSigningKeyService;
         this.voteHashChainService = voteHashChainService;
+        this.metrics = metrics;
         this.clock = clock;
     }
 
@@ -147,6 +151,7 @@ public class VotingService {
             }
         } else {
             votingRight.markCredentialIssued(blindedTokenHash);
+            metrics.credentialIssued();
         }
 
         BigInteger blindSignature = blindSignatureService.signBlindedToken(
@@ -196,6 +201,7 @@ public class VotingService {
         }
 
         voteHashChainService.appendVote(contest, contestOption, Instant.now(clock));
+        metrics.ballotCast();
 
         return new BallotCastResponse(
                 contest.getId(),

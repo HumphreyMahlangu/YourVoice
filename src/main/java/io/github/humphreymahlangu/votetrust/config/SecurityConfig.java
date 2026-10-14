@@ -76,6 +76,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/bootstrap").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        // Health probes are public above; metrics and every other actuator endpoint are admin-only.
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/v1/elections/**",

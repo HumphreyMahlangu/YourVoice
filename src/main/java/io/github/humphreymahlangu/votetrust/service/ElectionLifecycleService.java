@@ -11,6 +11,7 @@ import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleTrigger;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
 import io.github.humphreymahlangu.votetrust.exception.ElectionLifecycleException;
 import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.repository.ContestOptionRepository;
 import io.github.humphreymahlangu.votetrust.repository.ContestRepository;
 import io.github.humphreymahlangu.votetrust.repository.ElectionLifecycleEventRepository;
@@ -39,6 +40,7 @@ public class ElectionLifecycleService {
     private final ElectionLifecycleEventRepository lifecycleEventRepository;
     private final LedgerPublicationService ledgerPublicationService;
     private final BallotSigningKeyService ballotSigningKeyService;
+    private final VoteTrustMetrics metrics;
     private final Clock clock;
 
     public ElectionLifecycleService(
@@ -48,6 +50,7 @@ public class ElectionLifecycleService {
             ElectionLifecycleEventRepository lifecycleEventRepository,
             LedgerPublicationService ledgerPublicationService,
             BallotSigningKeyService ballotSigningKeyService,
+            VoteTrustMetrics metrics,
             Clock clock
     ) {
         this.electionRepository = electionRepository;
@@ -56,6 +59,7 @@ public class ElectionLifecycleService {
         this.lifecycleEventRepository = lifecycleEventRepository;
         this.ledgerPublicationService = ledgerPublicationService;
         this.ballotSigningKeyService = ballotSigningKeyService;
+        this.metrics = metrics;
         this.clock = clock;
     }
 
@@ -68,6 +72,7 @@ public class ElectionLifecycleService {
             advanceDueTransitions(election, now);
         } catch (ElectionLifecycleException exception) {
             if (recordFailureOnce(election, exception.getMessage(), now)) {
+                metrics.lifecycleFailure();
                 LOGGER.warn("Election {} lifecycle transition failed closed: {}", electionId, exception.getMessage());
             }
         }

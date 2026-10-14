@@ -13,6 +13,7 @@ import io.github.humphreymahlangu.votetrust.exception.DuplicateResourceException
 import io.github.humphreymahlangu.votetrust.exception.InvalidCredentialsException;
 import io.github.humphreymahlangu.votetrust.exception.LoginThrottledException;
 import io.github.humphreymahlangu.votetrust.exception.ResourceNotFoundException;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
 import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
 import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
@@ -41,6 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthTokenService authTokenService;
     private final LoginThrottleService loginThrottleService;
+    private final VoteTrustMetrics metrics;
     private final SecurityAuditService securityAuditService;
     private final SouthAfricanIdNumberValidator idNumberValidator;
     private final IdentityHashService identityHashService;
@@ -55,6 +57,7 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             AuthTokenService authTokenService,
             LoginThrottleService loginThrottleService,
+            VoteTrustMetrics metrics,
             SecurityAuditService securityAuditService,
             SouthAfricanIdNumberValidator idNumberValidator,
             IdentityHashService identityHashService
@@ -65,6 +68,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.authTokenService = authTokenService;
         this.loginThrottleService = loginThrottleService;
+        this.metrics = metrics;
         this.securityAuditService = securityAuditService;
         this.idNumberValidator = idNumberValidator;
         this.identityHashService = identityHashService;
@@ -158,6 +162,7 @@ public class AuthService {
                     metadata,
                     "Sign-in temporarily locked after repeated failures"
             );
+            metrics.loginThrottled();
             throw new LoginThrottledException(lockedForSeconds.get());
         }
 

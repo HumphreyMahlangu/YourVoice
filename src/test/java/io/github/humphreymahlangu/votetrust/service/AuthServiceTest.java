@@ -21,11 +21,13 @@ import io.github.humphreymahlangu.votetrust.entity.VotingDistrict;
 import io.github.humphreymahlangu.votetrust.exception.DuplicateResourceException;
 import io.github.humphreymahlangu.votetrust.exception.InvalidCredentialsException;
 import io.github.humphreymahlangu.votetrust.exception.LoginThrottledException;
+import io.github.humphreymahlangu.votetrust.observability.VoteTrustMetrics;
 import io.github.humphreymahlangu.votetrust.repository.UserAccountRepository;
 import io.github.humphreymahlangu.votetrust.repository.VoterProfileRepository;
 import io.github.humphreymahlangu.votetrust.repository.VotingDistrictRepository;
 import io.github.humphreymahlangu.votetrust.security.IdentityHashService;
 import io.github.humphreymahlangu.votetrust.security.LoginThrottleService;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.lang.reflect.Field;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -80,6 +82,7 @@ class AuthServiceTest {
                 passwordEncoder,
                 authTokenService,
                 loginThrottleService,
+                new VoteTrustMetrics(new SimpleMeterRegistry()),
                 securityAuditService,
                 idNumberValidator,
                 identityHashService

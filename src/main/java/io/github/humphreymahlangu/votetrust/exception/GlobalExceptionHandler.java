@@ -4,10 +4,14 @@ import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import io.github.humphreymahlangu.votetrust.dto.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +24,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(DuplicateResourceException.class)
     ResponseEntity<ApiErrorResponse> handleDuplicateResource(
@@ -158,8 +164,7 @@ public class GlobalExceptionHandler {
             fieldErrors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
         }
 
-        ApiErrorResponse response = new ApiErrorResponse(
-                Instant.now(),
+        ApiErrorResponse response = ApiErrorResponse.withFieldErrors(
                 HttpStatus.BAD_REQUEST.value(),
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 "Request validation failed",
@@ -196,6 +201,34 @@ public class GlobalExceptionHandler {
             );
         }
         return error(HttpStatus.BAD_REQUEST, "Malformed JSON request", request.getRequestURI());
+    }
+
+    /**
+     * Last-resort handler. Spring MVC exceptions keep their own status (405, 404, 415, ...), security exceptions
+     * raised by method security keep 401/403, and anything else becomes a generic 500 whose details stay in the
+     * server log under the request ID.
+     */
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception, HttpServletRequest request) {
+        if (exception instanceof AccessDeniedException) {
+            return error(HttpStatus.FORBIDDEN, "Access denied", request.getRequestURI());
+        }
+        if (exception instanceof AuthenticationException) {
+            return error(HttpStatus.UNAUTHORIZED, "Authentication is required", request.getRequestURI());
+        }
+        if (exception instanceof ErrorResponse errorResponse) {
+            HttpStatus status = HttpStatus.resolve(errorResponse.getStatusCode().value());
+            if (status != null && status.is4xxClientError()) {
+                return error(status, status.getReasonPhrase(), request.getRequestURI());
+            }
+        }
+
+        LOGGER.error("Unhandled exception for {} {}", request.getMethod(), request.getRequestURI(), exception);
+        return error(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "An unexpected error occurred. Quote the request ID if you report this problem.",
+                request.getRequestURI()
+        );
     }
 
     private String invalidFormatMessage(InvalidFormatException exception) {

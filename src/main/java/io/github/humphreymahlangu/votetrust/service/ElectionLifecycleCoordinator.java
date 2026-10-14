@@ -4,6 +4,7 @@ import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
 import io.github.humphreymahlangu.votetrust.repository.ElectionRepository;
 import java.util.List;
 import java.util.UUID;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -41,6 +42,7 @@ public class ElectionLifecycleCoordinator {
             initialDelayString = "${votetrust.lifecycle.poll-interval-ms:5000}",
             fixedDelayString = "${votetrust.lifecycle.poll-interval-ms:5000}"
     )
+    @SchedulerLock(name = "electionLifecycleCoordinator", lockAtMostFor = "PT1M", lockAtLeastFor = "PT1S")
     public void synchronizeElectionStates() {
         List<UUID> electionIds = electionRepository.findIdsByStatusIn(ACTIVE_STATUSES);
         for (UUID electionId : electionIds) {

@@ -1,6 +1,7 @@
 package io.github.humphreymahlangu.votetrust.repository;
 
 import io.github.humphreymahlangu.votetrust.entity.Election;
+import io.github.humphreymahlangu.votetrust.entity.ElectionLifecycleOutcome;
 import io.github.humphreymahlangu.votetrust.entity.ElectionStatus;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
@@ -24,4 +25,21 @@ public interface ElectionRepository extends JpaRepository<Election, UUID> {
     Optional<Election> findByIdForUpdate(@Param("id") UUID id);
 
     boolean existsByNameIgnoreCase(String name);
+
+    @Query("""
+            select count(election)
+            from Election election
+            where election.status in :statuses
+              and exists (
+                  select 1
+                  from ElectionLifecycleEvent event
+                  where event.electionId = election.id
+                    and event.previousStatus = election.status
+                    and event.outcome = :failure
+              )
+            """)
+    long countWithFailedTransitionFromCurrentStatus(
+            @Param("statuses") Collection<ElectionStatus> statuses,
+            @Param("failure") ElectionLifecycleOutcome failure
+    );
 }
