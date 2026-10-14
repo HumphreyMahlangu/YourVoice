@@ -100,7 +100,8 @@ class OpenApiAnnotationCoverageTest {
                 "issueVotingCredential",
                 io.github.humphreymahlangu.votetrust.security.UserPrincipal.class,
                 java.util.UUID.class,
-                java.util.UUID.class
+                java.util.UUID.class,
+                io.github.humphreymahlangu.votetrust.dto.VotingCredentialRequest.class
         ));
     }
 

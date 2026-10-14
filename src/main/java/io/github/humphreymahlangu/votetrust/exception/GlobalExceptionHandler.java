@@ -116,6 +116,14 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNAUTHORIZED, exception.getMessage(), request.getRequestURI());
     }
 
+    @ExceptionHandler(InvalidBallotTokenException.class)
+    ResponseEntity<ApiErrorResponse> handleInvalidBallotToken(
+            InvalidBallotTokenException exception,
+            HttpServletRequest request
+    ) {
+        return error(HttpStatus.BAD_REQUEST, exception.getMessage(), request.getRequestURI());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiErrorResponse> handleValidation(
             MethodArgumentNotValidException exception,

@@ -23,6 +23,23 @@ function headers(...entries) {
   return entries.map(([key, value]) => ({ key, value }));
 }
 
+
+// Voter side of the RSA blind-signature protocol for Postman's sandbox (BigInt + CryptoJS, hex encodings).
+// Mirrors frontend/src/utils/blindSignature.ts and BlindSignatureService.
+const blindSignatureHelpers = [
+  "const CryptoJS = require('crypto-js');",
+  "function b64uToHex(value) { const binary = atob(value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')); let hex = ''; for (let i = 0; i < binary.length; i++) { hex += binary.charCodeAt(i).toString(16).padStart(2, '0'); } return hex; }",
+  "function hexToB64u(hex) { const even = hex.length % 2 ? '0' + hex : hex; let binary = ''; for (let i = 0; i < even.length; i += 2) { binary += String.fromCharCode(parseInt(even.substr(i, 2), 16)); } return btoa(binary).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, ''); }",
+  "function hexToBig(hex) { return BigInt('0x' + (hex || '0')); }",
+  "function bigToHex(value) { const hex = value.toString(16); return hex.length % 2 ? '0' + hex : hex; }",
+  "function byteLength(value) { return Math.ceil(value.toString(2).length / 8); }",
+  "function modPow(base, exponent, modulus) { let result = 1n; let factor = base % modulus; let remaining = exponent; while (remaining > 0n) { if (remaining & 1n) { result = (result * factor) % modulus; } factor = (factor * factor) % modulus; remaining >>= 1n; } return result; }",
+  "function modInverse(value, modulus) { let oldR = value % modulus, r = modulus, oldS = 1n, s = 0n; while (r !== 0n) { const q = oldR / r; [oldR, r] = [r, oldR - q * r]; [oldS, s] = [s, oldS - q * s]; } if (oldR !== 1n) { throw new Error('No modular inverse'); } return ((oldS % modulus) + modulus) % modulus; }",
+  "function gcd(a, b) { while (b !== 0n) { [a, b] = [b, a % b]; } return a; }",
+  "function fullDomainHash(tokenDomain, contestId, ballotToken, modulus) { const seedHex = CryptoJS.enc.Hex.stringify(CryptoJS.enc.Utf8.parse(tokenDomain + '|' + contestId + '|' + ballotToken)); const lengthHex = (byteLength(modulus) + 16) * 2; let expanded = ''; for (let counter = 0; expanded.length < lengthHex; counter++) { expanded += CryptoJS.SHA256(CryptoJS.enc.Hex.parse(seedHex + counter.toString(16).padStart(8, '0'))).toString(CryptoJS.enc.Hex); } return hexToBig(expanded.slice(0, lengthHex)) % modulus; }",
+  "function randomHex(bytes) { return CryptoJS.lib.WordArray.random(bytes).toString(CryptoJS.enc.Hex); }"
+];
+
 const jsonHeaders = headers(['Content-Type', 'application/json']);
 const adminJsonHeaders = headers(['Content-Type', 'application/json'], ['Authorization', 'Bearer {{adminToken}}']);
 const voterJsonHeaders = headers(['Content-Type', 'application/json'], ['Authorization', 'Bearer {{voterToken}}']);
@@ -110,7 +127,7 @@ const resetDemoScript = [
   "pm.environment.set('districtName', `Cape Town Demo Ward ${runId.slice(-4)}`);",
   "pm.environment.set('electionName', `VoteTrust Verified Election ${runId}`);",
   "pm.environment.set('contestName', `Ward 12 Councillor ${runId}`);",
-  "['adminToken', 'adminUserId', 'voterToken', 'voterUserId', 'votingDistrictId', 'electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential', 'registrationStartAt', 'registrationEndAt', 'votingStartAt', 'votingEndAt'].forEach((key) => pm.environment.unset(key));",
+  "['adminToken', 'adminUserId', 'voterToken', 'voterUserId', 'votingDistrictId', 'electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential', 'votingCredentialSignature', 'ballotKeyModulus', 'ballotKeyExponent', 'ballotTokenDomain', 'blindingFactor', 'blindedToken', 'secondBlindedToken', 'registrationStartAt', 'registrationEndAt', 'votingStartAt', 'votingEndAt'].forEach((key) => pm.environment.unset(key));",
   '',
   'function southAfricanCheckDigit(first12) {',
   '  let oddPositionSum = 0;',
@@ -149,7 +166,7 @@ function freshDistrictScript() {
     "const suffix = `${stamp.slice(8)}${Math.random().toString(36).slice(2, 6)}`;",
     "pm.environment.set('districtCode', `WC-${suffix.slice(-12)}`);",
     "pm.environment.set('districtName', `Cape Town Demo Ward ${suffix.slice(-4)}`);",
-    "['votingDistrictId', 'electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential'].forEach((key) => pm.environment.unset(key));"
+    "['votingDistrictId', 'electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential', 'votingCredentialSignature', 'blindingFactor', 'blindedToken', 'secondBlindedToken'].forEach((key) => pm.environment.unset(key));"
   ];
 }
 
@@ -161,7 +178,7 @@ function freshElectionScript() {
     "const suffix = `${stamp.slice(8)}${Math.random().toString(36).slice(2, 6)}`;",
     "pm.environment.set('electionName', `VoteTrust Verified Election ${suffix}`);",
     "pm.environment.set('contestName', `Ward 12 Councillor ${suffix}`);",
-    "['electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential'].forEach((key) => pm.environment.unset(key));",
+    "['electionId', 'contestId', 'optionAId', 'optionBId', 'blankOptionId', 'spoiltOptionId', 'registrationId', 'votingCredential', 'votingCredentialSignature', 'blindingFactor', 'blindedToken', 'secondBlindedToken'].forEach((key) => pm.environment.unset(key));",
     "const configurationGraceSeconds = Math.max(30, Number(pm.environment.get('configurationGraceSeconds') || 120));",
     "const registrationGraceSeconds = Math.max(30, Number(pm.environment.get('registrationGraceSeconds') || 180));",
     "const votingDurationSeconds = Math.max(30, Number(pm.environment.get('votingDurationSeconds') || 90));",
@@ -517,16 +534,50 @@ const collection = {
           test: contestStatusTests('OPEN', 'Contest list is available')
         }),
         request({
+          name: 'Get Contest Ballot Key',
+          method: 'GET',
+          url: '{{baseUrl}}/api/v1/elections/{{electionId}}/contests/{{contestId}}/ballot-key',
+          prerequest: requireVars(['electionId', 'contestId']),
+          test: [
+            ...expectStatus(200, 'Ballot key is published'),
+            'const json = pm.response.json();',
+            "pm.environment.set('ballotKeyModulus', json.modulus);",
+            "pm.environment.set('ballotKeyExponent', json.publicExponent);",
+            "pm.environment.set('ballotTokenDomain', json.tokenDomain);"
+          ]
+        }),
+        request({
           name: 'Issue Voting Credential',
           method: 'POST',
           url: '{{baseUrl}}/api/v1/elections/{{electionId}}/contests/{{contestId}}/credentials',
-          header: voterAuthHeader,
-          prerequest: [...requireVars(['voterToken', 'electionId', 'contestId']), ...votingOpenGuard()],
+          header: voterJsonHeaders,
+          body: jsonBody({ blindedToken: '{{blindedToken}}' }),
+          prerequest: [
+            ...requireVars(['voterToken', 'electionId', 'contestId', 'ballotKeyModulus', 'ballotKeyExponent', 'ballotTokenDomain']),
+            ...votingOpenGuard(),
+            ...blindSignatureHelpers,
+            "const modulus = hexToBig(b64uToHex(pm.environment.get('ballotKeyModulus')));",
+            "const exponent = hexToBig(b64uToHex(pm.environment.get('ballotKeyExponent')));",
+            "const ballotToken = hexToB64u(randomHex(32));",
+            'let blindingFactor = 0n;',
+            "while (blindingFactor <= 1n || gcd(blindingFactor, modulus) !== 1n) { blindingFactor = hexToBig(randomHex(byteLength(modulus))) % modulus; }",
+            "const hash = fullDomainHash(pm.environment.get('ballotTokenDomain'), pm.environment.get('contestId'), ballotToken, modulus);",
+            'const blinded = (hash * modPow(blindingFactor, exponent, modulus)) % modulus;',
+            "pm.environment.set('votingCredential', ballotToken);",
+            "pm.environment.set('blindingFactor', bigToHex(blindingFactor));",
+            "pm.environment.set('blindedToken', hexToB64u(bigToHex(blinded)));"
+          ],
           test: [
             ...expectStatus(201, 'Voting credential is issued'),
+            ...blindSignatureHelpers,
             'const json = pm.response.json();',
-            "if (!json.votingCredential) { throw new Error('Issue Voting Credential response did not include votingCredential.'); }",
-            "pm.environment.set('votingCredential', json.votingCredential);"
+            "if (!json.blindSignature) { throw new Error('Issue Voting Credential response did not include blindSignature.'); }",
+            "const modulus = hexToBig(b64uToHex(pm.environment.get('ballotKeyModulus')));",
+            "const exponent = hexToBig(b64uToHex(pm.environment.get('ballotKeyExponent')));",
+            "const signature = (hexToBig(b64uToHex(json.blindSignature)) * modInverse(hexToBig(pm.environment.get('blindingFactor')), modulus)) % modulus;",
+            "const expected = fullDomainHash(pm.environment.get('ballotTokenDomain'), pm.environment.get('contestId'), pm.environment.get('votingCredential'), modulus);",
+            "pm.test('Unblinded signature verifies against the contest key', function () { pm.expect(modPow(signature, exponent, modulus) === expected).to.equal(true); });",
+            "pm.environment.set('votingCredentialSignature', hexToB64u(bigToHex(signature)));"
           ]
         }),
         request({
@@ -534,8 +585,8 @@ const collection = {
           method: 'POST',
           url: '{{baseUrl}}/api/v1/ballots',
           header: jsonHeaders,
-          body: jsonBody({ contestId: '{{contestId}}', contestOptionId: '{{optionAId}}', votingCredential: '{{votingCredential}}' }),
-          prerequest: [...requireVars(['contestId', 'optionAId', 'votingCredential']), ...votingOpenGuard()],
+          body: jsonBody({ contestId: '{{contestId}}', contestOptionId: '{{optionAId}}', ballotToken: '{{votingCredential}}', signature: '{{votingCredentialSignature}}' }),
+          prerequest: [...requireVars(['contestId', 'optionAId', 'votingCredential', 'votingCredentialSignature']), ...votingOpenGuard()],
           test: [
             ...expectStatus(201, 'Ballot is accepted'),
             "pm.test('Ballot response is accepted', function () { pm.expect(pm.response.json().accepted).to.equal(true); });"
@@ -628,17 +679,23 @@ const collection = {
           name: 'Duplicate Credential Returns 409',
           method: 'POST',
           url: '{{baseUrl}}/api/v1/elections/{{electionId}}/contests/{{contestId}}/credentials',
-          header: voterAuthHeader,
-          prerequest: requireVars(['voterToken', 'electionId', 'contestId']),
-          test: expectStatus(409, 'Duplicate credential is rejected')
+          header: voterJsonHeaders,
+          body: jsonBody({ blindedToken: '{{secondBlindedToken}}' }),
+          prerequest: [
+            ...requireVars(['voterToken', 'electionId', 'contestId', 'ballotKeyModulus']),
+            ...blindSignatureHelpers,
+            "const modulus = hexToBig(b64uToHex(pm.environment.get('ballotKeyModulus')));",
+            "pm.environment.set('secondBlindedToken', hexToB64u(bigToHex((hexToBig(randomHex(byteLength(modulus))) % (modulus - 2n)) + 2n)));"
+          ],
+          test: expectStatus(409, 'A second credential for a different blinded token is rejected')
         }),
         request({
           name: 'Reuse Voting Credential Returns 409',
           method: 'POST',
           url: '{{baseUrl}}/api/v1/ballots',
           header: jsonHeaders,
-          body: jsonBody({ contestId: '{{contestId}}', contestOptionId: '{{optionBId}}', votingCredential: '{{votingCredential}}' }),
-          prerequest: requireVars(['contestId', 'optionBId', 'votingCredential']),
+          body: jsonBody({ contestId: '{{contestId}}', contestOptionId: '{{optionBId}}', ballotToken: '{{votingCredential}}', signature: '{{votingCredentialSignature}}' }),
+          prerequest: requireVars(['contestId', 'optionBId', 'votingCredential', 'votingCredentialSignature']),
           test: expectStatus(409, 'Reused voting credential is rejected')
         }),
         request({
@@ -646,7 +703,7 @@ const collection = {
           method: 'POST',
           url: '{{baseUrl}}/api/v1/ballots',
           header: jsonHeaders,
-          body: jsonBody({ contestId: '{{contestId}}', contestOptionId: '{{optionAId}}', votingCredential: 'not-a-real-credential' }),
+          body: jsonBody({ contestId: '{{contestId}}', contestOptionId: '{{optionAId}}', ballotToken: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', signature: 'AQID' }),
           prerequest: requireVars(['contestId', 'optionAId']),
           test: expectStatus(401, 'Invalid voting credential is rejected')
         })
@@ -695,7 +752,14 @@ const environment = {
     { key: 'blankOptionId', value: '', type: 'default', enabled: true },
     { key: 'spoiltOptionId', value: '', type: 'default', enabled: true },
     { key: 'registrationId', value: '', type: 'default', enabled: true },
-    { key: 'votingCredential', value: '', type: 'secret', enabled: true }
+    { key: 'votingCredential', value: '', type: 'secret', enabled: true },
+    { key: 'votingCredentialSignature', value: '', type: 'secret', enabled: true },
+    { key: 'ballotKeyModulus', value: '', type: 'default', enabled: true },
+    { key: 'ballotKeyExponent', value: '', type: 'default', enabled: true },
+    { key: 'ballotTokenDomain', value: '', type: 'default', enabled: true },
+    { key: 'blindingFactor', value: '', type: 'secret', enabled: true },
+    { key: 'blindedToken', value: '', type: 'default', enabled: true },
+    { key: 'secondBlindedToken', value: '', type: 'default', enabled: true }
   ],
   _postman_variable_scope: 'environment',
   _postman_exported_using: 'Codex'

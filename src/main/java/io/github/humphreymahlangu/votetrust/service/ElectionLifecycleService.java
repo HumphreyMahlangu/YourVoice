@@ -38,6 +38,7 @@ public class ElectionLifecycleService {
     private final ContestOptionRepository contestOptionRepository;
     private final ElectionLifecycleEventRepository lifecycleEventRepository;
     private final LedgerPublicationService ledgerPublicationService;
+    private final BallotSigningKeyService ballotSigningKeyService;
     private final Clock clock;
 
     public ElectionLifecycleService(
@@ -46,6 +47,7 @@ public class ElectionLifecycleService {
             ContestOptionRepository contestOptionRepository,
             ElectionLifecycleEventRepository lifecycleEventRepository,
             LedgerPublicationService ledgerPublicationService,
+            BallotSigningKeyService ballotSigningKeyService,
             Clock clock
     ) {
         this.electionRepository = electionRepository;
@@ -53,6 +55,7 @@ public class ElectionLifecycleService {
         this.contestOptionRepository = contestOptionRepository;
         this.lifecycleEventRepository = lifecycleEventRepository;
         this.ledgerPublicationService = ledgerPublicationService;
+        this.ballotSigningKeyService = ballotSigningKeyService;
         this.clock = clock;
     }
 
@@ -161,6 +164,8 @@ public class ElectionLifecycleService {
             }
             if (contest.getStatus() == ContestStatus.DRAFT) {
                 contest.transitionTo(ContestStatus.OPEN);
+                // Generate the ballot key up front so the first voter does not pay for RSA key generation.
+                ballotSigningKeyService.getOrCreate(contest.getId());
                 opened++;
             }
         }

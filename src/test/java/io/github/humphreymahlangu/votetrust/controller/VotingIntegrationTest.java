@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.github.humphreymahlangu.votetrust.support.BlindBallotClient;
 import io.github.humphreymahlangu.votetrust.support.DatabaseCleaner;
 import io.github.humphreymahlangu.votetrust.support.PostgreSqlTestContainerSupport;
 import io.github.humphreymahlangu.votetrust.entity.AccountRole;
@@ -60,6 +61,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest
@@ -71,6 +73,8 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    // Passes request validation; used where eligibility checks reject the request before the token is examined.
+    private static final String PLACEHOLDER_BLINDED_TOKEN = "AQID";
     private static final Instant FIXED_NOW = Instant.parse("2026-08-07T10:00:00Z");
 
     @Autowired
@@ -126,30 +130,28 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
     @Test
     void issueCredentialAndCastAnonymousBallot() throws Exception {
         VotingFixture fixture = createVotingFixture("voter.cast@example.com", LocalDate.of(1980, 1, 1));
+        BlindBallotClient.BlindedBallot ballot = blindBallot(fixture);
 
-        MvcResult credentialResult = mockMvc.perform(post(
-                        "/api/v1/elections/{electionId}/contests/{contestId}/credentials",
-                        fixture.election().getId(),
-                        fixture.contest().getId()
-                )
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.jwt()))
+        MvcResult credentialResult = requestCredential(fixture, ballot.blindedToken())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.contestId").value(fixture.contest().getId().toString()))
-                .andExpect(jsonPath("$.votingCredential").isNotEmpty())
+                .andExpect(jsonPath("$.blindSignature").isNotEmpty())
+                .andExpect(jsonPath("$.keyFingerprint").isNotEmpty())
+                .andExpect(jsonPath("$.votingCredential").doesNotExist())
                 .andReturn();
-        String credential = JsonPath.read(credentialResult.getResponse().getContentAsString(), "$.votingCredential");
+        String signature = ballot.unblind(JsonPath.read(credentialResult.getResponse().getContentAsString(), "$.blindSignature"));
 
         mockMvc.perform(post("/api/v1/ballots")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(ballotBody(fixture.contest(), fixture.optionA(), credential)))
+                        .content(ballotBody(fixture.contest(), fixture.optionA(), ballot.ballotToken(), signature)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.contestId").value(fixture.contest().getId().toString()))
                 .andExpect(jsonPath("$.accepted").value(true))
                 .andExpect(jsonPath("$.message").value("Ballot accepted"));
 
-        List<AnonymousVotingCredential> credentials = anonymousVotingCredentialRepository.findAll();
-        assertThat(credentials).hasSize(1);
-        assertThat(credentials.getFirst().isUsed()).isTrue();
+        List<AnonymousVotingCredential> spentTokens = anonymousVotingCredentialRepository.findAll();
+        assertThat(spentTokens).hasSize(1);
+        assertThat(spentTokens.getFirst().isUsed()).isTrue();
 
         List<BallotLedgerEntry> entries = ballotLedgerEntryRepository
                 .findByContestIdOrderByLedgerIndexAsc(fixture.contest().getId());
@@ -158,29 +160,51 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
     }
 
     @Test
+    void credentialIssuanceStoresNothingThatMatchesTheSpentBallotToken() throws Exception {
+        VotingFixture fixture = createVotingFixture("voter.unlinkable@example.com", LocalDate.of(1980, 1, 1));
+        IssuedBallot issued = issueCredential(fixture);
+        castBallot(fixture.contest(), fixture.optionA(), issued).andExpect(status().isCreated());
+
+        String storedBlindedHash = jdbcTemplate.queryForObject(
+                "select blinded_token_hash from voting_rights", String.class);
+        String storedSpentHash = jdbcTemplate.queryForObject(
+                "select credential_hash from anonymous_voting_credentials", String.class);
+
+        assertThat(storedBlindedHash).isNotNull();
+        assertThat(storedBlindedHash).isNotEqualTo(storedSpentHash);
+        assertThat(storedBlindedHash).doesNotContain(issued.ballotToken());
+    }
+
+    @Test
     void credentialCanOnlyBeIssuedOncePerContestAndUsedOnce() throws Exception {
         VotingFixture fixture = createVotingFixture("voter.once@example.com", LocalDate.of(1980, 1, 1));
-        String credential = issueCredential(fixture);
+        IssuedBallot issued = issueCredential(fixture);
 
-        mockMvc.perform(post(
-                        "/api/v1/elections/{electionId}/contests/{contestId}/credentials",
-                        fixture.election().getId(),
-                        fixture.contest().getId()
-                )
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.jwt()))
+        requestCredential(fixture, blindBallot(fixture).blindedToken())
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("A voting credential has already been issued for this contest"));
 
-        mockMvc.perform(post("/api/v1/ballots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ballotBody(fixture.contest(), fixture.optionA(), credential)))
-                .andExpect(status().isCreated());
+        castBallot(fixture.contest(), fixture.optionA(), issued).andExpect(status().isCreated());
 
-        mockMvc.perform(post("/api/v1/ballots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ballotBody(fixture.contest(), fixture.optionB(), credential)))
+        castBallot(fixture.contest(), fixture.optionB(), issued)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Voting credential has already been used"));
+    }
+
+    @Test
+    void retryingIssuanceWithTheSameBlindedTokenReturnsTheSameSignature() throws Exception {
+        VotingFixture fixture = createVotingFixture("voter.retry@example.com", LocalDate.of(1980, 1, 1));
+        BlindBallotClient.BlindedBallot ballot = blindBallot(fixture);
+
+        String first = JsonPath.read(requestCredential(fixture, ballot.blindedToken())
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.blindSignature");
+        String retried = JsonPath.read(requestCredential(fixture, ballot.blindedToken())
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString(), "$.blindSignature");
+
+        assertThat(retried).isEqualTo(first);
+        assertThat(votingRightRepository.count()).isEqualTo(1);
     }
 
     @Test
@@ -194,17 +218,11 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
                 LocalDate.of(1981, 1, 1)
         );
 
-        String firstCredential = issueCredential(firstFixture);
-        String secondCredential = issueCredential(secondFixture);
+        IssuedBallot firstBallot = issueCredential(firstFixture);
+        IssuedBallot secondBallot = issueCredential(secondFixture);
 
-        mockMvc.perform(post("/api/v1/ballots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ballotBody(firstFixture.contest(), firstFixture.optionA(), firstCredential)))
-                .andExpect(status().isCreated());
-        mockMvc.perform(post("/api/v1/ballots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ballotBody(firstFixture.contest(), firstFixture.optionB(), secondCredential)))
-                .andExpect(status().isCreated());
+        castBallot(firstFixture.contest(), firstFixture.optionA(), firstBallot).andExpect(status().isCreated());
+        castBallot(firstFixture.contest(), firstFixture.optionB(), secondBallot).andExpect(status().isCreated());
 
         List<BallotLedgerEntry> entries = ballotLedgerEntryRepository
                 .findByContestIdOrderByLedgerIndexAsc(firstFixture.contest().getId());
@@ -217,12 +235,7 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
     void credentialRequiresRegisteredVoterWhoIsAtLeastEighteenOnVotingDay() throws Exception {
         VotingFixture underageFixture = createVotingFixture("voter.underage.vote@example.com", LocalDate.of(2010, 1, 1));
 
-        mockMvc.perform(post(
-                        "/api/v1/elections/{electionId}/contests/{contestId}/credentials",
-                        underageFixture.election().getId(),
-                        underageFixture.contest().getId()
-                )
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + underageFixture.jwt()))
+        requestCredential(underageFixture, PLACEHOLDER_BLINDED_TOKEN)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.message").value("Voters must be at least 18 years old to vote"));
     }
@@ -239,12 +252,7 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
                 2
         );
 
-        mockMvc.perform(post(
-                        "/api/v1/elections/{electionId}/contests/{contestId}/credentials",
-                        fixture.election().getId(),
-                        fixture.contest().getId()
-                )
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.jwt()))
+        requestCredential(fixture, PLACEHOLDER_BLINDED_TOKEN)
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.message").value("Voter is not eligible for this contest based on registered voting district"));
     }
@@ -260,25 +268,91 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
                 Instant.parse("2026-08-01T21:00:00Z")
         );
 
-        mockMvc.perform(post(
-                        "/api/v1/elections/{electionId}/contests/{contestId}/credentials",
-                        fixture.election().getId(),
-                        fixture.contest().getId()
-                )
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.jwt()))
+        requestCredential(fixture, PLACEHOLDER_BLINDED_TOKEN)
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Election voting period is closed"));
     }
 
     @Test
-    void anonymousBallotRejectsInvalidCredential() throws Exception {
-        VotingFixture fixture = createVotingFixture("voter.invalid.credential@example.com", LocalDate.of(1980, 1, 1));
+    void credentialRejectsBlindedTokenOutsideTheKeyRange() throws Exception {
+        VotingFixture fixture = createVotingFixture("voter.bad.blinding@example.com", LocalDate.of(1980, 1, 1));
 
-        mockMvc.perform(post("/api/v1/ballots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ballotBody(fixture.contest(), fixture.optionA(), "not-a-real-credential")))
+        requestCredential(fixture, "AQ")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Blinded ballot token is not valid for this contest's ballot key"));
+        assertThat(votingRightRepository.count()).isZero();
+    }
+
+    @Test
+    void anonymousBallotRejectsInvalidSignature() throws Exception {
+        VotingFixture fixture = createVotingFixture("voter.invalid.credential@example.com", LocalDate.of(1980, 1, 1));
+        IssuedBallot forged = new IssuedBallot(blindBallot(fixture).ballotToken(), "AQID");
+
+        castBallot(fixture.contest(), fixture.optionA(), forged)
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Invalid or expired voting credential"));
+    }
+
+    @Test
+    void signatureForOneContestCannotBeUsedInAnother() throws Exception {
+        VotingFixture fixture = createVotingFixture("voter.cross.contest@example.com", LocalDate.of(1980, 1, 1));
+        Contest otherContest = contestRepository.save(new Contest(
+                fixture.election(),
+                "Municipal PR Councillors",
+                ContestType.MUNICIPAL_PR,
+                ContestStatus.OPEN,
+                2,
+                "Western Cape",
+                "City of Cape Town",
+                null
+        ));
+        ContestOption otherOption = contestOptionRepository.save(new ContestOption(
+                otherContest,
+                "Ubuntu Civic Party",
+                ContestOptionType.PARTY,
+                1
+        ));
+        mockMvc.perform(get("/api/v1/elections/{electionId}/contests/{contestId}/ballot-key",
+                        fixture.election().getId(), otherContest.getId()))
+                .andExpect(status().isOk());
+        IssuedBallot issued = issueCredential(fixture);
+
+        castBallot(otherContest, otherOption, issued).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void ballotKeyIsPublishedOnceVotingOpensAndStaysTheSame() throws Exception {
+        VotingFixture fixture = createVotingFixture("voter.ballot.key@example.com", LocalDate.of(1980, 1, 1));
+
+        MvcResult first = mockMvc.perform(get("/api/v1/elections/{electionId}/contests/{contestId}/ballot-key",
+                        fixture.election().getId(), fixture.contest().getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.publicExponent").value("AQAB"))
+                .andExpect(jsonPath("$.tokenDomain").value("votetrust-ballot-token-v1"))
+                .andReturn();
+        MvcResult second = mockMvc.perform(get("/api/v1/elections/{electionId}/contests/{contestId}/ballot-key",
+                        fixture.election().getId(), fixture.contest().getId()))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        assertThat((String) JsonPath.read(second.getResponse().getContentAsString(), "$.keyFingerprint"))
+                .isEqualTo(JsonPath.read(first.getResponse().getContentAsString(), "$.keyFingerprint"));
+    }
+
+    @Test
+    void ballotKeyIsNotPublishedBeforeVotingOpens() throws Exception {
+        VotingFixture fixture = createVotingFixture(
+                "voter.draft.key@example.com",
+                LocalDate.of(1980, 1, 1),
+                ElectionStatus.REGISTRATION_CLOSED,
+                ContestStatus.DRAFT,
+                Instant.parse("2026-08-08T07:00:00Z"),
+                Instant.parse("2026-08-08T21:00:00Z")
+        );
+
+        mockMvc.perform(get("/api/v1/elections/{electionId}/contests/{contestId}/ballot-key",
+                        fixture.election().getId(), fixture.contest().getId()))
+                .andExpect(status().isConflict());
     }
 
     @Test
@@ -290,11 +364,9 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
                 ContestOptionType.BLANK_BALLOT,
                 98
         ));
-        String credential = issueCredential(fixture);
+        IssuedBallot issued = issueCredential(fixture);
 
-        mockMvc.perform(post("/api/v1/ballots")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(ballotBody(fixture.contest(), blankOption, credential)))
+        castBallot(fixture.contest(), blankOption, issued)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accepted").value(true));
 
@@ -318,16 +390,46 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
                 .andExpect(jsonPath("$[0].options[1].id").value(fixture.optionB().getId().toString()));
     }
 
-    private String issueCredential(VotingFixture fixture) throws Exception {
-        MvcResult credentialResult = mockMvc.perform(post(
+    private BlindBallotClient.BlindedBallot blindBallot(VotingFixture fixture) throws Exception {
+        MvcResult keyResult = mockMvc.perform(get(
+                        "/api/v1/elections/{electionId}/contests/{contestId}/ballot-key",
+                        fixture.election().getId(),
+                        fixture.contest().getId()
+                ))
+                .andExpect(status().isOk())
+                .andReturn();
+        String keyJson = keyResult.getResponse().getContentAsString();
+        return BlindBallotClient.blind(
+                fixture.contest().getId(),
+                JsonPath.read(keyJson, "$.modulus"),
+                JsonPath.read(keyJson, "$.publicExponent")
+        );
+    }
+
+    private ResultActions requestCredential(VotingFixture fixture, String blindedToken) throws Exception {
+        return mockMvc.perform(post(
                         "/api/v1/elections/{electionId}/contests/{contestId}/credentials",
                         fixture.election().getId(),
                         fixture.contest().getId()
                 )
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.jwt()))
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.jwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"blindedToken\": \"%s\"}".formatted(blindedToken)));
+    }
+
+    private IssuedBallot issueCredential(VotingFixture fixture) throws Exception {
+        BlindBallotClient.BlindedBallot ballot = blindBallot(fixture);
+        MvcResult credentialResult = requestCredential(fixture, ballot.blindedToken())
                 .andExpect(status().isCreated())
                 .andReturn();
-        return JsonPath.read(credentialResult.getResponse().getContentAsString(), "$.votingCredential");
+        String blindSignature = JsonPath.read(credentialResult.getResponse().getContentAsString(), "$.blindSignature");
+        return new IssuedBallot(ballot.ballotToken(), ballot.unblind(blindSignature));
+    }
+
+    private ResultActions castBallot(Contest contest, ContestOption option, IssuedBallot issued) throws Exception {
+        return mockMvc.perform(post("/api/v1/ballots")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(ballotBody(contest, option, issued.ballotToken(), issued.signature())));
     }
 
     private VotingFixture createVotingFixture(String email, LocalDate dateOfBirth) throws Exception {
@@ -469,14 +571,18 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
         return jwtService.generateAccessToken(account).token();
     }
 
-    private String ballotBody(Contest contest, ContestOption contestOption, String credential) {
+    private String ballotBody(Contest contest, ContestOption contestOption, String ballotToken, String signature) {
         return """
                 {
                   "contestId": "%s",
                   "contestOptionId": "%s",
-                  "votingCredential": "%s"
+                  "ballotToken": "%s",
+                  "signature": "%s"
                 }
-                """.formatted(contest.getId(), contestOption.getId(), credential);
+                """.formatted(contest.getId(), contestOption.getId(), ballotToken, signature);
+    }
+
+    private record IssuedBallot(String ballotToken, String signature) {
     }
 
     private record VotingFixture(
