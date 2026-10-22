@@ -14,12 +14,75 @@ const documentTypes: IdDocumentType[] = [
   'TEMPORARY_ID_CERTIFICATE',
 ]
 
+function getPasswordFeedback(password: string) {
+  const hasLowercase = /[a-z]/.test(password)
+  const hasUppercase = /[A-Z]/.test(password)
+  const hasNumber = /\d/.test(password)
+  const hasSymbol = /[^A-Za-z0-9]/.test(password)
+  const missingRequirements = [
+    password.length < 12 ? '12 characters' : null,
+    !hasUppercase ? 'an uppercase letter' : null,
+    !hasLowercase ? 'a lowercase letter' : null,
+    !hasNumber ? 'a number' : null,
+  ].filter((requirement): requirement is string => requirement !== null)
+
+  if (!password) return { strength: 0, missingRequirements }
+
+  const characterTypes = [hasLowercase, hasUppercase, hasNumber, hasSymbol]
+    .filter(Boolean).length
+  let strength = 1
+  if (password.length >= 12) strength = 2
+  if (password.length >= 16 && characterTypes >= 3) strength = 3
+  if ((password.length >= 20 && characterTypes >= 3) ||
+      (password.length >= 16 && characterTypes === 4)) strength = 4
+
+  return {
+    strength: missingRequirements.length > 0 ? Math.min(strength, 2) : strength,
+    missingRequirements,
+  }
+}
+
+const strengthLabels = ['Not measured', 'Weak', 'Fair', 'Good', 'Strong']
+
+function PasswordVisibilityButton({
+  visible,
+  onToggle,
+  inputId,
+  label,
+}: {
+  visible: boolean
+  onToggle: () => void
+  inputId: string
+  label: string
+}) {
+  return (
+    <button
+      className="password-visibility"
+      type="button"
+      aria-label={`${visible ? 'Hide' : 'Show'} ${label}`}
+      aria-controls={inputId}
+      aria-pressed={visible}
+      onClick={onToggle}
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2.25 12s3.5-6 9.75-6 9.75 6 9.75 6-3.5 6-9.75 6-9.75-6-9.75-6Z" />
+        <circle cx="12" cy="12" r="2.75" />
+        {visible && <path d="M3 21 21 3" />}
+      </svg>
+    </button>
+  )
+}
+
 function RegisterPage() {
   const navigate = useNavigate()
   const { session, register } = useAuth()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [confirmationTouched, setConfirmationTouched] = useState(false)
   const [southAfricanIdNumber, setSouthAfricanIdNumber] = useState('')
   const [idDocumentType, setIdDocumentType] =
     useState<IdDocumentType>('SMART_ID_CARD')
@@ -79,6 +142,19 @@ function RegisterPage() {
     event.preventDefault()
     setError(null)
     setFieldErrors({})
+    setConfirmationTouched(true)
+
+    if (getPasswordFeedback(password).missingRequirements.length > 0) {
+      setFieldErrors({
+        password: 'Use at least 12 characters with an uppercase letter, lowercase letter, and number.',
+      })
+      return
+    }
+
+    if (password !== confirmPassword) {
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
@@ -108,6 +184,16 @@ function RegisterPage() {
   const fullNameError = fieldErrors.fullName
   const emailError = fieldErrors.email
   const passwordError = fieldErrors.password
+  const confirmationError = confirmationTouched && confirmPassword !== password
+    ? 'Passwords do not match.'
+    : null
+  const { strength, missingRequirements } = getPasswordFeedback(password)
+  const passwordDescription = [
+    'register-password-help',
+    'register-password-strength',
+    password && missingRequirements.length > 0 ? 'register-password-missing' : null,
+    passwordError ? 'register-password-error' : null,
+  ].filter(Boolean).join(' ')
   const idNumberError = fieldErrors.southAfricanIdNumber
   const documentTypeError = fieldErrors.idDocumentType
   const votingDistrictError = fieldErrors.votingDistrictId
@@ -187,8 +273,7 @@ function RegisterPage() {
             South African ID number
           </label>
           <p id="register-id-number-help">
-            Enter all 13 digits. The API stores only a protected hash of this
-            number, and you will not need to enter it again for each election.
+            Enter the 13-digit number shown on your South African ID document.
           </p>
           <input
             id="register-south-african-id-number"
@@ -287,26 +372,72 @@ function RegisterPage() {
             Use at least 12 characters with an uppercase letter, lowercase
             letter, and number.
           </p>
-          <input
-            id="register-password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={12}
-            maxLength={128}
-            value={password}
-            aria-invalid={passwordError ? true : undefined}
-            aria-describedby={
-              passwordError
-                ? 'register-password-help register-password-error'
-                : 'register-password-help'
-            }
-            onChange={(event) => setPassword(event.target.value)}
-          />
-          {passwordError && (
-            <p id="register-password-error">{passwordError}</p>
+          <div className="password-input">
+            <input
+              id="register-password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              required
+              minLength={12}
+              maxLength={128}
+              value={password}
+              aria-invalid={passwordError ? true : undefined}
+              aria-describedby={passwordDescription}
+              onChange={(event) => {
+                setPassword(event.target.value)
+                setFieldErrors((current) => ({ ...current, password: '' }))
+              }}
+            />
+            <PasswordVisibilityButton
+              visible={showPassword}
+              onToggle={() => setShowPassword((visible) => !visible)}
+              inputId="register-password"
+              label="password"
+            />
+          </div>
+          <div id="register-password-strength" className="password-strength">
+            <div className="password-strength__bar" role="meter" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength} aria-valuetext={strengthLabels[strength]}>
+              {[1, 2, 3, 4].map((segment) => (
+                <span key={segment} className={segment <= strength ? `password-strength__segment password-strength__segment--${strength}` : 'password-strength__segment'} />
+              ))}
+            </div>
+            <p aria-live="polite" aria-atomic="true">Strength: {strengthLabels[strength]}</p>
+          </div>
+          {password && missingRequirements.length > 0 && (
+            <p id="register-password-missing" className="password-requirements">
+              Still needed: {missingRequirements.join(', ')}.
+            </p>
           )}
+          {passwordError && (
+            <p id="register-password-error" className="field-error">{passwordError}</p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="register-confirm-password">Confirm password</label>
+          <div className="password-input">
+            <input
+              id="register-confirm-password"
+              name="confirmPassword"
+              type={showConfirmation ? 'text' : 'password'}
+              autoComplete="new-password"
+              required
+              maxLength={128}
+              value={confirmPassword}
+              aria-invalid={confirmationError ? true : undefined}
+              aria-describedby={confirmationError ? 'register-confirm-password-error' : undefined}
+              onBlur={() => setConfirmationTouched(true)}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+            />
+            <PasswordVisibilityButton
+              visible={showConfirmation}
+              onToggle={() => setShowConfirmation((visible) => !visible)}
+              inputId="register-confirm-password"
+              label="confirmation password"
+            />
+          </div>
+          {confirmationError && <p id="register-confirm-password-error" className="field-error">{confirmationError}</p>}
         </div>
 
         <button
