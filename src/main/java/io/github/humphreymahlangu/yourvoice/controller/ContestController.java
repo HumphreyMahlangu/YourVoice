@@ -79,9 +79,12 @@ public class ContestController {
     }
 
     @GetMapping
-    @Operation(summary = "List contests and ballot options", description = "Returns contests configured for the election, including geographic scope fields used for eligibility.")
-    public List<ContestResponse> listContests(@PathVariable UUID electionId) {
-        return contestService.listContests(electionId);
+    @Operation(summary = "List contests and ballot options", description = "Returns contests configured for a public election, including geographic scope fields used for eligibility. Draft and cancelled elections require an administrator bearer token.")
+    public List<ContestResponse> listContests(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID electionId
+    ) {
+        return contestService.listContests(electionId, principal != null && "ADMIN".equals(principal.role()));
     }
 
     @PostMapping("/{contestId}/credentials")

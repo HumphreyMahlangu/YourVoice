@@ -17,6 +17,7 @@ interface ElectionDetails {
 function ElectionDetailsPage() {
   const { electionId } = useParams<{ electionId: string }>()
   const { session } = useAuth()
+  const administratorToken = session?.role === 'ADMIN' ? session.accessToken : undefined
   const [details, setDetails] = useState<ElectionDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<unknown>(null)
@@ -38,8 +39,8 @@ function ElectionDetailsPage() {
 
       try {
         const [election, contests] = await Promise.all([
-          getElection(requestedElectionId, abortController.signal),
-          getElectionContests(requestedElectionId, abortController.signal),
+          getElection(requestedElectionId, abortController.signal, administratorToken),
+          getElectionContests(requestedElectionId, abortController.signal, administratorToken),
         ])
 
         if (!abortController.signal.aborted) {
@@ -59,7 +60,7 @@ function ElectionDetailsPage() {
     void loadElectionDetails()
 
     return () => abortController.abort()
-  }, [electionId])
+  }, [electionId, administratorToken])
 
   return (
     <section className="page detail-page" aria-labelledby="election-details-heading">

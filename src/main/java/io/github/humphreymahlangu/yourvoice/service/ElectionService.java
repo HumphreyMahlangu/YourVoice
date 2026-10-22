@@ -20,14 +20,21 @@ public class ElectionService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ElectionResponse> listElections(Pageable pageable) {
-        return electionRepository.findAllByOrderByRegistrationStartAtDesc(pageable).map(ElectionResponse::from);
+    public Page<ElectionResponse> listElections(Pageable pageable, boolean administrator) {
+        Page<Election> elections = administrator
+                ? electionRepository.findAllByOrderByRegistrationStartAtDesc(pageable)
+                : electionRepository.findAllByStatusInOrderByRegistrationStartAtDesc(
+                        ElectionVisibility.PUBLIC_STATUSES,
+                        pageable
+                );
+        return elections.map(ElectionResponse::from);
     }
 
     @Transactional(readOnly = true)
-    public ElectionResponse getElection(UUID electionId) {
+    public ElectionResponse getElection(UUID electionId, boolean administrator) {
         Election election = electionRepository.findById(electionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Election not found"));
+        ElectionVisibility.requireVisible(election, administrator);
         return ElectionResponse.from(election);
     }
 }

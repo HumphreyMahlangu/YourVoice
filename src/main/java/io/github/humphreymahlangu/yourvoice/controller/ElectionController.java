@@ -74,20 +74,27 @@ public class ElectionController {
     }
 
     @GetMapping
-    @Operation(summary = "List elections", description = "Returns elections with lifecycle status and registration/voting windows.")
+    @Operation(summary = "List elections", description = "Returns public elections with lifecycle status and registration/voting windows. Draft and cancelled elections are visible only to administrators using a bearer token.")
     public ResponseEntity<List<ElectionResponse>> listElections(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Parameter(description = "Zero-based page number", example = "0")
             @RequestParam(defaultValue = PageRequestParameters.DEFAULT_PAGE) @Min(0) int page,
             @Parameter(description = "Page size (1-500). The total is returned in the X-Total-Count header.", example = "200")
             @RequestParam(defaultValue = PageRequestParameters.DEFAULT_SIZE) @Min(1) @Max(PageRequestParameters.MAX_SIZE) int size
     ) {
-        return PageRequestParameters.toResponse(electionService.listElections(PageRequest.of(page, size)));
+        return PageRequestParameters.toResponse(electionService.listElections(
+                PageRequest.of(page, size),
+                principal != null && "ADMIN".equals(principal.role())
+        ));
     }
 
     @GetMapping("/{electionId}")
-    @Operation(summary = "Get election details", description = "Returns a single election by identifier.")
-    public ElectionResponse getElection(@PathVariable UUID electionId) {
-        return electionService.getElection(electionId);
+    @Operation(summary = "Get election details", description = "Returns a single public election by identifier. Draft and cancelled elections require an administrator bearer token.")
+    public ElectionResponse getElection(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID electionId
+    ) {
+        return electionService.getElection(electionId, principal != null && "ADMIN".equals(principal.role()));
     }
 
     @PostMapping("/{electionId}/registrations")

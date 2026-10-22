@@ -38,7 +38,12 @@ function AdminElectionBuilderPage() {
       return
     }
 
+    if (!session) {
+      return
+    }
+
     const requestedElectionId = electionId
+    const authToken = session.accessToken
     const abortController = new AbortController()
 
     async function loadBuilder() {
@@ -47,8 +52,8 @@ function AdminElectionBuilderPage() {
 
       try {
         const [election, contests] = await Promise.all([
-          getElection(requestedElectionId, abortController.signal),
-          getElectionContests(requestedElectionId, abortController.signal),
+          getElection(requestedElectionId, abortController.signal, authToken),
+          getElectionContests(requestedElectionId, abortController.signal, authToken),
         ])
 
         if (!abortController.signal.aborted) {
@@ -68,7 +73,7 @@ function AdminElectionBuilderPage() {
     void loadBuilder()
 
     return () => abortController.abort()
-  }, [electionId])
+  }, [electionId, session])
 
   function handleContestCreated(contest: Contest) {
     setBuilderData((currentData) =>

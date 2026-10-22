@@ -49,7 +49,7 @@ function AdminElectionOperationsPage() {
 
       try {
         const [election, events] = await Promise.all([
-          getElection(requestedElectionId, abortController.signal),
+          getElection(requestedElectionId, abortController.signal, authToken),
           getElectionLifecycleEvents(
             requestedElectionId,
             authToken,

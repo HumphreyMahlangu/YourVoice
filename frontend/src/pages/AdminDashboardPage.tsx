@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { getVotingDistricts } from '../api/districts'
 import { getElections } from '../api/elections'
+import { useAuth } from '../auth/useAuth'
 import type { VotingDistrict } from '../types/district'
 import type { Election, ElectionStatus } from '../types/election'
 import { formatEnumLabel, formatNumber } from '../utils/formatters'
@@ -22,11 +23,17 @@ const ELECTION_STATUSES: ElectionStatus[] = [
 ]
 
 function AdminDashboardPage() {
+  const { session } = useAuth()
   const [dashboard, setDashboard] = useState<AdminDashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<unknown>(null)
 
   useEffect(() => {
+    if (!session) {
+      return
+    }
+
+    const authToken = session.accessToken
     const abortController = new AbortController()
 
     async function loadDashboard() {
@@ -35,7 +42,7 @@ function AdminDashboardPage() {
 
       try {
         const [elections, districts] = await Promise.all([
-          getElections(abortController.signal),
+          getElections(abortController.signal, authToken),
           getVotingDistricts(abortController.signal),
         ])
 
@@ -56,7 +63,7 @@ function AdminDashboardPage() {
     void loadDashboard()
 
     return () => abortController.abort()
-  }, [])
+  }, [session])
 
   return (
     <section className="page dashboard-page admin-page" aria-labelledby="admin-dashboard-heading">

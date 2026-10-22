@@ -280,11 +280,11 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
 
         mockMvc.perform(get("/api/v1/elections").param("page", "0").param("size", "1"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("X-Total-Count", "2"))
+                .andExpect(header().string("X-Total-Count", "1"))
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].name").value("2026 By-Election"));
-        mockMvc.perform(get("/api/v1/elections").param("page", "1").param("size", "1"))
                 .andExpect(jsonPath("$[0].name").value("2026 Local Government Election"));
+        mockMvc.perform(get("/api/v1/elections").param("page", "1").param("size", "1"))
+                .andExpect(jsonPath("$.length()").value(0));
         mockMvc.perform(get("/api/v1/elections").param("size", "501"))
                 .andExpect(status().isBadRequest());
     }

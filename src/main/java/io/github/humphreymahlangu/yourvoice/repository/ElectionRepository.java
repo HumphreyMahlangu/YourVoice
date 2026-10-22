@@ -19,6 +19,11 @@ public interface ElectionRepository extends JpaRepository<Election, UUID> {
 
     Page<Election> findAllByOrderByRegistrationStartAtDesc(Pageable pageable);
 
+    Page<Election> findAllByStatusInOrderByRegistrationStartAtDesc(
+            Collection<ElectionStatus> statuses,
+            Pageable pageable
+    );
+
     @Query("select election.id from Election election where election.status in :statuses")
     List<UUID> findIdsByStatusIn(@Param("statuses") Collection<ElectionStatus> statuses);
 
