@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router'
 import ApiError from '../api/ApiError'
 import { getVotingDistricts } from '../api/districts'
 import { useAuth } from '../auth/useAuth'
+import PasswordVisibilityButton from '../components/PasswordVisibilityButton'
 import type { VotingDistrict } from '../types/district'
 import type { IdDocumentType } from '../types/registration'
 import { formatEnumLabel } from '../utils/formatters'
@@ -43,35 +44,6 @@ function getPasswordFeedback(password: string) {
 }
 
 const strengthLabels = ['Not measured', 'Weak', 'Fair', 'Good', 'Strong']
-
-function PasswordVisibilityButton({
-  visible,
-  onToggle,
-  inputId,
-  label,
-}: {
-  visible: boolean
-  onToggle: () => void
-  inputId: string
-  label: string
-}) {
-  return (
-    <button
-      className="password-visibility"
-      type="button"
-      aria-label={`${visible ? 'Hide' : 'Show'} ${label}`}
-      aria-controls={inputId}
-      aria-pressed={visible}
-      onClick={onToggle}
-    >
-      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2.25 12s3.5-6 9.75-6 9.75 6 9.75 6-3.5 6-9.75 6-9.75-6-9.75-6Z" />
-        <circle cx="12" cy="12" r="2.75" />
-        {visible && <path d="M3 21 21 3" />}
-      </svg>
-    </button>
-  )
-}
 
 function RegisterPage() {
   const navigate = useNavigate()
@@ -200,12 +172,16 @@ function RegisterPage() {
 
   return (
     <section className="page auth-page register-page" aria-labelledby="register-heading">
-      <p className="eyebrow">Voter onboarding</p>
-      <h1 id="register-heading">Create voter account</h1>
-      <p>
-        Establish your eligibility once. Your identity is kept separate from
-        any ballot you later cast.
-      </p>
+      <header className="register-intro">
+        <div className="register-intro__main">
+          <p className="eyebrow">YourVoice / South Africa</p>
+          <h1 id="register-heading">Create your voter account.</h1>
+        </div>
+        <p className="register-intro__aside">
+          Set up your profile to take part in elections. Your identity stays
+          separate from the ballot you cast.
+        </p>
+      </header>
 
       {error !== null && (
         <p role="alert">
@@ -215,244 +191,262 @@ function RegisterPage() {
 
       {districtLoadError !== null && (
         <p role="alert">
-          {getErrorMessage(
-            districtLoadError,
-            'Unable to load voting districts.',
-          )}
+          We couldn't load voting districts. Please refresh and try again.
         </p>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="register-full-name">Full legal name</label>
-          <input
-            id="register-full-name"
-            name="fullName"
-            type="text"
-            autoComplete="name"
-            required
-            maxLength={160}
-            value={fullName}
-            aria-invalid={fullNameError ? true : undefined}
-            aria-describedby={
-              fullNameError ? 'register-full-name-error' : undefined
-            }
-            onChange={(event) => setFullName(event.target.value)}
-          />
-          {fullNameError && (
-            <p id="register-full-name-error">{fullNameError}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="register-email">Email address</label>
-          <p id="register-email-help">
-            Your email is used to sign in. It is not used as proof of identity.
-          </p>
-          <input
-            id="register-email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            maxLength={320}
-            value={email}
-            aria-invalid={emailError ? true : undefined}
-            aria-describedby={
-              emailError
-                ? 'register-email-help register-email-error'
-                : 'register-email-help'
-            }
-            onChange={(event) => setEmail(event.target.value)}
-          />
-          {emailError && <p id="register-email-error">{emailError}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="register-south-african-id-number">
-            South African ID number
-          </label>
-          <p id="register-id-number-help">
-            Enter the 13-digit number shown on your South African ID document.
-          </p>
-          <input
-            id="register-south-african-id-number"
-            name="southAfricanIdNumber"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]{13}"
-            autoComplete="off"
-            required
-            minLength={13}
-            maxLength={13}
-            value={southAfricanIdNumber}
-            aria-invalid={idNumberError ? true : undefined}
-            aria-describedby={
-              idNumberError
-                ? 'register-id-number-help register-id-number-error'
-                : 'register-id-number-help'
-            }
-            onChange={(event) =>
-              setSouthAfricanIdNumber(event.target.value)
-            }
-          />
-          {idNumberError && (
-            <p id="register-id-number-error">{idNumberError}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="register-id-document-type">
-            Identity document type
-          </label>
-          <select
-            id="register-id-document-type"
-            name="idDocumentType"
-            required
-            value={idDocumentType}
-            aria-invalid={documentTypeError ? true : undefined}
-            aria-describedby={
-              documentTypeError
-                ? 'register-document-type-error'
-                : undefined
-            }
-            onChange={(event) =>
-              setIdDocumentType(event.target.value as IdDocumentType)
-            }
-          >
-            {documentTypes.map((documentType) => (
-              <option key={documentType} value={documentType}>
-                {formatEnumLabel(documentType)}
-              </option>
-            ))}
-          </select>
-          {documentTypeError && (
-            <p id="register-document-type-error">{documentTypeError}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="register-voting-district">Voting district</label>
-          <select
-            id="register-voting-district"
-            name="votingDistrictId"
-            required
-            value={votingDistrictId}
-            aria-invalid={votingDistrictError ? true : undefined}
-            aria-describedby={
-              votingDistrictError
-                ? 'register-voting-district-error'
-                : undefined
-            }
-            onChange={(event) => setVotingDistrictId(event.target.value)}
-          >
-            <option value="">
-              {isLoadingDistricts
-                ? 'Loading voting districts...'
-                : 'Select your voting district'}
-            </option>
-            {districts.map((district) => (
-              <option key={district.id} value={district.id}>
-                {district.code} — {district.name}, {district.municipality}, ward{' '}
-                {district.wardNumber}
-              </option>
-            ))}
-          </select>
-          {votingDistrictError && (
-            <p id="register-voting-district-error">{votingDistrictError}</p>
-          )}
-          {!isLoadingDistricts && districts.length === 0 && (
-            <p>No voting districts are currently available.</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="register-password">Password</label>
-          <p id="register-password-help">
-            Use at least 12 characters with an uppercase letter, lowercase
-            letter, and number.
-          </p>
-          <div className="password-input">
-            <input
-              id="register-password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete="new-password"
-              required
-              minLength={12}
-              maxLength={128}
-              value={password}
-              aria-invalid={passwordError ? true : undefined}
-              aria-describedby={passwordDescription}
-              onChange={(event) => {
-                setPassword(event.target.value)
-                setFieldErrors((current) => ({ ...current, password: '' }))
-              }}
-            />
-            <PasswordVisibilityButton
-              visible={showPassword}
-              onToggle={() => setShowPassword((visible) => !visible)}
-              inputId="register-password"
-              label="password"
-            />
+      <form className="register-form" onSubmit={handleSubmit}>
+        <div className="register-form__section">
+          <div className="register-form__section-intro">
+            <span className="register-form__number">01 / Personal details</span>
+            <h2>Your details.</h2>
+            <p>Use the details shown on your identity document.</p>
           </div>
-          <div id="register-password-strength" className="password-strength">
-            <div className="password-strength__bar" role="meter" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength} aria-valuetext={strengthLabels[strength]}>
-              {[1, 2, 3, 4].map((segment) => (
-                <span key={segment} className={segment <= strength ? `password-strength__segment password-strength__segment--${strength}` : 'password-strength__segment'} />
-              ))}
+          <div className="register-form__fields">
+            <div>
+              <label htmlFor="register-full-name">Full legal name</label>
+              <input
+                id="register-full-name"
+                name="fullName"
+                type="text"
+                autoComplete="name"
+                required
+                maxLength={160}
+                value={fullName}
+                aria-invalid={fullNameError ? true : undefined}
+                aria-describedby={
+                  fullNameError ? 'register-full-name-error' : undefined
+                }
+                onChange={(event) => setFullName(event.target.value)}
+              />
+              {fullNameError && (
+                <p id="register-full-name-error">{fullNameError}</p>
+              )}
             </div>
-            <p aria-live="polite" aria-atomic="true">Strength: {strengthLabels[strength]}</p>
+
+            <div>
+              <label htmlFor="register-email">Email address</label>
+              <input
+                id="register-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                maxLength={320}
+                value={email}
+                aria-invalid={emailError ? true : undefined}
+                aria-describedby={
+                  emailError
+                    ? 'register-email-help register-email-error'
+                    : 'register-email-help'
+                }
+                onChange={(event) => setEmail(event.target.value)}
+              />
+              {emailError && <p id="register-email-error" className="field-error">{emailError}</p>}
+              <p id="register-email-help">
+            You'll use this email to sign in.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="register-south-african-id-number">
+                South African ID number
+              </label>
+              <input
+                id="register-south-african-id-number"
+                name="southAfricanIdNumber"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{13}"
+                autoComplete="off"
+                required
+                minLength={13}
+                maxLength={13}
+                value={southAfricanIdNumber}
+                aria-invalid={idNumberError ? true : undefined}
+                aria-describedby={
+                  idNumberError
+                    ? 'register-id-number-help register-id-number-error'
+                    : 'register-id-number-help'
+                }
+                onChange={(event) =>
+                  setSouthAfricanIdNumber(event.target.value)
+                }
+              />
+              {idNumberError && (
+                <p id="register-id-number-error" className="field-error">{idNumberError}</p>
+              )}
+              <p id="register-id-number-help">
+                Enter the 13-digit number shown on your South African ID document.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="register-id-document-type">
+                Identity document type
+              </label>
+              <select
+                id="register-id-document-type"
+                name="idDocumentType"
+                required
+                value={idDocumentType}
+                aria-invalid={documentTypeError ? true : undefined}
+                aria-describedby={
+                  documentTypeError
+                    ? 'register-document-type-error'
+                    : undefined
+                }
+                onChange={(event) =>
+                  setIdDocumentType(event.target.value as IdDocumentType)
+                }
+              >
+                {documentTypes.map((documentType) => (
+                  <option key={documentType} value={documentType}>
+                    {formatEnumLabel(documentType)}
+                  </option>
+                ))}
+              </select>
+              {documentTypeError && (
+                <p id="register-document-type-error">{documentTypeError}</p>
+              )}
+            </div>
+
+            <div className="register-form__field--wide">
+              <label htmlFor="register-voting-district">Voting district</label>
+              <select
+                id="register-voting-district"
+                name="votingDistrictId"
+                required
+                value={votingDistrictId}
+                aria-invalid={votingDistrictError ? true : undefined}
+                aria-describedby={
+                  votingDistrictError
+                    ? 'register-voting-district-help register-voting-district-error'
+                    : 'register-voting-district-help'
+                }
+                onChange={(event) => setVotingDistrictId(event.target.value)}
+              >
+                <option value="">
+                  {isLoadingDistricts
+                    ? 'Loading voting districts...'
+                    : 'Select your voting district'}
+                </option>
+                {districts.map((district) => (
+                  <option key={district.id} value={district.id}>
+                    {district.code} — {district.name}, {district.municipality}, ward{' '}
+                    {district.wardNumber}
+                  </option>
+                ))}
+              </select>
+              {votingDistrictError && (
+                <p id="register-voting-district-error">{votingDistrictError}</p>
+              )}
+              <p id="register-voting-district-help">
+                Choose the district where you are registered to vote.
+              </p>
+              {!isLoadingDistricts && districtLoadError === null && districts.length === 0 && (
+                <p>No voting districts are currently available.</p>
+              )}
+            </div>
           </div>
-          {password && missingRequirements.length > 0 && (
-            <p id="register-password-missing" className="password-requirements">
-              Still needed: {missingRequirements.join(', ')}.
-            </p>
-          )}
-          {passwordError && (
-            <p id="register-password-error" className="field-error">{passwordError}</p>
-          )}
         </div>
 
-        <div>
-          <label htmlFor="register-confirm-password">Confirm password</label>
-          <div className="password-input">
-            <input
-              id="register-confirm-password"
-              name="confirmPassword"
-              type={showConfirmation ? 'text' : 'password'}
-              autoComplete="new-password"
-              required
-              maxLength={128}
-              value={confirmPassword}
-              aria-invalid={confirmationError ? true : undefined}
-              aria-describedby={confirmationError ? 'register-confirm-password-error' : undefined}
-              onBlur={() => setConfirmationTouched(true)}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-            />
-            <PasswordVisibilityButton
-              visible={showConfirmation}
-              onToggle={() => setShowConfirmation((visible) => !visible)}
-              inputId="register-confirm-password"
-              label="confirmation password"
-            />
+        <div className="register-form__section">
+          <div className="register-form__section-intro">
+            <span className="register-form__number">02 / Account security</span>
+            <h2>Choose a password.</h2>
+            <p>Use this password when you sign in to your account.</p>
           </div>
-          {confirmationError && <p id="register-confirm-password-error" className="field-error">{confirmationError}</p>}
+          <div className="register-form__fields">
+            <div>
+              <label htmlFor="register-password">Password</label>
+              <div className="password-input">
+                <input
+                  id="register-password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  minLength={12}
+                  maxLength={128}
+                  value={password}
+                  aria-invalid={passwordError ? true : undefined}
+                  aria-describedby={passwordDescription}
+                  onChange={(event) => {
+                    setPassword(event.target.value)
+                    setFieldErrors((current) => ({ ...current, password: '' }))
+                  }}
+                />
+                <PasswordVisibilityButton
+                  visible={showPassword}
+                  onToggle={() => setShowPassword((visible) => !visible)}
+                  inputId="register-password"
+                  label="password"
+                />
+              </div>
+              <p id="register-password-help">
+                Use at least 12 characters with an uppercase letter, lowercase
+                letter, and number.
+              </p>
+              <div id="register-password-strength" className="password-strength">
+                <div className="password-strength__bar" role="meter" aria-label="Password strength" aria-valuemin={0} aria-valuemax={4} aria-valuenow={strength} aria-valuetext={strengthLabels[strength]}>
+                  {[1, 2, 3, 4].map((segment) => (
+                    <span key={segment} className={segment <= strength ? `password-strength__segment password-strength__segment--${strength}` : 'password-strength__segment'} />
+                  ))}
+                </div>
+                <p aria-live="polite" aria-atomic="true">Strength: {strengthLabels[strength]}</p>
+              </div>
+              {password && missingRequirements.length > 0 && (
+                <p id="register-password-missing" className="password-requirements">
+                  Still needed: {missingRequirements.join(', ')}.
+                </p>
+              )}
+              {passwordError && (
+                <p id="register-password-error" className="field-error">{passwordError}</p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="register-confirm-password">Confirm password</label>
+              <div className="password-input">
+                <input
+                  id="register-confirm-password"
+                  name="confirmPassword"
+                  type={showConfirmation ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  maxLength={128}
+                  value={confirmPassword}
+                  aria-invalid={confirmationError ? true : undefined}
+                  aria-describedby={confirmationError ? 'register-confirm-password-error' : undefined}
+                  onBlur={() => setConfirmationTouched(true)}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                />
+                <PasswordVisibilityButton
+                  visible={showConfirmation}
+                  onToggle={() => setShowConfirmation((visible) => !visible)}
+                  inputId="register-confirm-password"
+                  label="confirmation password"
+                />
+              </div>
+              {confirmationError && <p id="register-confirm-password-error" className="field-error">{confirmationError}</p>}
+            </div>
+          </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={
-            isSubmitting || isLoadingDistricts || districts.length === 0
-          }
-        >
-          {isSubmitting ? 'Creating account...' : 'Create account'}
-        </button>
+        <div className="register-form__actions">
+          <button
+            type="submit"
+            disabled={
+              isSubmitting || isLoadingDistricts || districts.length === 0
+            }
+          >
+            {isSubmitting ? 'Creating account...' : 'Create account'}
+            {!isSubmitting && <span aria-hidden="true">→</span>}
+          </button>
+          <p>Already registered? <Link to="/login">Sign in</Link></p>
+        </div>
       </form>
-
-      <p>
-        Already registered? <Link to="/login">Sign in</Link>
-      </p>
     </section>
   )
 }

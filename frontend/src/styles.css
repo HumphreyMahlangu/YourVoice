@@ -2401,3 +2401,735 @@ button:disabled,
     flex-direction: column;
   }
 }
+
+/* Registration follows the home page's editorial layout. */
+.register-page {
+  width: min(calc(100% - var(--space-6)), var(--content-width));
+  min-height: 0;
+  padding-top: clamp(48px, 6vw, 96px);
+  gap: 0;
+}
+
+.register-intro {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  min-height: 300px;
+  padding: 0 0 56px;
+  border-bottom: 1px solid #aebdaf;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  align-items: end;
+  gap: clamp(36px, 6vw, 88px);
+}
+
+.register-intro::before {
+  position: absolute;
+  top: -28px;
+  right: 8%;
+  width: 250px;
+  height: 360px;
+  background: url('/south-africa-coat-of-arms.webp') center / contain no-repeat;
+  content: '';
+  filter: grayscale(1);
+  mask-image: radial-gradient(ellipse, #000 54%, transparent 86%);
+  mix-blend-mode: multiply;
+  opacity: 0.085;
+  pointer-events: none;
+}
+
+.register-intro > * {
+  position: relative;
+}
+
+.register-intro .eyebrow {
+  margin-bottom: 30px;
+}
+
+.register-intro h1 {
+  max-width: 700px;
+  margin: 0;
+  font-size: clamp(3.6rem, 6vw, 6rem);
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.register-intro__aside {
+  max-width: 370px;
+  margin: 0 0 4px;
+  padding-left: 30px;
+  border-left: 2px solid var(--color-accent-500);
+  color: var(--color-ink-800);
+  font-size: 1.1rem;
+  line-height: 1.65;
+}
+
+.register-page > .register-form {
+  display: grid;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  gap: 0;
+}
+
+.register-form__section {
+  display: grid;
+  padding: 56px 0;
+  border-bottom: 1px solid #cbd5ca;
+  grid-template-columns: minmax(190px, 0.62fr) minmax(0, 1.38fr);
+  align-items: start;
+  gap: clamp(32px, 5vw, 72px);
+}
+
+.register-form__section-intro {
+  max-width: 300px;
+}
+
+.register-form__number {
+  display: block;
+  margin-bottom: 20px;
+  color: var(--color-accent-600);
+  font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.register-form__section-intro h2 {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1.08;
+}
+
+.register-form__section-intro p {
+  max-width: 260px;
+  margin: 0;
+  color: var(--color-ink-700);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.register-form__fields {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 26px 18px;
+}
+
+.register-form__fields > div {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+}
+
+.register-form__fields .register-form__field--wide {
+  grid-column: 1 / -1;
+}
+
+.register-form__fields label {
+  color: var(--color-ink-900);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.register-form__fields p[id$='-help'] {
+  max-width: 35rem;
+  margin: 0;
+  color: var(--color-ink-600);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.register-form__fields input:not([type='radio']):not([type='checkbox']),
+.register-form__fields select {
+  min-height: 54px;
+  padding: 12px 16px;
+  border: 1px solid #aebfaf;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: none;
+}
+
+.register-form__fields .password-input input {
+  padding-right: 60px;
+}
+
+.register-form__fields input:hover,
+.register-form__fields select:hover {
+  border-color: var(--color-primary-700);
+}
+
+.register-form__fields input:focus,
+.register-form__fields select:focus {
+  border-color: var(--color-primary-700);
+  box-shadow: none;
+}
+
+.register-form__fields input[aria-invalid='true'],
+.register-form__fields select[aria-invalid='true'] {
+  border-color: var(--color-error-700);
+  background: #fcf4f1;
+}
+
+.register-form__actions {
+  display: flex;
+  padding: 32px 0 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+}
+
+.register-form__actions button {
+  min-height: 52px;
+  padding: 10px 12px 10px 22px;
+  gap: 16px;
+}
+
+.register-form__actions button span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 1.15rem;
+  font-weight: 400;
+}
+
+.register-form__actions p {
+  margin: 0;
+  color: var(--color-ink-700);
+  font-size: 0.9rem;
+}
+
+.register-form__actions a {
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .register-intro,
+  .register-form__section {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .register-intro {
+    min-height: 0;
+  }
+
+  .register-intro__aside {
+    max-width: 650px;
+  }
+
+  .register-form__section-intro {
+    max-width: 600px;
+  }
+}
+
+@media (max-width: 760px) {
+  .register-page {
+    width: min(calc(100% - var(--space-4)), var(--content-width));
+    padding-top: 56px;
+  }
+
+  .register-intro {
+    padding-bottom: 48px;
+  }
+
+  .register-intro::before {
+    top: 0;
+    right: -20px;
+    width: 130px;
+    height: 190px;
+    opacity: 0.07;
+  }
+
+  .register-intro h1 {
+    font-size: clamp(3rem, 12vw, 4.4rem);
+  }
+
+  .register-intro__aside {
+    padding-left: 20px;
+  }
+
+  .register-form__section {
+    padding: 40px 0;
+  }
+
+  .register-form__fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Election directory carries the same visual rhythm as home and registration. */
+.directory-page {
+  padding-top: clamp(48px, 6vw, 96px);
+  gap: 0;
+}
+
+.directory-intro {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  min-height: 300px;
+  padding: 0 0 56px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  align-items: end;
+  gap: clamp(36px, 6vw, 88px);
+}
+
+.directory-intro::before {
+  position: absolute;
+  top: -28px;
+  right: 8%;
+  width: 250px;
+  height: 360px;
+  background: url('/south-africa-coat-of-arms.webp') center / contain no-repeat;
+  content: '';
+  filter: grayscale(1);
+  mask-image: radial-gradient(ellipse, #000 54%, transparent 86%);
+  mix-blend-mode: multiply;
+  opacity: 0.085;
+  pointer-events: none;
+}
+
+.directory-intro > * {
+  position: relative;
+}
+
+.directory-intro .eyebrow {
+  margin-bottom: 30px;
+}
+
+.directory-intro h1 {
+  max-width: 700px;
+  margin: 0;
+  font-size: clamp(3.6rem, 6vw, 6rem);
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.directory-intro p.directory-intro__aside {
+  max-width: 370px;
+  margin: 0 0 4px;
+  padding-left: 30px;
+  border-left: 2px solid var(--color-accent-500);
+  color: var(--color-ink-800);
+  font-size: 1.1rem;
+  line-height: 1.65;
+}
+
+.directory-page .directory-toolbar {
+  padding: 32px 0;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.65fr) auto;
+  gap: 18px;
+}
+
+.directory-toolbar label {
+  color: var(--color-ink-900);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.directory-page .directory-toolbar input,
+.directory-page .directory-toolbar select {
+  min-height: 54px;
+  padding: 12px 16px;
+  border: 1px solid #aebfaf;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: none;
+}
+
+.directory-page .directory-toolbar input:hover,
+.directory-page .directory-toolbar select:hover,
+.directory-page .directory-toolbar input:focus,
+.directory-page .directory-toolbar select:focus {
+  border-color: var(--color-primary-700);
+  box-shadow: none;
+}
+
+.directory-page .directory-toolbar [role='status'] {
+  padding-bottom: 15px;
+  color: var(--color-ink-700);
+  font-size: 0.84rem;
+}
+
+.directory-page .directory-error {
+  padding: 32px 0;
+  border-bottom: 1px solid #cbd5ca;
+}
+
+.directory-page > .election-list {
+  border-top: 0;
+}
+
+.directory-page .election-list article {
+  min-height: 142px;
+  padding: 24px 8px;
+  grid-template-columns: 42px minmax(0, 1fr) minmax(190px, 0.42fr) 44px;
+  gap: 18px;
+}
+
+.election-list__number {
+  align-self: start;
+  padding-top: 4px;
+  color: var(--color-accent-600);
+  font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.directory-page .empty-state {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  min-height: 220px;
+  padding: 40px 0;
+  align-content: center;
+  border-top: 0;
+  border-bottom: 1px solid #cbd5ca;
+}
+
+.directory-page .empty-state::before {
+  position: absolute;
+  top: 0;
+  right: 3%;
+  width: 140px;
+  height: 210px;
+  background: url('/south-africa-coat-of-arms.webp') center / contain no-repeat;
+  content: '';
+  filter: grayscale(1);
+  opacity: 0.055;
+  pointer-events: none;
+}
+
+.directory-page .empty-state > * {
+  position: relative;
+}
+
+.directory-page .empty-state strong {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+@media (max-width: 900px) {
+  .directory-intro {
+    min-height: 0;
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .directory-intro p.directory-intro__aside {
+    max-width: 650px;
+  }
+}
+
+@media (max-width: 760px) {
+  .directory-page {
+    padding-top: 56px;
+  }
+
+  .directory-intro {
+    padding-bottom: 48px;
+  }
+
+  .directory-intro::before {
+    top: 0;
+    right: -20px;
+    width: 130px;
+    height: 190px;
+    opacity: 0.07;
+  }
+
+  .directory-intro h1 {
+    font-size: clamp(3rem, 12vw, 4.4rem);
+  }
+
+  .directory-intro__aside {
+    padding-left: 20px;
+  }
+
+  .directory-page .directory-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .directory-page .directory-toolbar [role='status'] {
+    padding-bottom: 0;
+  }
+
+  .directory-page .election-list article {
+    grid-template-columns: 32px minmax(0, 1fr) 44px;
+    gap: 12px;
+  }
+
+  .directory-page .election-list__identity {
+    grid-column: 2;
+  }
+
+  .directory-page .election-list__meta {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .directory-page .election-list__action {
+    grid-column: 3;
+    grid-row: 1 / 3;
+  }
+}
+
+/* Sign in mirrors the editorial account layout. */
+.login-page {
+  width: min(calc(100% - var(--space-6)), var(--content-width));
+  min-height: 0;
+  padding-top: clamp(48px, 6vw, 96px);
+  gap: 0;
+}
+
+.login-intro {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  min-height: 300px;
+  padding: 0 0 56px;
+  border-bottom: 1px solid #aebdaf;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
+  align-items: end;
+  gap: clamp(36px, 6vw, 88px);
+}
+
+.login-intro::before {
+  position: absolute;
+  top: -28px;
+  right: 8%;
+  width: 250px;
+  height: 360px;
+  background: url('/south-africa-coat-of-arms.webp') center / contain no-repeat;
+  content: '';
+  filter: grayscale(1);
+  mask-image: radial-gradient(ellipse, #000 54%, transparent 86%);
+  mix-blend-mode: multiply;
+  opacity: 0.085;
+  pointer-events: none;
+}
+
+.login-intro > * {
+  position: relative;
+}
+
+.login-intro .eyebrow {
+  margin-bottom: 30px;
+}
+
+.login-intro h1 {
+  max-width: 700px;
+  margin: 0;
+  font-size: clamp(3.6rem, 6vw, 6rem);
+  line-height: 1;
+  text-wrap: balance;
+}
+
+.login-intro__aside {
+  max-width: 370px;
+  margin: 0 0 4px;
+  padding-left: 30px;
+  border-left: 2px solid var(--color-accent-500);
+  color: var(--color-ink-800);
+  font-size: 1.1rem;
+  line-height: 1.65;
+}
+
+.login-page > .login-form {
+  display: grid;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  gap: 0;
+}
+
+.login-form__section {
+  display: grid;
+  padding: 56px 0;
+  border-bottom: 1px solid #cbd5ca;
+  grid-template-columns: minmax(190px, 0.62fr) minmax(0, 1.38fr);
+  align-items: start;
+  gap: clamp(32px, 5vw, 72px);
+}
+
+.login-form__section-intro {
+  max-width: 300px;
+}
+
+.login-form__number {
+  display: block;
+  margin-bottom: 20px;
+  color: var(--color-accent-600);
+  font-family: 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.login-form__section-intro h2 {
+  margin: 0 0 12px;
+  font-size: clamp(2rem, 3vw, 3rem);
+  line-height: 1.08;
+}
+
+.login-form__section-intro p {
+  max-width: 260px;
+  margin: 0;
+  color: var(--color-ink-700);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.login-form__fields {
+  display: grid;
+  width: min(100%, 600px);
+  gap: 24px;
+}
+
+.login-form__fields > div:not(.login-form__actions) {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.login-form__fields label {
+  color: var(--color-ink-900);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.login-form__fields input:not([type='radio']):not([type='checkbox']) {
+  min-height: 54px;
+  padding: 12px 16px;
+  border: 1px solid #aebfaf;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: none;
+}
+
+.login-form__fields .password-input input {
+  padding-right: 60px;
+}
+
+.login-form__fields input:hover,
+.login-form__fields input:focus {
+  border-color: var(--color-primary-700);
+  box-shadow: none;
+}
+
+.login-form__fields input[aria-invalid='true'] {
+  border-color: var(--color-error-700);
+  background: #fcf4f1;
+}
+
+.login-form__actions {
+  display: flex;
+  padding-top: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+}
+
+.login-form__actions button {
+  min-height: 52px;
+  padding: 10px 12px 10px 22px;
+  gap: 16px;
+}
+
+.login-form__actions button span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 1.15rem;
+  font-weight: 400;
+}
+
+.login-form__actions p {
+  margin: 0;
+  color: var(--color-ink-700);
+  font-size: 0.9rem;
+}
+
+.login-form__actions a {
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .login-intro,
+  .login-form__section {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .login-intro {
+    min-height: 0;
+  }
+
+  .login-intro__aside {
+    max-width: 650px;
+  }
+
+  .login-form__section-intro {
+    max-width: 600px;
+  }
+}
+
+@media (max-width: 760px) {
+  .login-page {
+    width: min(calc(100% - var(--space-4)), var(--content-width));
+    padding-top: 36px;
+  }
+
+  .login-intro {
+    padding-bottom: 32px;
+    gap: 20px;
+  }
+
+  .login-intro::before {
+    top: 0;
+    right: -20px;
+    width: 130px;
+    height: 190px;
+    opacity: 0.07;
+  }
+
+  .login-intro h1 {
+    font-size: clamp(3rem, 12vw, 4.4rem);
+  }
+
+  .login-intro .eyebrow {
+    margin-bottom: 18px;
+  }
+
+  .login-intro__aside {
+    padding-left: 20px;
+  }
+
+  .login-form__section {
+    padding: 28px 0;
+    gap: 22px;
+  }
+
+  .login-form__number {
+    margin-bottom: 14px;
+  }
+
+  .login-form__fields {
+    gap: 18px;
+  }
+}

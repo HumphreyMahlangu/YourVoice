@@ -4,7 +4,6 @@ import { getElections } from '../api/elections'
 import { useAuth } from '../auth/useAuth'
 import type { Election, ElectionStatus } from '../types/election'
 import { formatDateTime, formatEnumLabel } from '../utils/formatters'
-import { getErrorMessage } from '../utils/getErrorMessage'
 
 const publicStatusOptions: ElectionStatus[] = [
   'REGISTRATION_OPEN',
@@ -72,10 +71,15 @@ function ElectionsPage() {
 
   return (
     <section className="page directory-page" aria-labelledby="elections-heading">
-      <header className="page-intro">
-        <p className="eyebrow">Election directory</p>
-        <h1 id="elections-heading">Elections</h1>
-        <p>See schedules, contests, and published results.</p>
+      <header className="page-intro directory-intro">
+        <div className="directory-intro__main">
+          <p className="eyebrow">YourVoice / Elections</p>
+          <h1 id="elections-heading">Explore elections.</h1>
+        </div>
+        <p className="directory-intro__aside">
+          Follow registration and voting dates, review each contest, and
+          inspect published results.
+        </p>
       </header>
 
       {isLoading && <p role="status">Loading elections...</p>}
@@ -83,7 +87,7 @@ function ElectionsPage() {
       {!isLoading && error !== null && (
         <div className="directory-error">
           <p role="alert">
-            We could not load the directory. {getErrorMessage(error, 'Please try again.')}
+            We couldn't load elections. Please try again.
           </p>
           <button className="button button--secondary" type="button" onClick={() => setRetryCount((count) => count + 1)}>
             Try again
@@ -133,9 +137,12 @@ function ElectionsPage() {
 
       {!isLoading && error === null && visibleElections.length > 0 && (
         <ul className="election-list">
-          {visibleElections.map((election) => (
+          {visibleElections.map((election, index) => (
             <li key={election.id}>
               <article aria-labelledby={`election-${election.id}`}>
+                <span className="election-list__number" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
                 <div className="election-list__identity">
                   <span className="election-list__type">{formatEnumLabel(election.type)} election</span>
                   <h2 id={`election-${election.id}`}>
