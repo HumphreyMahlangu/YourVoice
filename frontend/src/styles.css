@@ -60,6 +60,7 @@
 
   /* Geometry, depth, and motion */
   --radius-sm: 8px;
+  --field-radius: 999px;
   --radius-md: 16px;
   --radius-lg: 24px;
   --radius-xl: 32px;
@@ -646,7 +647,7 @@ textarea {
   min-height: 48px;
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--color-ink-200);
-  border-radius: var(--radius-sm);
+  border-radius: var(--field-radius);
   outline: none;
   background: var(--color-surface-raised);
   box-shadow: inset 0 1px 2px rgba(16, 43, 42, 0.04);
@@ -655,6 +656,7 @@ textarea {
 textarea {
   min-height: 128px;
   padding-top: var(--space-2);
+  border-radius: 24px;
   resize: vertical;
 }
 
@@ -1616,7 +1618,7 @@ button:disabled,
   content: '';
   filter: grayscale(1);
   mix-blend-mode: multiply;
-  opacity: 0.065;
+  opacity: 0.12;
   pointer-events: none;
 }
 
@@ -1630,7 +1632,7 @@ button:disabled,
   content: '';
   filter: grayscale(1);
   mix-blend-mode: multiply;
-  opacity: 0.07;
+  opacity: 0.125;
   pointer-events: none;
 }
 
@@ -1743,7 +1745,7 @@ button:disabled,
   content: '';
   filter: grayscale(1);
   mix-blend-mode: multiply;
-  opacity: 0.05;
+  opacity: 0.105;
   pointer-events: none;
 }
 
@@ -1757,7 +1759,7 @@ button:disabled,
   content: '';
   filter: grayscale(1);
   mix-blend-mode: multiply;
-  opacity: 0.04;
+  opacity: 0.095;
   pointer-events: none;
   transform: translate(-50%, -50%);
 }
@@ -1787,7 +1789,7 @@ button:disabled,
   content: '';
   filter: grayscale(1);
   mix-blend-mode: multiply;
-  opacity: 0.065;
+  opacity: 0.12;
   pointer-events: none;
 }
 
@@ -1852,7 +1854,7 @@ button:disabled,
   content: '';
   filter: grayscale(1);
   mix-blend-mode: multiply;
-  opacity: 0.05;
+  opacity: 0.105;
   pointer-events: none;
 }
 
@@ -1866,7 +1868,7 @@ button:disabled,
   content: '';
   filter: grayscale(1);
   mix-blend-mode: multiply;
-  opacity: 0.065;
+  opacity: 0.12;
   pointer-events: none;
 }
 
@@ -2272,7 +2274,7 @@ button:disabled,
     right: -22px;
     width: 112px;
     height: 162px;
-    opacity: 0.05;
+    opacity: 0.105;
   }
 
   .home-intro::after {
@@ -2280,7 +2282,7 @@ button:disabled,
     left: 44%;
     width: 62px;
     height: 90px;
-    opacity: 0.05;
+    opacity: 0.105;
   }
 
   .home-intro h1 {
@@ -2303,7 +2305,7 @@ button:disabled,
     top: 54%;
     width: min(78vw, 300px);
     height: 430px;
-    opacity: 0.03;
+    opacity: 0.085;
   }
 
   .home-index__links::after {
@@ -2338,7 +2340,7 @@ button:disabled,
     right: 8px;
     width: 96px;
     height: 139px;
-    opacity: 0.04;
+    opacity: 0.095;
   }
 
   .directory-toolbar {
@@ -2433,7 +2435,7 @@ button:disabled,
   filter: grayscale(1);
   mask-image: radial-gradient(ellipse, #000 54%, transparent 86%);
   mix-blend-mode: multiply;
-  opacity: 0.085;
+  opacity: 0.14;
   pointer-events: none;
 }
 
@@ -2548,7 +2550,7 @@ button:disabled,
   min-height: 54px;
   padding: 12px 16px;
   border: 1px solid #aebfaf;
-  border-radius: var(--radius-sm);
+  border-radius: var(--field-radius);
   background: #fff;
   box-shadow: none;
 }
@@ -2644,7 +2646,7 @@ button:disabled,
     right: -20px;
     width: 130px;
     height: 190px;
-    opacity: 0.07;
+    opacity: 0.125;
   }
 
   .register-intro h1 {
@@ -2692,7 +2694,7 @@ button:disabled,
   filter: grayscale(1);
   mask-image: radial-gradient(ellipse, #000 54%, transparent 86%);
   mix-blend-mode: multiply;
-  opacity: 0.085;
+  opacity: 0.14;
   pointer-events: none;
 }
 
@@ -2739,7 +2741,7 @@ button:disabled,
   min-height: 54px;
   padding: 12px 16px;
   border: 1px solid #aebfaf;
-  border-radius: var(--radius-sm);
+  border-radius: var(--field-radius);
   background: #fff;
   box-shadow: none;
 }
@@ -2803,7 +2805,7 @@ button:disabled,
   background: url('/south-africa-coat-of-arms.webp') center / contain no-repeat;
   content: '';
   filter: grayscale(1);
-  opacity: 0.055;
+  opacity: 0.11;
   pointer-events: none;
 }
 
@@ -2844,7 +2846,7 @@ button:disabled,
     right: -20px;
     width: 130px;
     height: 190px;
-    opacity: 0.07;
+    opacity: 0.125;
   }
 
   .directory-intro h1 {
@@ -2914,7 +2916,7 @@ button:disabled,
   filter: grayscale(1);
   mask-image: radial-gradient(ellipse, #000 54%, transparent 86%);
   mix-blend-mode: multiply;
-  opacity: 0.085;
+  opacity: 0.14;
   pointer-events: none;
 }
 
@@ -3014,7 +3016,7 @@ button:disabled,
   min-height: 54px;
   padding: 12px 16px;
   border: 1px solid #aebfaf;
-  border-radius: var(--radius-sm);
+  border-radius: var(--field-radius);
   background: #fff;
   box-shadow: none;
 }
@@ -3105,7 +3107,7 @@ button:disabled,
     right: -20px;
     width: 130px;
     height: 190px;
-    opacity: 0.07;
+    opacity: 0.125;
   }
 
   .login-intro h1 {
