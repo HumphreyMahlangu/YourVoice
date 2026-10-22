@@ -60,8 +60,11 @@ function AdminDashboardPage() {
 
   return (
     <section className="page dashboard-page admin-page" aria-labelledby="admin-dashboard-heading">
-      <p className="eyebrow">Election control centre</p>
-      <h1 id="admin-dashboard-heading">Admin dashboard</h1>
+      <header className="page-intro page-intro--compact">
+        <p className="eyebrow">Administration</p>
+        <h1 id="admin-dashboard-heading">Admin workspace.</h1>
+        <p>Configure elections, monitor their stages, and review operations.</p>
+      </header>
 
       {isLoading && <p role="status">Loading administration summary...</p>}
 

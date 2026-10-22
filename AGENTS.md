@@ -1,4 +1,4 @@
-# CLAUDE.md — YourVoice
+# AGENTS.md — YourVoice
 
 Full-stack portfolio project: a secure online-voting **simulation** for South Africa. The repo is
 `HumphreyMahlangu/YourVoice`. It isn't a real election system, and the code should never imply it is.
@@ -22,11 +22,11 @@ Deeper reference (read the relevant one before non-trivial work):
 
 | File | Covers |
 | --- | --- |
-| [docs/claude/domain.md](docs/claude/domain.md) | Data model, election/contest lifecycle state machine, eligibility rules, anonymous voting flow, hash-chain ledger |
-| [docs/claude/api.md](docs/claude/api.md) | Every endpoint with auth + status codes, exception→HTTP mapping, rate limiting, config/env vars |
-| [docs/claude/frontend.md](docs/claude/frontend.md) | Routes, auth session model, page/data-loading patterns, VotePage state machine, styling |
-| [docs/claude/testing-and-deployment.md](docs/claude/testing-and-deployment.md) | Test layout, tests that assert on file contents, CI, Docker/Render/Vercel |
-| [docs/claude/known-issues.md](docs/claude/known-issues.md) | Open gaps and gotchas (what was fixed on 2026-10-14 is listed there too) |
+| [docs/Codex/domain.md](docs/Codex/domain.md) | Data model, election/contest lifecycle state machine, eligibility rules, anonymous voting flow, hash-chain ledger |
+| [docs/Codex/api.md](docs/Codex/api.md) | Every endpoint with auth + status codes, exception→HTTP mapping, rate limiting, config/env vars |
+| [docs/Codex/frontend.md](docs/Codex/frontend.md) | Routes, auth session model, page/data-loading patterns, VotePage state machine, styling |
+| [docs/Codex/testing-and-deployment.md](docs/Codex/testing-and-deployment.md) | Test layout, tests that assert on file contents, CI, Docker/Render/Vercel |
+| [docs/Codex/known-issues.md](docs/Codex/known-issues.md) | Open gaps and gotchas (what was fixed on 2026-10-14 is listed there too) |
 
 ## Commands
 

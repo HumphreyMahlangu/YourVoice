@@ -292,10 +292,28 @@ function VotePage() {
       {!isLoading && pageData !== null && (
         <>
           <header>
+            <p className="voting-page__eyebrow">Ballot / YourVoice</p>
             <h1 id="vote-heading">{pageData.contest.name}</h1>
             <p>{pageData.election.name}</p>
             <p>{formatEnumLabel(pageData.contest.type)}</p>
           </header>
+
+          {votingIsOpen && (
+            <div className="vote-progress" role="group" aria-label="Ballot progress">
+              <ol>
+                {[
+                  { label: 'Choose', current: phase === 'selecting' },
+                  { label: 'Review', current: phase === 'reviewing' },
+                  { label: 'Submit', current: phase === 'submitting' || phase === 'accepted' || phase === 'uncertain' || phase === 'failed' },
+                ].map((step, index) => (
+                  <li key={step.label} className={step.current ? 'vote-progress__current' : undefined} aria-current={step.current ? 'step' : undefined}>
+                    <span>{String(index + 1).padStart(2, '0')}</span>
+                    {step.label}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
 
           {!votingIsOpen && (
             <p>Voting is not currently open for this contest.</p>

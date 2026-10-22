@@ -1,6 +1,5 @@
 import { NavLink, Outlet } from 'react-router'
 import { useAuth } from './auth/useAuth'
-import BrandMark from './components/BrandMark'
 
 function navigationClass({ isActive }: { isActive: boolean }) {
   return isActive ? 'nav-link nav-link--active' : 'nav-link'
@@ -18,10 +17,8 @@ function App() {
       <header className="app-header">
         <div className="app-header__inner">
           <NavLink className="brand" to="/" aria-label="YourVoice home">
-            <BrandMark />
             <span className="brand__copy">
               <strong>YourVoice</strong>
-              <span>Confidence by design</span>
             </span>
           </NavLink>
 
@@ -89,14 +86,13 @@ function App() {
       <footer className="app-footer">
         <div className="app-footer__inner">
           <div className="app-footer__brand">
-            <BrandMark />
             <div>
               <strong>YourVoice</strong>
-              <p>Transparent participation. Verifiable outcomes.</p>
+              <p>Exploring digital voting in South Africa.</p>
             </div>
           </div>
           <p className="app-footer__note">
-            Built to keep voter identity and ballot choice separate.
+            Built to explore private ballots and public verification.
           </p>
         </div>
       </footer>

@@ -78,8 +78,13 @@ function ElectionDetailsPage() {
 
       {!isLoading && error === null && details !== null && (
         <>
-          <article>
+          <article className="election-detail-hero">
+            <div className="election-detail-hero__top">
+              <span>Election overview</span>
+              <span className="status-pill">{formatEnumLabel(details.election.status)}</span>
+            </div>
             <h1 id="election-details-heading">{details.election.name}</h1>
+            <p>Explore this election's schedule and published contests.</p>
             <ElectionMetadata election={details.election} />
           </article>
 
@@ -102,7 +107,7 @@ function ElectionDetailsPage() {
             </section>
           )}
 
-          <section aria-labelledby="contests-heading">
+          <section className="contest-directory" aria-labelledby="contests-heading">
             <h2 id="contests-heading">Contests</h2>
 
             {details.contests.length === 0 && (
@@ -113,7 +118,11 @@ function ElectionDetailsPage() {
               <ol>
                 {details.contests.map((contest) => (
                   <li key={contest.id}>
-                    <article aria-labelledby={`contest-${contest.id}`}>
+                    <article className="contest-card" aria-labelledby={`contest-${contest.id}`}>
+                      <div className="contest-card__top">
+                        <span>Ballot contest</span>
+                        <span className="status-pill">{formatEnumLabel(contest.status)}</span>
+                      </div>
                       <h3 id={`contest-${contest.id}`}>{contest.name}</h3>
                       <dl>
                         <dt>Type</dt>
