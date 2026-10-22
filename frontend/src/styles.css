@@ -1445,6 +1445,8 @@ button:active:not(:disabled) {
 }
 
 .home-intro {
+  position: relative;
+  overflow: hidden;
   display: grid;
   min-height: 340px;
   padding-bottom: 64px;
@@ -1452,6 +1454,24 @@ button:active:not(:disabled) {
   grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
   align-items: end;
   gap: clamp(40px, 6vw, 96px);
+}
+
+.home-intro::before {
+  position: absolute;
+  top: 10px;
+  right: 18px;
+  width: 158px;
+  height: 228px;
+  background: url('/south-africa-coat-of-arms.webp') center / contain no-repeat;
+  content: '';
+  filter: grayscale(1);
+  mix-blend-mode: multiply;
+  opacity: 0.065;
+  pointer-events: none;
+}
+
+.home-intro > * {
+  position: relative;
 }
 
 .home-intro .eyebrow {
@@ -1504,10 +1524,45 @@ button:active:not(:disabled) {
 }
 
 .home-index {
+  position: relative;
   display: grid;
   padding: 80px 0 !important;
   grid-template-columns: minmax(210px, 0.6fr) minmax(0, 1.4fr);
   gap: 64px;
+}
+
+.home-index::before {
+  position: absolute;
+  bottom: 20px;
+  left: 54px;
+  width: 138px;
+  height: 200px;
+  background: url('/south-africa-coat-of-arms.webp') center / contain no-repeat;
+  content: '';
+  filter: grayscale(1);
+  mix-blend-mode: multiply;
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.home-index::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(26vw, 290px);
+  height: 420px;
+  background: url('/south-africa-coat-of-arms.webp') center / contain no-repeat;
+  content: '';
+  filter: grayscale(1);
+  mix-blend-mode: multiply;
+  opacity: 0.04;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.home-index > * {
+  position: relative;
+  z-index: 1;
 }
 
 .home-index h2 {
@@ -1560,11 +1615,37 @@ button:active:not(:disabled) {
 }
 
 .home-note {
+  position: relative;
   display: grid;
   padding: clamp(32px, 5vw, 64px) !important;
   background: #e7eee6 !important;
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
   gap: clamp(32px, 5vw, 80px);
+}
+
+.home-note::before {
+  position: absolute;
+  top: 22px;
+  right: 34px;
+  width: 128px;
+  height: 185px;
+  background: url('/south-africa-coat-of-arms.webp') center / contain no-repeat;
+  content: '';
+  filter: grayscale(1);
+  mix-blend-mode: multiply;
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.home-note > * {
+  position: relative;
+}
+
+.home-intro::before,
+.home-index::before,
+.home-index::after,
+.home-note::before {
+  mask-image: radial-gradient(ellipse, #000 55%, transparent 85%);
 }
 
 .home-note h2 {
@@ -1950,6 +2031,14 @@ button:active:not(:disabled) {
     padding-bottom: 48px;
   }
 
+  .home-intro::before {
+    top: 12px;
+    right: -22px;
+    width: 112px;
+    height: 162px;
+    opacity: 0.05;
+  }
+
   .home-intro h1 {
     font-size: clamp(3.1rem, 13vw, 4.4rem);
   }
@@ -1960,6 +2049,17 @@ button:active:not(:disabled) {
 
   .home-index {
     padding: 56px 0 !important;
+  }
+
+  .home-index::before {
+    display: none;
+  }
+
+  .home-index::after {
+    top: 54%;
+    width: min(58vw, 220px);
+    height: 320px;
+    opacity: 0.03;
   }
 
   .home-index h2 {
@@ -1983,6 +2083,14 @@ button:active:not(:disabled) {
 
   .home-note {
     padding: 28px !important;
+  }
+
+  .home-note::before {
+    top: 12px;
+    right: 8px;
+    width: 96px;
+    height: 139px;
+    opacity: 0.04;
   }
 
   .directory-toolbar {
