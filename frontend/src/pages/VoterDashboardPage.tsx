@@ -67,8 +67,11 @@ function VoterDashboardPage() {
 
   return (
     <section className="page dashboard-page" aria-labelledby="dashboard-heading">
-      <p className="eyebrow">Voter workspace</p>
-      <h1 id="dashboard-heading">Voter dashboard</h1>
+      <header className="page-intro page-intro--compact">
+        <p className="eyebrow">Voter workspace</p>
+        <h1 id="dashboard-heading">Your dashboard.</h1>
+        <p>Keep track of your account and election registrations in one place.</p>
+      </header>
 
       {isLoading && <p role="status">Loading your voter account...</p>}
 

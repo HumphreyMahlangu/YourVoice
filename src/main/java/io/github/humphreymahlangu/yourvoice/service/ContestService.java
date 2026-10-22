@@ -32,10 +32,12 @@ public class ContestService {
     }
 
     @Transactional(readOnly = true)
-    public List<ContestResponse> listContests(UUID electionId) {
-        if (!electionRepository.existsById(electionId)) {
-            throw new ResourceNotFoundException("Election not found");
-        }
+    public List<ContestResponse> listContests(UUID electionId, boolean administrator) {
+        ElectionVisibility.requireVisible(
+                electionRepository.findById(electionId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Election not found")),
+                administrator
+        );
 
         List<Contest> contests = contestRepository.findByElectionIdOrderByDisplayOrderAscNameAsc(electionId);
         // One query for every contest's options instead of one per contest; groupingBy keeps the query's order.

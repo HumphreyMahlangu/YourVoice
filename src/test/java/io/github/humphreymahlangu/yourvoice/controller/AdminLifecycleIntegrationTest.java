@@ -134,6 +134,60 @@ class AdminLifecycleIntegrationTest extends PostgreSqlTestContainerSupport {
     }
 
     @Test
+    void draftAndCancelledElectionsAreVisibleOnlyToAdministrators() throws Exception {
+        String adminToken = bootstrapAdminAndReturnToken("admin.visibility@example.com");
+        String voterToken = registerVoterAndReturnToken("voter.visibility@example.com");
+        String electionId = createElectionAndReturnId(adminToken);
+        createContestAndReturnId(adminToken, electionId);
+
+        for (String token : new String[] {null, voterToken}) {
+            var listRequest = get("/api/v1/elections");
+            var electionRequest = get("/api/v1/elections/{electionId}", electionId);
+            var contestsRequest = get("/api/v1/elections/{electionId}/contests", electionId);
+            if (token != null) {
+                listRequest.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+                electionRequest.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+                contestsRequest.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+            }
+            mockMvc.perform(listRequest)
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(0));
+            mockMvc.perform(electionRequest).andExpect(status().isNotFound());
+            mockMvc.perform(contestsRequest).andExpect(status().isNotFound());
+        }
+
+        mockMvc.perform(get("/api/v1/elections")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].status").value("DRAFT"));
+        mockMvc.perform(get("/api/v1/elections/{electionId}", electionId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DRAFT"));
+        mockMvc.perform(get("/api/v1/elections/{electionId}/contests", electionId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+
+        mockMvc.perform(patch("/api/v1/admin/elections/{electionId}/status", electionId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(statusBody("CANCELLED")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/v1/elections"))
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(get("/api/v1/elections/{electionId}", electionId))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/elections/{electionId}/contests", electionId))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/elections/{electionId}", electionId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
     void adminCanConfigureDraftElectionAndPerformAuditedEmergencyCancellation() throws Exception {
         String adminToken = bootstrapAdminAndReturnToken("admin.lifecycle@example.com");
 
@@ -264,7 +318,8 @@ class AdminLifecycleIntegrationTest extends PostgreSqlTestContainerSupport {
         String contestId = createContestAndReturnId(adminToken, electionId);
         createContestOption(adminToken, electionId, contestId, "Ubuntu Civic Party", "PARTY", 1);
         createContestOption(adminToken, electionId, contestId, "Future Youth Movement", "PARTY", 2);
-        String optionId = JsonPath.read(mockMvc.perform(get("/api/v1/elections/{electionId}/contests", electionId))
+        String optionId = JsonPath.read(mockMvc.perform(get("/api/v1/elections/{electionId}/contests", electionId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andReturn().getResponse().getContentAsString(), "$[0].options[1].id");
 
         mockMvc.perform(put("/api/v1/admin/elections/{electionId}/contests/{contestId}", electionId, contestId)
@@ -289,13 +344,15 @@ class AdminLifecycleIntegrationTest extends PostgreSqlTestContainerSupport {
                         electionId, contestId, optionId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isNoContent());
-        mockMvc.perform(get("/api/v1/elections/{electionId}/contests", electionId))
+        mockMvc.perform(get("/api/v1/elections/{electionId}/contests", electionId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(jsonPath("$[0].options.length()").value(1));
 
         mockMvc.perform(delete("/api/v1/admin/elections/{electionId}/contests/{contestId}", electionId, contestId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isNoContent());
-        mockMvc.perform(get("/api/v1/elections/{electionId}/contests", electionId))
+        mockMvc.perform(get("/api/v1/elections/{electionId}/contests", electionId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(jsonPath("$.length()").value(0));
     }
 

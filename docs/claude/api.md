@@ -32,11 +32,11 @@ Access tokens are not revocable and expire on their own.
 | PATCH | `/admin/elections/{id}/contests/{cid}/status` | ADMIN | 200 only when unchanged | 409 |
 | GET | `/admin/security-audit-events?limit=50` | ADMIN | 200 (limit 1–100) | |
 | GET | `/voting-districts?page&size` | public | 200 array + `X-Total-Count` | 400 bad paging |
-| GET | `/elections?page&size` | public | 200 array + `X-Total-Count` | |
-| GET | `/elections/{id}` | public | 200 | 404 |
+| GET | `/elections?page&size` | public; ADMIN bearer token includes all stages | 200 array + `X-Total-Count` | Public list excludes DRAFT and CANCELLED. |
+| GET | `/elections/{id}` | public; ADMIN bearer token for DRAFT/CANCELLED | 200 | 404 when absent or hidden |
 | POST | `/elections/{id}/registrations` (body optional) | authenticated | 201 (profile district) | 404, 409 closed or duplicate, 422 district ≠ profile |
 | GET | `/me/registrations?page&size` | authenticated | 200 array + `X-Total-Count` | |
-| GET | `/elections/{id}/contests` | public | 200 incl. options (one options query in total) | 404 |
+| GET | `/elections/{id}/contests` | public; ADMIN bearer token for DRAFT/CANCELLED | 200 incl. options (one options query in total) | 404 when election is absent or hidden |
 | GET | `/elections/{id}/contests/{cid}/ballot-key` | public | 200 `BallotKeyResponse` | 404, 409 before voting opens |
 | POST | `/elections/{id}/contests/{cid}/credentials` `{blindedToken}` | authenticated, `credential-issuance` bucket | 201 `{blindSignature, keyFingerprint, expiresAt}` | 400 token outside key range, 404, 409 closed or already issued (a different blinded token), 422 ineligible |
 | POST | `/ballots` `{contestId, contestOptionId, ballotToken, signature}` | **public**, `ballot-submission` bucket | 201 `{accepted}` | 401 bad signature, 404, 409 closed or "already been used" |

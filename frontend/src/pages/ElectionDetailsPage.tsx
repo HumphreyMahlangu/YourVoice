@@ -17,6 +17,7 @@ interface ElectionDetails {
 function ElectionDetailsPage() {
   const { electionId } = useParams<{ electionId: string }>()
   const { session } = useAuth()
+  const administratorToken = session?.role === 'ADMIN' ? session.accessToken : undefined
   const [details, setDetails] = useState<ElectionDetails | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<unknown>(null)
@@ -38,8 +39,8 @@ function ElectionDetailsPage() {
 
       try {
         const [election, contests] = await Promise.all([
-          getElection(requestedElectionId, abortController.signal),
-          getElectionContests(requestedElectionId, abortController.signal),
+          getElection(requestedElectionId, abortController.signal, administratorToken),
+          getElectionContests(requestedElectionId, abortController.signal, administratorToken),
         ])
 
         if (!abortController.signal.aborted) {
@@ -59,7 +60,7 @@ function ElectionDetailsPage() {
     void loadElectionDetails()
 
     return () => abortController.abort()
-  }, [electionId])
+  }, [electionId, administratorToken])
 
   return (
     <section className="page detail-page" aria-labelledby="election-details-heading">
@@ -78,8 +79,13 @@ function ElectionDetailsPage() {
 
       {!isLoading && error === null && details !== null && (
         <>
-          <article>
+          <article className="election-detail-hero">
+            <div className="election-detail-hero__top">
+              <span>Election overview</span>
+              <span className="status-pill">{formatEnumLabel(details.election.status)}</span>
+            </div>
             <h1 id="election-details-heading">{details.election.name}</h1>
+            <p>Explore this election's schedule and published contests.</p>
             <ElectionMetadata election={details.election} />
           </article>
 
@@ -102,7 +108,7 @@ function ElectionDetailsPage() {
             </section>
           )}
 
-          <section aria-labelledby="contests-heading">
+          <section className="contest-directory" aria-labelledby="contests-heading">
             <h2 id="contests-heading">Contests</h2>
 
             {details.contests.length === 0 && (
@@ -113,7 +119,11 @@ function ElectionDetailsPage() {
               <ol>
                 {details.contests.map((contest) => (
                   <li key={contest.id}>
-                    <article aria-labelledby={`contest-${contest.id}`}>
+                    <article className="contest-card" aria-labelledby={`contest-${contest.id}`}>
+                      <div className="contest-card__top">
+                        <span>Ballot contest</span>
+                        <span className="status-pill">{formatEnumLabel(contest.status)}</span>
+                      </div>
                       <h3 id={`contest-${contest.id}`}>{contest.name}</h3>
                       <dl>
                         <dt>Type</dt>

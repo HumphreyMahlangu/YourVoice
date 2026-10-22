@@ -1,6 +1,5 @@
 import { Link } from 'react-router'
 import { useAuth } from '../auth/useAuth'
-import BrandMark from '../components/BrandMark'
 
 function HomePage() {
   const { session } = useAuth()
@@ -8,128 +7,70 @@ function HomePage() {
 
   return (
     <section className="page home-page" aria-labelledby="home-heading">
-      <div className="hero">
-        <div className="hero__copy">
-          <p className="eyebrow">Digital voting infrastructure</p>
-          <h1 id="home-heading">
-            Public confidence,
-            <span> built into every vote.</span>
-          </h1>
-          <p className="hero__lead">
-            YourVoice brings registration, secure ballot access, and public
-            result verification into one clear civic experience.
-          </p>
-
-          <div className="hero__actions">
-            <Link className="button button--primary button--large" to="/elections">
-              Explore elections
-            </Link>
-            {session ? (
-              <Link className="button button--secondary button--large" to={accountPath}>
-                Open my workspace
-              </Link>
-            ) : (
-              <Link className="button button--secondary button--large" to="/register">
-                Create voter account
-              </Link>
-            )}
-          </div>
-
-          <ul className="trust-points" aria-label="Platform safeguards">
-            <li>Protected voter profile</li>
-            <li>Anonymous ballot submission</li>
-            <li>Public result ledger</li>
-          </ul>
+      <header className="home-intro">
+        <div className="home-intro__main">
+          <p className="eyebrow">YourVoice / South Africa</p>
+          <h1 id="home-heading">An election, explained as you go.</h1>
         </div>
-
-        <aside className="integrity-card" aria-label="YourVoice assurance model">
-          <div className="integrity-card__header">
-            <span>Assurance model</span>
-            <span className="system-status">
-              <span aria-hidden="true" /> Designed for verification
-            </span>
-          </div>
-
-          <div className="integrity-card__seal">
-            <BrandMark size="large" />
-            <div>
-              <span>Vote integrity</span>
-              <strong>Identity stays separate from choice</strong>
-            </div>
-          </div>
-
-          <ol className="assurance-flow">
-            <li>
-              <span>01</span>
-              <div>
-                <strong>Establish eligibility</strong>
-                <p>Register once with a protected voter profile.</p>
-              </div>
-            </li>
-            <li>
-              <span>02</span>
-              <div>
-                <strong>Cast anonymously</strong>
-                <p>A one-time credential authorises the ballot, not the identity.</p>
-              </div>
-            </li>
-            <li>
-              <span>03</span>
-              <div>
-                <strong>Verify publicly</strong>
-                <p>Published ledgers make completed results inspectable.</p>
-              </div>
-            </li>
-          </ol>
-        </aside>
-      </div>
-
-      <section className="principles" aria-labelledby="principles-heading">
-        <div className="section-heading">
-          <p className="eyebrow">A deliberate trust architecture</p>
-          <h2 id="principles-heading">Clear at every critical moment.</h2>
+        <div className="home-intro__aside">
           <p>
-            Each screen explains what is happening, what is irreversible, and
-            what a voter can verify next.
+            Follow registration, review a ballot, and examine published results
+            when a contest is complete.
           </p>
+          <div className="home-intro__actions">
+            <Link className="button button--primary" to="/elections">
+              Browse elections <span aria-hidden="true">→</span>
+            </Link>
+            <Link className="home-intro__secondary" to={session ? accountPath : '/register'}>
+              {session ? 'Open your workspace' : 'Create an account'}
+            </Link>
+          </div>
         </div>
+      </header>
 
-        <div className="principle-grid">
-          <article>
-            <span className="principle-grid__number">01</span>
-            <h3>Private by structure</h3>
-            <p>
-              Account identity establishes eligibility while the ballot is
-              submitted through a separate, short-lived credential.
-            </p>
-          </article>
-          <article>
-            <span className="principle-grid__number">02</span>
-            <h3>Calm under pressure</h3>
-            <p>
-              Plain-language review, expiry, and uncertainty states guide voters
-              without obscuring the consequences of an action.
-            </p>
-          </article>
-          <article>
-            <span className="principle-grid__number">03</span>
-            <h3>Evidence after the count</h3>
-            <p>
-              Public audit and ledger views expose the records behind final
-              results instead of asking citizens to accept a number on trust.
-            </p>
-          </article>
+      <section className="home-index" aria-labelledby="home-index-heading">
+        <div className="home-index__heading">
+          <p className="eyebrow">On this site</p>
+          <h2 id="home-index-heading">Start with what you need.</h2>
+        </div>
+        <div className="home-index__links">
+          <Link to="/elections">
+            <span>01</span>
+            <strong>Find an election</strong>
+            <span>See schedules, contests, and each election's current stage.</span>
+            <span aria-hidden="true">↗</span>
+          </Link>
+          <Link to={session ? accountPath : '/register'}>
+            <span>02</span>
+            <strong>{session ? 'Open your workspace' : 'Create a voter profile'}</strong>
+            <span>Set up a profile to follow the voter journey.</span>
+            <span aria-hidden="true">↗</span>
+          </Link>
+          <Link to="/elections">
+            <span>03</span>
+            <strong>Inspect a completed result</strong>
+            <span>Read the tally, audit, and public ledger when available.</span>
+            <span aria-hidden="true">↗</span>
+          </Link>
         </div>
       </section>
 
-      <section className="home-cta" aria-labelledby="home-cta-heading">
+      <section className="home-note" aria-labelledby="home-note-heading">
         <div>
-          <p className="eyebrow">Ready when you are</p>
-          <h2 id="home-cta-heading">See the democratic process clearly.</h2>
+          <p className="eyebrow">How it works</p>
+          <h2 id="home-note-heading">A ballot should be private. The count should be open to scrutiny.</h2>
         </div>
-        <Link className="button button--light button--large" to="/elections">
-          Browse all elections
-        </Link>
+        <div className="home-note__body">
+          <p>
+            An account establishes eligibility. A separate
+            one-time credential authorises the ballot without attaching a voter
+            identity to the choice.
+          </p>
+          <p>
+            After an election is complete, published results, audit information,
+            and a public ledger let visitors inspect the outcome.
+          </p>
+        </div>
       </section>
     </section>
   )
