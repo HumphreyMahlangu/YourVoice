@@ -272,6 +272,7 @@ cd frontend && npm run lint && npm test && npm run build   # frontend
 
 * **API and database: Render.** The [`render.yaml`](render.yaml) Blueprint builds the Docker image, provisions PostgreSQL, and deploys only after CI passes. Secrets are set once in the Render dashboard.
 * **Frontend: Vercel**, with `frontend` as the project root. `VITE_API_BASE_URL` points at the API, and the Vercel origin must be allowed in the API's `YOURVOICE_CORS_ALLOWED_ORIGINS`.
+* **Full app: Heroku.** With `BUILD_FRONTEND=true`, the Java build also bundles the React frontend. One web dyno serves the UI and API, backed by Heroku Postgres. See [`HEROKU.md`](HEROKU.md) for setup and costs.
 
 See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full runbook, required settings, monitoring, and the first-administrator procedure.
 

@@ -69,6 +69,8 @@ is set, so Render's free tier doesn't put the lifecycle scheduler to sleep durin
 
 There's no deploy workflow. Render deploys itself from GitHub: `autoDeployTrigger: checksPass` in `render.yaml`
 waits for the commit's GitHub checks (this CI) to pass. Vercel builds the frontend from its own Git integration.
+The optional Heroku app deploys from the connected GitHub branch; `BUILD_FRONTEND=true` activates the Maven
+profile that builds the frontend into the Spring Boot JAR.
 
 ## Deployment targets
 
@@ -77,6 +79,7 @@ waits for the commit's GitHub checks (this CI) to pass. Vercel builds the fronte
 | Local Docker | `compose.yaml`, `.env.example` | Postgres 16 + hardened API container (read-only FS, tmpfs /tmp, cap_drop ALL). `.env.example` enables bootstrap for local use. |
 | **Render (API + DB)** | `render.yaml` | Blueprint: free web service `votetrust-api` from the Dockerfile + free Postgres `votetrust-db` (both keep their pre-rename names on purpose). Datasource injected as HOST/PORT/NAME/USER/PASSWORD via `fromDatabase`, which is why `application.properties` builds the JDBC URL from parts. The JWT secret, both peppers and `YOURVOICE_CORS_ALLOWED_ORIGINS` are `sync: false`: set in the Render dashboard, never generated or overwritten by a sync. CORS must include the Vercel origin. Health check: `/actuator/health/readiness`. Render injects `PORT`. Deploys only after CI passes. URL: `https://votetrust-api.onrender.com`. |
 | **Vercel (frontend)** | `frontend/vercel.json`, `frontend/.env.production` | SPA rewrite. The API URL is baked in at build time from `VITE_API_BASE_URL`. |
+| **Heroku (full app + DB)** | `system.properties`, `pom.xml`, `HEROKU.md` | Java 21 buildpack, optional `heroku-frontend` Maven profile activated by `BUILD_FRONTEND=true`, and Heroku Postgres. Spring serves the frontend and API from one web dyno. The frontend uses the same origin when `VITE_API_BASE_URL` is unset. |
 
 Dockerfile: multi-stage (`mvnw dependency:go-offline` then `package -DskipTests`), runtime JRE 21 as the non-root
 `yourvoice` user, `JAVA_OPTS` passthrough, curl healthcheck. `.dockerignore` whitelists only build inputs.

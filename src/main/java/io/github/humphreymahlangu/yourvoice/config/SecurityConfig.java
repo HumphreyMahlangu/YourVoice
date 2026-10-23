@@ -84,6 +84,21 @@ public class SecurityConfig {
                                 "/api/v1/elections/**",
                                 "/api/v1/voting-districts/**"
                         ).permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/",
+                                "/index.html",
+                                "/favicon.svg",
+                                "/south-africa-coat-of-arms.webp",
+                                "/assets/**",
+                                "/login",
+                                "/register",
+                                "/dashboard",
+                                "/elections",
+                                "/elections/**",
+                                "/admin",
+                                "/admin/**"
+                        ).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

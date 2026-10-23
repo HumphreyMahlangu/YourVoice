@@ -1,4 +1,6 @@
-const DEFAULT_API_BASE_URL = 'http://localhost:8080'
+const DEFAULT_API_BASE_URL = import.meta.env.PROD
+  ? window.location.origin
+  : 'http://localhost:8080'
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 
