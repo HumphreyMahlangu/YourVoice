@@ -90,7 +90,7 @@ describe('RegisterPage password controls', () => {
     await user.type(screen.getByLabelText('Email address'), 'thandi@example.com')
     await user.type(screen.getByLabelText('South African ID number'), '8001015009087')
     await screen.findByRole('option', { name: /WC001-0001/ })
-    await user.selectOptions(screen.getByLabelText('Voting district'), 'district-id')
+    await user.selectOptions(screen.getByLabelText('Your province, municipality and ward'), 'district-id')
     await user.type(screen.getByLabelText('Password'), 'MuchLongerPassword2026!')
     await user.type(screen.getByLabelText('Confirm password'), 'SomethingDifferent2026!')
     await user.click(screen.getByRole('button', { name: 'Create account' }))

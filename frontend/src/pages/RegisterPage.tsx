@@ -191,7 +191,7 @@ function RegisterPage() {
 
       {districtLoadError !== null && (
         <p role="alert">
-          We couldn't load voting districts. Please refresh and try again.
+          We couldn't load the area list. Please refresh and try again.
         </p>
       )}
 
@@ -312,7 +312,7 @@ function RegisterPage() {
             </div>
 
             <div className="register-form__field--wide">
-              <label htmlFor="register-voting-district">Voting district</label>
+              <label htmlFor="register-voting-district">Your province, municipality and ward</label>
               <select
                 id="register-voting-district"
                 name="votingDistrictId"
@@ -328,13 +328,13 @@ function RegisterPage() {
               >
                 <option value="">
                   {isLoadingDistricts
-                    ? 'Loading voting districts...'
-                    : 'Select your voting district'}
+                    ? 'Loading areas...'
+                    : 'Select your province, municipality and ward'}
                 </option>
                 {districts.map((district) => (
                   <option key={district.id} value={district.id}>
-                    {district.code} — {district.name}, {district.municipality}, ward{' '}
-                    {district.wardNumber}
+                    {district.province} · {district.municipality} · Ward{' '}
+                    {district.wardNumber} — {district.name} ({district.code})
                   </option>
                 ))}
               </select>
@@ -342,10 +342,11 @@ function RegisterPage() {
                 <p id="register-voting-district-error">{votingDistrictError}</p>
               )}
               <p id="register-voting-district-help">
-                Choose the district where you are registered to vote.
+                This decides which provincial and local contests you can vote in.
+                Your ballot is still cast online.
               </p>
               {!isLoadingDistricts && districtLoadError === null && districts.length === 0 && (
-                <p>No voting districts are currently available.</p>
+                <p>No areas are currently available.</p>
               )}
             </div>
           </div>
