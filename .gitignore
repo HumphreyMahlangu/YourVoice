@@ -49,3 +49,14 @@ Thumbs.db
 .env
 .env.development
 .env.production
+
+# Local documentation; keep the main repository README tracked.
+*.md
+!/README.md
+
+# Local copies of files no longer published from this repository.
+/package-lock.json
+/src/system.properties
+/system.properties
+/postman/YourVoice.postman_collection.json
+/postman/YourVoice.local.postman_environment.json

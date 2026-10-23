@@ -88,8 +88,8 @@ class DeploymentArtifactTest {
     }
 
     @Test
-    void deploymentChecklistDocumentsRequiredInputsAndSmokeChecks() throws IOException {
-        String deployment = read("DEPLOYMENT.md");
+    void readmeDocumentsRequiredInputsAndSmokeChecks() throws IOException {
+        String deployment = read("README.md");
 
         assertThat(deployment).contains("SPRING_DATASOURCE_URL");
         assertThat(deployment).contains("YOURVOICE_JWT_SECRET");

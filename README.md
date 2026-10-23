@@ -255,7 +255,7 @@ export YOURVOICE_VOTE_CREDENTIAL_PEPPER=<another independent random value, at le
 ./mvnw spring-boot:run
 ```
 
-All optional settings and their defaults are listed in [`DEPLOYMENT.md`](DEPLOYMENT.md).
+Optional settings are documented in `src/main/resources/application.properties`.
 
 ## Testing
 
@@ -265,16 +265,24 @@ cd frontend && npm run lint && npm test && npm run build   # frontend
 ```
 
 * Backend integration tests run against PostgreSQL in Testcontainers and are skipped, not failed, when Docker is unavailable.
-* The Postman collection in [`postman/`](postman/README.md) runs a complete election end to end, including blinding in its scripts.
+* The [verified Postman collection](postman/YourVoice.verified.postman_collection.json) and [local environment](postman/YourVoice.verified-local.postman_environment.json) run a complete election end to end, including blinding in the collection scripts.
 * GitHub Actions runs both the backend and frontend checks on every push and pull request to `main`.
 
 ## Deployment
 
 * **API and database: Render.** The [`render.yaml`](render.yaml) Blueprint builds the Docker image, provisions PostgreSQL, and deploys only after CI passes. Secrets are set once in the Render dashboard.
 * **Frontend: Vercel**, with `frontend` as the project root. `VITE_API_BASE_URL` points at the API, and the Vercel origin must be allowed in the API's `YOURVOICE_CORS_ALLOWED_ORIGINS`.
-* **Full app: Heroku.** With `BUILD_FRONTEND=true`, the Java build also bundles the React frontend. One web dyno serves the UI and API, backed by Heroku Postgres. See [`HEROKU.md`](HEROKU.md) for setup and costs.
+### Local Compose Smoke Test
 
-See [`DEPLOYMENT.md`](DEPLOYMENT.md) for the full runbook, required settings, monitoring, and the first-administrator procedure.
+Copy `.env.example` to `.env`, set the required secrets, then run `docker compose --env-file .env config` and `docker compose --env-file .env up --build`. Check `/actuator/health/readiness` and `/swagger-ui.html` on port 8080.
+
+### Render Backend Deployment
+
+The Render Blueprint in `render.yaml` creates the API and PostgreSQL database. Set three independent secrets of at least 32 characters (`YOURVOICE_JWT_SECRET`, `YOURVOICE_ID_HASH_PEPPER`, and `YOURVOICE_VOTE_CREDENTIAL_PEPPER`) plus `YOURVOICE_CORS_ALLOWED_ORIGINS` in the Render dashboard. Keep the existing `votetrust-api` and `votetrust-db` service names to preserve the deployed service and database. After deployment, check `/actuator/health/readiness`. To create the first administrator, temporarily enable `YOURVOICE_ADMIN_BOOTSTRAP_ENABLED` and set a strong `YOURVOICE_ADMIN_BOOTSTRAP_TOKEN`, call `POST /api/v1/admin/bootstrap`, then disable bootstrap again.
+
+### CI Deployment Gates
+
+CI runs the backend tests with PostgreSQL, validates Compose, builds the container, and runs frontend lint, tests, and build. Render deploys only after those checks pass. Vercel uses `frontend/vercel.json`; set `VITE_API_BASE_URL` to the Render API origin and allow the Vercel origin in `YOURVOICE_CORS_ALLOWED_ORIGINS`.
 
 ## REST API
 
