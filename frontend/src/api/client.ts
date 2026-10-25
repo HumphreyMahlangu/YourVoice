@@ -34,7 +34,7 @@ function createApiError(
     status: response.status,
     error: errorBody.error || response.statusText || 'Request Failed',
     message:
-      errorBody.message || `Request failed with status ${response.status}`,
+      errorBody.message || 'We could not complete your request. Please try again.',
     path: errorBody.path || requestPath,
     fieldErrors: errorBody.fieldErrors || {},
   })

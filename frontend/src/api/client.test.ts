@@ -69,4 +69,15 @@ describe('apiRequest', () => {
       fieldErrors: { email: 'must be valid' },
     })
   })
+
+  it('uses a plain-language message when the server sends no error body', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(null, { status: 500 }),
+    ))
+
+    await expect(apiRequest('/api/admin/example')).rejects.toMatchObject({
+      status: 500,
+      message: 'We could not complete your request. Please try again.',
+    })
+  })
 })

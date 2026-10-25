@@ -4,7 +4,7 @@ import { getSecurityAuditEvents } from '../api/securityAudit'
 import { useAuth } from '../auth/useAuth'
 import type { SecurityAuditEvent } from '../types/securityAudit'
 import { formatDateTime, formatEnumLabel } from '../utils/formatters'
-import { getErrorMessage } from '../utils/getErrorMessage'
+import { getAdminErrorMessage } from '../utils/adminErrors'
 
 type AuditEventLimit = 25 | 50 | 100
 
@@ -99,7 +99,7 @@ function AdminSecurityEventsPage() {
 
       {!isLoading && error !== null && (
         <p role="alert">
-          {getErrorMessage(error, 'Unable to load security audit events.')}
+          {getAdminErrorMessage(error, 'Unable to load security audit events.')}
         </p>
       )}
 

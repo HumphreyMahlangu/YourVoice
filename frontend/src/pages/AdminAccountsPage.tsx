@@ -5,7 +5,7 @@ import { createAdminAccount, getAdminAccounts } from '../api/adminAccounts'
 import { useAuth } from '../auth/useAuth'
 import type { AdminAccount } from '../types/adminAccount'
 import { formatDateTime } from '../utils/formatters'
-import { getErrorMessage } from '../utils/getErrorMessage'
+import { getAdminErrorMessage, getAdminFieldErrors } from '../utils/adminErrors'
 
 function AdminAccountsPage() {
   const { session, logout } = useAuth()
@@ -82,7 +82,7 @@ function AdminAccountsPage() {
       }
       setCreateError(requestError)
       if (requestError instanceof ApiError) {
-        setFieldErrors(requestError.fieldErrors)
+        setFieldErrors(getAdminFieldErrors(requestError))
       }
     } finally {
       setIsSubmitting(false)
@@ -98,7 +98,7 @@ function AdminAccountsPage() {
 
       {!isLoading && loadError !== null && (
         <p role="alert">
-          {getErrorMessage(loadError, 'Unable to load administrators.')}
+          {getAdminErrorMessage(loadError, 'Unable to load administrators.')}
         </p>
       )}
 
@@ -129,7 +129,7 @@ function AdminAccountsPage() {
         )}
         {createError !== null && (
           <p role="alert">
-            {getErrorMessage(createError, 'Unable to create the administrator.')}
+            {getAdminErrorMessage(createError, 'Unable to create the administrator.')}
           </p>
         )}
 

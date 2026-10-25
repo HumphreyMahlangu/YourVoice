@@ -4,7 +4,7 @@ import ApiError from '../api/ApiError'
 import { createVotingDistrict } from '../api/adminManagement'
 import { useAuth } from '../auth/useAuth'
 import type { VotingDistrict } from '../types/district'
-import { getErrorMessage } from '../utils/getErrorMessage'
+import { getAdminErrorMessage, getAdminFieldErrors } from '../utils/adminErrors'
 
 function AdminCreateVotingDistrictPage() {
   const { session, logout } = useAuth()
@@ -59,7 +59,7 @@ function AdminCreateVotingDistrictPage() {
       setError(requestError)
 
       if (requestError instanceof ApiError) {
-        setFieldErrors(requestError.fieldErrors)
+        setFieldErrors(getAdminFieldErrors(requestError))
       }
     } finally {
       setIsSubmitting(false)
@@ -89,7 +89,7 @@ function AdminCreateVotingDistrictPage() {
 
       {error !== null && (
         <p role="alert">
-          {getErrorMessage(error, 'Unable to create the voting district.')}
+          {getAdminErrorMessage(error, 'Unable to create the voting district.')}
         </p>
       )}
 

@@ -6,7 +6,7 @@ import { useAuth } from '../auth/useAuth'
 import type { Election, ElectionType } from '../types/election'
 import { toUtcInstant } from '../utils/dateTimeInput'
 import { formatDateTime, formatEnumLabel } from '../utils/formatters'
-import { getErrorMessage } from '../utils/getErrorMessage'
+import { getAdminErrorMessage, getAdminFieldErrors } from '../utils/adminErrors'
 
 const ELECTION_TYPES: ElectionType[] = [
   'NATIONAL',
@@ -86,7 +86,7 @@ function AdminCreateElectionPage() {
       setError(requestError)
 
       if (requestError instanceof ApiError) {
-        setFieldErrors(requestError.fieldErrors)
+        setFieldErrors(getAdminFieldErrors(requestError))
       }
     } finally {
       setIsSubmitting(false)
@@ -105,8 +105,8 @@ function AdminCreateElectionPage() {
       <Link to="/admin">Back to admin dashboard</Link>
       <h1 id="create-election-heading">Create election</h1>
       <p>
-        New elections begin in draft status. Times are entered in your local
-        timezone and sent to the API as UTC.
+        New elections begin as drafts. Enter the dates and times in your local
+        time. They will be converted automatically.
       </p>
 
       {createdElection !== null && (
@@ -136,7 +136,7 @@ function AdminCreateElectionPage() {
 
       {error !== null && (
         <p role="alert">
-          {getErrorMessage(error, 'Unable to create the election.')}
+          {getAdminErrorMessage(error, 'Unable to create the election.')}
         </p>
       )}
 

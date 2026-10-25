@@ -3,7 +3,7 @@ import ApiError from '../../api/ApiError'
 import { updateElection } from '../../api/adminManagement'
 import type { Election } from '../../types/election'
 import { toDateTimeLocalValue, toUtcInstant } from '../../utils/dateTimeInput'
-import { getErrorMessage } from '../../utils/getErrorMessage'
+import { getAdminErrorMessage } from '../../utils/adminErrors'
 
 interface AdminRescheduleElectionFormProps {
   election: Election
@@ -81,7 +81,7 @@ function AdminRescheduleElectionForm({
       {saved && <p role="status">The election schedule was updated.</p>}
       {error !== null && (
         <p role="alert">
-          {getErrorMessage(error, 'Unable to update the election.')}
+          {getAdminErrorMessage(error, 'Unable to update the election.')}
         </p>
       )}
 

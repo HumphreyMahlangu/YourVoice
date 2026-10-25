@@ -11,7 +11,7 @@ import ElectionMetadata from '../components/ElectionMetadata'
 import type { Contest, ContestOption } from '../types/contest'
 import type { Election } from '../types/election'
 import { formatEnumLabel } from '../utils/formatters'
-import { getErrorMessage } from '../utils/getErrorMessage'
+import { getAdminErrorMessage } from '../utils/adminErrors'
 
 interface ElectionBuilderData {
   election: Election
@@ -33,7 +33,7 @@ function AdminElectionBuilderPage() {
 
   useEffect(() => {
     if (!electionId) {
-      setLoadError(new Error('Election identifier is missing.'))
+      setLoadError(new Error('This election could not be found. Return to the admin dashboard and choose an election.'))
       setIsLoading(false)
       return
     }
@@ -216,7 +216,7 @@ function AdminElectionBuilderPage() {
         <>
           <h1 id="election-builder-heading">Election unavailable</h1>
           <p role="alert">
-            {getErrorMessage(loadError, 'Unable to load election configuration.')}
+            {getAdminErrorMessage(loadError, 'Unable to load election configuration.')}
           </p>
         </>
       )}
@@ -278,7 +278,7 @@ function AdminElectionBuilderPage() {
 
             {deleteError !== null && (
               <p role="alert">
-                {getErrorMessage(deleteError, 'Unable to remove it.')}
+                {getAdminErrorMessage(deleteError, 'Unable to remove it.')}
               </p>
             )}
 

@@ -4,7 +4,7 @@ import { createContest } from '../../api/adminManagement'
 import type { Contest, ContestType } from '../../types/contest'
 import type { ElectionType } from '../../types/election'
 import { formatEnumLabel } from '../../utils/formatters'
-import { getErrorMessage } from '../../utils/getErrorMessage'
+import { getAdminErrorMessage, getAdminFieldErrors } from '../../utils/adminErrors'
 
 interface AdminContestFormProps {
   electionId: string
@@ -94,7 +94,7 @@ function AdminContestForm({
       setError(requestError)
 
       if (requestError instanceof ApiError) {
-        setFieldErrors(requestError.fieldErrors)
+        setFieldErrors(getAdminFieldErrors(requestError))
       }
     } finally {
       setIsSubmitting(false)
@@ -134,7 +134,7 @@ function AdminContestForm({
 
       {error !== null && (
         <p role="alert">
-          {getErrorMessage(error, 'Unable to create the contest.')}
+          {getAdminErrorMessage(error, 'Unable to create the contest.')}
         </p>
       )}
 

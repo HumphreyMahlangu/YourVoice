@@ -8,7 +8,7 @@ import {
 import { getVotingDistricts } from '../api/districts'
 import { useAuth } from '../auth/useAuth'
 import type { VotingDistrict } from '../types/district'
-import { getErrorMessage } from '../utils/getErrorMessage'
+import { getAdminErrorMessage } from '../utils/adminErrors'
 
 interface DistrictEditFormProps {
   district: VotingDistrict
@@ -73,7 +73,7 @@ function DistrictEditForm({
       </p>
       {error !== null && (
         <p role="alert">
-          {getErrorMessage(error, 'Unable to update the voting district.')}
+          {getAdminErrorMessage(error, 'Unable to update the voting district.')}
         </p>
       )}
       <div>
@@ -221,13 +221,13 @@ function AdminVotingDistrictsPage() {
 
       {!isLoading && loadError !== null && (
         <p role="alert">
-          {getErrorMessage(loadError, 'Unable to load voting districts.')}
+          {getAdminErrorMessage(loadError, 'Unable to load voting districts.')}
         </p>
       )}
 
       {actionError !== null && (
         <p role="alert">
-          {getErrorMessage(actionError, 'Unable to delete the voting district.')}
+          {getAdminErrorMessage(actionError, 'Unable to delete the voting district.')}
         </p>
       )}
 

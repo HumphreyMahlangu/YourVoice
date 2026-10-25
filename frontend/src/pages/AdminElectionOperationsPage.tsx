@@ -12,7 +12,7 @@ import ElectionMetadata from '../components/ElectionMetadata'
 import type { Election } from '../types/election'
 import type { ElectionLifecycleEvent } from '../types/electionLifecycle'
 import { formatDateTime, formatEnumLabel } from '../utils/formatters'
-import { getErrorMessage } from '../utils/getErrorMessage'
+import { getAdminErrorMessage } from '../utils/adminErrors'
 
 interface ElectionOperationsData {
   election: Election
@@ -162,7 +162,7 @@ function AdminElectionOperationsPage() {
         <>
           <h1 id="election-operations-heading">Election unavailable</h1>
           <p role="alert">
-            {getErrorMessage(loadError, 'Unable to load election operations.')}
+            {getAdminErrorMessage(loadError, 'Unable to load election operations.')}
           </p>
         </>
       )}
@@ -205,7 +205,7 @@ function AdminElectionOperationsPage() {
 
             {cancellationError !== null && (
               <p role="alert">
-                {getErrorMessage(
+                {getAdminErrorMessage(
                   cancellationError,
                   'Unable to cancel the election.',
                 )}

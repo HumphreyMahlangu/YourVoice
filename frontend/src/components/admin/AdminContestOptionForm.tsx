@@ -6,7 +6,7 @@ import type {
   ContestOptionType,
 } from '../../types/contest'
 import { formatEnumLabel } from '../../utils/formatters'
-import { getErrorMessage } from '../../utils/getErrorMessage'
+import { getAdminErrorMessage, getAdminFieldErrors } from '../../utils/adminErrors'
 
 interface AdminContestOptionFormProps {
   electionId: string
@@ -81,7 +81,7 @@ function AdminContestOptionForm({
       setError(requestError)
 
       if (requestError instanceof ApiError) {
-        setFieldErrors(requestError.fieldErrors)
+        setFieldErrors(getAdminFieldErrors(requestError))
       }
     } finally {
       setIsSubmitting(false)
@@ -102,7 +102,7 @@ function AdminContestOptionForm({
 
       {error !== null && (
         <p role="alert">
-          {getErrorMessage(error, 'Unable to add the ballot option.')}
+          {getAdminErrorMessage(error, 'Unable to add the ballot option.')}
         </p>
       )}
 

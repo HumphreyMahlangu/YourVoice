@@ -6,7 +6,7 @@ import { useAuth } from '../auth/useAuth'
 import type { VotingDistrict } from '../types/district'
 import type { Election, ElectionStatus } from '../types/election'
 import { formatEnumLabel, formatNumber } from '../utils/formatters'
-import { getErrorMessage } from '../utils/getErrorMessage'
+import { getAdminErrorMessage } from '../utils/adminErrors'
 
 interface AdminDashboardData {
   elections: Election[]
@@ -77,7 +77,7 @@ function AdminDashboardPage() {
 
       {!isLoading && error !== null && (
         <p role="alert">
-          {getErrorMessage(error, 'Unable to load the admin dashboard.')}
+          {getAdminErrorMessage(error, 'Unable to load the admin dashboard.')}
         </p>
       )}
 
