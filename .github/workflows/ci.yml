@@ -62,22 +62,28 @@ jobs:
       - name: Publish Maven failure reports
         if: steps.maven-verify.outcome == 'failure'
         run: |
+          summary_file="$RUNNER_TEMP/maven-failure-summary.md"
           {
             echo "## Maven verification failed"
             echo
-            echo "### Surefire report summaries"
-            if [ -d target/surefire-reports ]; then
-              find target/surefire-reports -maxdepth 1 -type f \( -name "*.txt" -o -name "*.xml" \) -print | sort | while read -r report; do
-                echo
-                echo "#### $report"
-                echo '```'
-                sed -n '1,220p' "$report"
-                echo '```'
+            echo "Full reports are available in the maven-failure-reports artifact."
+            echo
+            echo "### Failed test excerpts"
+            for report_dir in target/surefire-reports target/failsafe-reports; do
+              [ -d "$report_dir" ] || continue
+              find "$report_dir" -maxdepth 1 -type f -name "*.txt" -print | sort | while IFS= read -r report; do
+                if grep -Eq '<<< (FAILURE|ERROR)!' "$report"; then
+                  echo
+                  echo "#### $report"
+                  echo '```'
+                  sed -n '1,80p' "$report"
+                  echo '```'
+                fi
               done
-            else
-              echo "No Surefire reports were generated."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+            done
+          } > "$summary_file"
+          # Keep the summary below GitHub's 1 MiB limit, even for very large failures.
+          head -c 524288 "$summary_file" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Maven failure reports
         if: steps.maven-verify.outcome == 'failure'
