@@ -5,6 +5,7 @@ import io.github.humphreymahlangu.yourvoice.dto.LocationCorrectionResponse;
 import io.github.humphreymahlangu.yourvoice.dto.ProfileVerificationResponse;
 import io.github.humphreymahlangu.yourvoice.dto.RequestLocationCorrection;
 import io.github.humphreymahlangu.yourvoice.dto.ReviewLocationCorrection;
+import io.github.humphreymahlangu.yourvoice.dto.SimulationVoterResponse;
 import io.github.humphreymahlangu.yourvoice.entity.CorrectionStatus;
 import io.github.humphreymahlangu.yourvoice.entity.LocationCorrectionRequest;
 import io.github.humphreymahlangu.yourvoice.entity.ProfileVerificationAudit;
@@ -106,7 +107,7 @@ public class VoterProfileVerificationService {
         return ProfileVerificationResponse.from(state, true);
     }
     @Transactional
-    public SimulationVoterRecord createRecord(UUID actor, CreateSimulationVoterRequest request) {
+    public SimulationVoterResponse createRecord(UUID actor, CreateSimulationVoterRequest request) {
         if (!request.fictional()) throw new EligibilityException("Only fictional simulation records may be configured");
         if (request.identityStatus() == VerificationStatus.UNAVAILABLE || request.locationStatus() == VerificationStatus.UNAVAILABLE)
             throw new EligibilityException("Unavailable describes the source service, not a fictional record");
@@ -120,7 +121,7 @@ public class VoterProfileVerificationService {
         SimulationVoterRecord saved = records.saveAndFlush(new SimulationVoterRecord(request.reference(), protectedIdentity, request.fullName().trim().replaceAll("\\s+", " "),
                 request.identityStatus(), request.locationStatus(), location, request.reason().trim(), Instant.now(clock)));
         audit.save(new ProfileVerificationAudit(null, actor, null, "FICTIONAL_RECORD_CREATED", saved.getReference(), "Fictional source configured", Instant.now(clock), null));
-        return saved;
+        return SimulationVoterResponse.from(saved);
     }
     @Transactional
     public LocationCorrectionResponse requestCorrection(UUID userId, RequestLocationCorrection request) {

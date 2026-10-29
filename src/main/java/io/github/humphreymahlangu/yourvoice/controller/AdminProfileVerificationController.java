@@ -54,7 +54,7 @@ public class AdminProfileVerificationController {
     @PostMapping("/records")
     @Operation(summary = "Configure a fictional source record", description = "Explicitly fictional only. Hashes the synthetic identity immediately, validates configured geography and records the administrator. Does not verify an existing profile automatically.")
     public SimulationVoterResponse create(@AuthenticationPrincipal UserPrincipal principal, @Valid @RequestBody CreateSimulationVoterRequest request) {
-        return SimulationVoterResponse.from(profiles.createRecord(principal.id(), request));
+        return profiles.createRecord(principal.id(), request);
     }
     @GetMapping("/records")
     @Operation(summary = "List fictional source records", description = "Paged fictional record summaries, excluding identity numbers, hashes and account identifiers.")
