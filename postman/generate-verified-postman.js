@@ -486,11 +486,28 @@ const collection = {
           ]
         }),
         request({
+          name: 'Configure Fictional Verification Source',
+          method: 'POST', url: '{{baseUrl}}/api/v1/admin/profile-verification/records', header: adminJsonHeaders,
+          description: 'Fictional local simulation only. This creates a source record, never official verification. Existing profiles require an explicit check. Do not run hosted writes without authorisation.',
+          body: jsonBody({ reference: '{{simulationReference}}', fictional: true, fullName: '{{voterFullName}}', southAfricanIdNumber: '{{voterSouthAfricanIdNumber}}', identityStatus: 'VERIFIED', locationStatus: 'VERIFIED', location: { votingDistrictId: '{{votingDistrictId}}' }, reason: 'Fictional Postman simulation fixture; no IEC integration' }),
+          prerequest: [...requireVars(['adminToken', 'runId', 'voterFullName', 'voterSouthAfricanIdNumber', 'votingDistrictId']), "pm.variables.set('simulationReference', 'SIM-POSTMAN-' + pm.environment.get('runId').toUpperCase());"],
+          test: [...expectOneOf([200, 409], 'Fictional source exists'), "if (pm.response.code === 200) { pm.test('No identity number or hash is returned', () => { const body = pm.response.json(); pm.expect(body.source).to.equal('FICTIONAL_SIMULATION'); pm.expect(body).not.to.have.property('southAfricanIdNumber'); pm.expect(body).not.to.have.property('idNumberHash'); }); }"]
+        }),
+        request({
+          name: 'Check Fictional Profile Verification', method: 'POST', url: '{{baseUrl}}/api/v1/me/profile/verification', header: voterAuthHeader,
+          prerequest: requireVars(['voterToken']),
+          test: [...expectStatus(200, 'Fictional check completed'), "pm.test('Identity and area explicitly verified by fictional source', () => { const body = pm.response.json(); pm.expect(body.source).to.equal('FICTIONAL_SIMULATION'); pm.expect(body.identityStatus).to.equal('VERIFIED'); pm.expect(body.locationStatus).to.equal('VERIFIED'); });"]
+        }),
+        request({
+          name: 'Discover My Eligible Ballots', method: 'GET', url: '{{baseUrl}}/api/v1/me/ballots?electionId={{electionId}}', header: voterAuthHeader,
+          prerequest: requireVars(['voterToken', 'electionId']), test: [...expectStatus(200, 'Server-derived ballots returned'), "pm.test('The configured ward is eligible', () => pm.expect(pm.response.json().some((row) => row.eligible)).to.equal(true));"]
+        }),
+        request({
           name: 'Register Voter For Election',
           method: 'POST',
           url: '{{baseUrl}}/api/v1/elections/{{electionId}}/registrations',
           header: voterJsonHeaders,
-          body: jsonBody({ votingDistrictId: '{{votingDistrictId}}' }),
+          body: jsonBody({}),
           prerequest: registrationStillOpenGuard(),
           test: [
             ...expectOneOf([201, 409], 'Election registration is created or already exists'),
@@ -729,7 +746,8 @@ const environment = {
     { key: 'wardNumber', value: '12', type: 'default', enabled: true },
     { key: 'idDocumentType', value: 'SMART_ID_CARD', type: 'default', enabled: true },
     { key: 'runId', value: '', type: 'default', enabled: true },
-    { key: 'voterFullName', value: 'Verified Postman Voter', type: 'default', enabled: true },
+    { key: 'simulationReference', value: '', type: 'default', enabled: true },
+    { key: 'voterFullName', value: 'Fictional Postman Voter', type: 'default', enabled: true },
     { key: 'voterEmail', value: '', type: 'default', enabled: true },
     { key: 'voterSouthAfricanIdNumber', value: '', type: 'default', enabled: true },
     { key: 'districtCode', value: '', type: 'default', enabled: true },

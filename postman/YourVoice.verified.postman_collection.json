@@ -1162,6 +1162,164 @@
           "response": []
         },
         {
+          "name": "Configure Fictional Verification Source",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var requiredVariables = [\"adminToken\",\"runId\",\"voterFullName\",\"voterSouthAfricanIdNumber\",\"votingDistrictId\"];",
+                  "var unresolvedStart = String.fromCharCode(123, 123);",
+                  "var unresolvedEnd = String.fromCharCode(125, 125);",
+                  "var missingVariables = requiredVariables.filter((key) => {",
+                  "  const value = pm.environment.get(key);",
+                  "  return !value || value.includes(unresolvedStart) || value.includes(unresolvedEnd);",
+                  "});",
+                  "if (missingVariables.length > 0) {",
+                  "  throw new Error(`Missing Postman environment value(s): ${missingVariables.join(', ')}.`);",
+                  "}",
+                  "pm.variables.set('simulationReference', 'SIM-POSTMAN-' + pm.environment.get('runId').toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allowedStatuses = [200,409];",
+                  "pm.test('Fictional source exists', function () {",
+                  "  pm.expect(allowedStatuses).to.include(pm.response.code);",
+                  "});",
+                  "if (!allowedStatuses.includes(pm.response.code)) {",
+                  "  throw new Error(`Fictional source exists failed (${pm.response.code}): ${pm.response.text()}`);",
+                  "}",
+                  "if (pm.response.code === 200) { pm.test('No identity number or hash is returned', () => { const body = pm.response.json(); pm.expect(body.source).to.equal('FICTIONAL_SIMULATION'); pm.expect(body).not.to.have.property('southAfricanIdNumber'); pm.expect(body).not.to.have.property('idNumberHash'); }); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/profile-verification/records",
+            "description": "Fictional local simulation only. This creates a source record, never official verification. Existing profiles require an explicit check. Do not run hosted writes without authorisation.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{simulationReference}}\",\n  \"fictional\": true,\n  \"fullName\": \"{{voterFullName}}\",\n  \"southAfricanIdNumber\": \"{{voterSouthAfricanIdNumber}}\",\n  \"identityStatus\": \"VERIFIED\",\n  \"locationStatus\": \"VERIFIED\",\n  \"location\": {\n    \"votingDistrictId\": \"{{votingDistrictId}}\"\n  },\n  \"reason\": \"Fictional Postman simulation fixture; no IEC integration\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Check Fictional Profile Verification",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var requiredVariables = [\"voterToken\"];",
+                  "var unresolvedStart = String.fromCharCode(123, 123);",
+                  "var unresolvedEnd = String.fromCharCode(125, 125);",
+                  "var missingVariables = requiredVariables.filter((key) => {",
+                  "  const value = pm.environment.get(key);",
+                  "  return !value || value.includes(unresolvedStart) || value.includes(unresolvedEnd);",
+                  "});",
+                  "if (missingVariables.length > 0) {",
+                  "  throw new Error(`Missing Postman environment value(s): ${missingVariables.join(', ')}.`);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Fictional check completed', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "if (pm.response.code !== 200) {",
+                  "  throw new Error(`Fictional check completed failed (${pm.response.code}): ${pm.response.text()}`);",
+                  "}",
+                  "pm.test('Identity and area explicitly verified by fictional source', () => { const body = pm.response.json(); pm.expect(body.source).to.equal('FICTIONAL_SIMULATION'); pm.expect(body.identityStatus).to.equal('VERIFIED'); pm.expect(body.locationStatus).to.equal('VERIFIED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{voterToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me/profile/verification"
+          },
+          "response": []
+        },
+        {
+          "name": "Discover My Eligible Ballots",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var requiredVariables = [\"voterToken\",\"electionId\"];",
+                  "var unresolvedStart = String.fromCharCode(123, 123);",
+                  "var unresolvedEnd = String.fromCharCode(125, 125);",
+                  "var missingVariables = requiredVariables.filter((key) => {",
+                  "  const value = pm.environment.get(key);",
+                  "  return !value || value.includes(unresolvedStart) || value.includes(unresolvedEnd);",
+                  "});",
+                  "if (missingVariables.length > 0) {",
+                  "  throw new Error(`Missing Postman environment value(s): ${missingVariables.join(', ')}.`);",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Server-derived ballots returned', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "if (pm.response.code !== 200) {",
+                  "  throw new Error(`Server-derived ballots returned failed (${pm.response.code}): ${pm.response.text()}`);",
+                  "}",
+                  "pm.test('The configured ward is eligible', () => pm.expect(pm.response.json().some((row) => row.eligible)).to.equal(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{voterToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/me/ballots?electionId={{electionId}}"
+          },
+          "response": []
+        },
+        {
           "name": "Register Voter For Election",
           "event": [
             {
@@ -1231,7 +1389,7 @@
             "url": "{{baseUrl}}/api/v1/elections/{{electionId}}/registrations",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"votingDistrictId\": \"{{votingDistrictId}}\"\n}"
+              "raw": "{}"
             }
           },
           "response": []
