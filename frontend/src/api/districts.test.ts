@@ -29,6 +29,19 @@ describe('area pagination', () => {
     await expect(getVotingDistricts()).rejects.toThrow()
   })
 
+  it.each([
+    null,
+    {},
+    { ...district, id: '' },
+    { ...district, province: null },
+    { ...district, name: 42 },
+    { ...district, wardNumber: '1' },
+    { ...district, wardNumber: 0 },
+  ])('rejects malformed area records before rendering: %j', async (invalidDistrict) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response([invalidDistrict])))
+    await expect(getVotingDistricts()).rejects.toThrow('Invalid area list response')
+  })
+
   it('rejects a malformed success response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ content: [] })))
     await expect(getVotingDistricts()).rejects.toThrow('Invalid area list response')

@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as districtApi from '../api/districts'
 import { AuthContext, type AuthContextValue } from '../auth/context'
 import type { AuthSession, RegistrationDetails } from '../types/auth'
@@ -40,7 +40,8 @@ function renderPage(register = vi.fn(async (_details: RegistrationDetails) => vo
   return register
 }
 
-describe('RegisterPage password controls', () => {
+describe('RegisterPage', () => {
+  afterEach(() => vi.unstubAllGlobals())
   beforeEach(() => {
     vi.mocked(districtApi.getVotingDistricts).mockResolvedValue([{
       id: 'district-id',
@@ -58,9 +59,11 @@ describe('RegisterPage password controls', () => {
     renderPage()
     expect(screen.getByRole('status')).toHaveTextContent('Loading areas...')
     expect(screen.getByLabelText('Your province, municipality and ward')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled()
     finish([])
     expect(await screen.findByText(/Registration areas haven't been set up yet/)).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled()
   })
 
   it('retries failures without losing entered details or displaying an empty result', async () => {
@@ -74,6 +77,35 @@ describe('RegisterPage password controls', () => {
     expect(await screen.findByRole('option', { name: /WC001-0001/ })).toBeVisible()
     expect(screen.getByLabelText('Full legal name')).toHaveValue('Fictional voter')
     expect(screen.getByLabelText('Your province, municipality and ward')).toBeEnabled()
+  })
+
+  it('shows retry for malformed records and preserves all entered details', async () => {
+    const actualApi = await vi.importActual<typeof districtApi>('../api/districts')
+    vi.mocked(districtApi.getVotingDistricts).mockImplementationOnce(actualApi.getVotingDistricts)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('[null]', {
+      headers: { 'Content-Type': 'application/json' },
+    })))
+    const user = userEvent.setup()
+    renderPage()
+    const details = [
+      ['Full legal name', 'Fictional QA Voter'],
+      ['Email address', 'fictional@example.test'],
+      ['South African ID number', '8001015009087'],
+      ['Password', 'FictionalPassword2026!'],
+      ['Confirm password', 'FictionalPassword2026!'],
+    ] as const
+    for (const [label, value] of details) await user.type(screen.getByLabelText(label), value)
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't load the areas")
+    expect(screen.getByLabelText('Your province, municipality and ward')).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled()
+    const retry = screen.getByRole('button', { name: 'Retry loading areas' })
+    retry.focus()
+    await user.keyboard('{Enter}')
+    await screen.findByRole('option', { name: /WC001-0001/ })
+    for (const [label, value] of details) expect(screen.getByLabelText(label)).toHaveValue(value)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Your province, municipality and ward')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled()
   })
 
   it('updates the strength bar and reveals each password independently', async () => {
