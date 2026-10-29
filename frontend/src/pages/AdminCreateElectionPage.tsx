@@ -12,6 +12,7 @@ const ELECTION_TYPES: ElectionType[] = [
   'NATIONAL',
   'PROVINCIAL',
   'MUNICIPAL',
+  'MIXED',
 ]
 
 function AdminCreateElectionPage() {

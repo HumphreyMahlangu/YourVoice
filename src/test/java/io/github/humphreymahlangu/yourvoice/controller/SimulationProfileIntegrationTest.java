@@ -168,6 +168,113 @@ class SimulationProfileIntegrationTest extends PostgreSqlTestContainerSupport {
                 .content("{\"code\":\"SIM-A-1\",\"name\":\"Fictional area\",\"province\":\"Demo B\",\"municipality\":\"Demo Town\",\"wardNumber\":1}"))
                 .andExpect(status().isConflict());
     }
+    @Autowired io.github.humphreymahlangu.yourvoice.service.ElectionLifecycleService lifecycle;
+    String mixedElection() throws Exception {
+        Instant at = clock.now;
+        String id = body(mvc.perform(post("/api/v1/admin/elections").header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("name", "Fictional Mixed " + UUID.randomUUID(), "type", "MIXED",
+                        "registrationStartAt", at.minusSeconds(60).toString(), "registrationEndAt", at.plusSeconds(60).toString(),
+                        "votingStartAt", at.plusSeconds(120).toString(), "votingEndAt", at.plusSeconds(3600).toString()))))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
+        String[][] specs = {{"National", "NATIONAL", "", "", ""}, {"Province A", "PROVINCIAL", "Demo A", "", ""},
+                {"Municipal A", "MUNICIPAL_PR", "Demo A", "Demo Town", ""}, {"Ward A1", "MUNICIPAL_WARD", "Demo A", "Demo Town", "1"},
+                {"Ward A2", "MUNICIPAL_WARD", "Demo A", "Demo Town", "2"}, {"Ward Other Municipality", "MUNICIPAL_WARD", "Demo A", "Demo Other Town", "1"},
+                {"Ward Other Province", "MUNICIPAL_WARD", "Demo B", "Demo Third Town", "1"}};
+        int order = 0;
+        for (String[] spec : specs) {
+            Map<String,Object> fields = new java.util.LinkedHashMap<>(); fields.put("name", spec[0]); fields.put("type", spec[1]); fields.put("displayOrder", ++order);
+            fields.put("scopeProvince", spec[2].isEmpty() ? null : spec[2]); fields.put("scopeMunicipality", spec[3].isEmpty() ? null : spec[3]);
+            fields.put("scopeWardNumber", spec[4].isEmpty() ? null : Integer.valueOf(spec[4]));
+            String c = body(mvc.perform(post("/api/v1/admin/elections/" + id + "/contests").header("Authorization", "Bearer " + admin)
+                    .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(fields))).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText();
+            for (int i = 1; i <= 2; i++) mvc.perform(post("/api/v1/admin/elections/" + id + "/contests/" + c + "/options")
+                    .header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON)
+                    .content(json.writeValueAsString(Map.of("name", "Fictional Party " + i, "optionType", "PARTY", "displayOrder", i)))).andExpect(status().isCreated());
+        }
+        lifecycle.advanceElection(UUID.fromString(id)); return id;
+    }
+    JsonNode ballots(String election) throws Exception {
+        return body(mvc.perform(get("/api/v1/me/ballots").param("electionId", election).header("Authorization", "Bearer " + voter))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+    void register(String election) throws Exception {
+        mvc.perform(post("/api/v1/elections/" + election + "/registrations").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{}")) .andExpect(status().isCreated()).andExpect(jsonPath("$.identityVerified").value(true));
+    }
+    void approve(String request, String reference) throws Exception {
+        mvc.perform(post("/api/v1/admin/profile-verification/corrections/" + request + "/review").header("Authorization", "Bearer " + admin)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("approve", true, "reason", "Matched fictional source",
+                        "sourceReference", reference, "effectiveAt", clock.now.toString())))).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/me/profile").header("Authorization", "Bearer " + voter)).andExpect(status().isOk());
+    }
+    @Test void nationalOnlyOnboardingAndMixedRegistrationNeedNoLocalAttributes() throws Exception {
+        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content("""
+                {"fullName":"Fictional National Account","email":"national@example.test","password":"FictionalPassword2026!",
+                 "southAfricanIdNumber":"1001015000083","idDocumentType":"SMART_ID_CARD","verified":true}
+                """)).andExpect(status().isCreated());
+        assertThat(jdbc.queryForObject("select count(*) from voter_profiles where voting_district_id is null", Integer.class)).isEqualTo(2);
+        record("SIM-NATIONAL", null); verify(); String election = mixedElection();
+        JsonNode found = ballots(election); assertThat(found.size()).isEqualTo(7);
+        for (JsonNode row : found) assertThat(row.get("eligible").asBoolean()).isEqualTo(row.get("contest").get("type").asText().equals("NATIONAL"));
+        register(election);
+        assertThat(jdbc.queryForObject("select registered_province from election_registrations", String.class)).isNull();
+        clock.now = NOW.plusSeconds(121); lifecycle.advanceElection(UUID.fromString(election));
+        found = ballots(election);
+        String national = found.get(0).get("contest").get("id").asText();
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + national + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Ag\"}")).andExpect(status().isCreated());
+        String provincial = found.get(1).get("contest").get("id").asText();
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + provincial + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Ag\"}")).andExpect(status().isUnprocessableEntity());
+    }
+    @Test void unverifiedAndUnavailableProfilesCannotRegisterOrObtainCredentials() throws Exception {
+        String election = mixedElection();
+        mvc.perform(post("/api/v1/elections/" + election + "/registrations").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{}")) .andExpect(status().isUnprocessableEntity());
+        for (JsonNode row : ballots(election)) assertThat(row.get("eligible").asBoolean()).isFalse();
+        record("SIM-IDENTITY", district); verify(); register(election);
+        doReturn(false).when(source).available();
+        for (JsonNode row : ballots(election)) assertThat(row.get("canVote").asBoolean()).isFalse();
+        clock.now = NOW.plusSeconds(121); lifecycle.advanceElection(UUID.fromString(election));
+        String contest = ballots(election).get(0).get("contest").get("id").asText();
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + contest + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Ag\"}")).andExpect(status().isServiceUnavailable());
+    }
+    @Test void correctionsBeforeAndAfterIssuanceNeverRewriteAnExistingElectionSnapshot() throws Exception {
+        String other = area("SIM-OTHER-1", "Demo A", "Demo Other Town", 1);
+        area("SIM-B-1", "Demo B", "Demo Third Town", 1);
+        record("SIM-OLD", district); verify(); String election = mixedElection(); register(election);
+        record("SIM-A2", secondDistrict); String correction = correction(secondDistrict); approve(correction, "SIM-A2");
+        JsonNode rows = ballots(election);
+        assertThat(rows.get(3).get("eligible").asBoolean()).isTrue();
+        assertThat(rows.get(4).get("eligible").asBoolean()).isFalse();
+        String nextElection = mixedElection(); register(nextElection);
+        assertThat(ballots(nextElection).get(4).get("eligible").asBoolean()).isTrue();
+        clock.now = NOW.plusSeconds(121); lifecycle.advanceElection(UUID.fromString(election));
+        String oldWard = ballots(election).get(3).get("contest").get("id").asText();
+        String newWard = ballots(election).get(4).get("contest").get("id").asText();
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + oldWard + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Ag\"}")).andExpect(status().isCreated());
+        record("SIM-OTHER", other); approve(correction(other), "SIM-OTHER");
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + oldWard + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Ag\"}")).andExpect(status().isCreated());
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + oldWard + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Aw\"}")).andExpect(status().isConflict());
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + newWard + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Ag\"}")).andExpect(status().isUnprocessableEntity());
+        assertThat(jdbc.queryForObject("select registered_ward_number from election_registrations where election_id=?", Integer.class, UUID.fromString(election))).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from voting_rights where contest_id=? and credential_issued", Integer.class, UUID.fromString(oldWard))).isEqualTo(1);
+    }
+    @Test void repeatedWardNumbersStayScopedAndSuppliedAreaCannotOverrideVerification() throws Exception {
+        area("SIM-OTHER-1", "Demo A", "Demo Other Town", 1); area("SIM-B-1", "Demo B", "Demo Third Town", 1);
+        record("SIM-A1", district); verify(); String election = mixedElection();
+        mvc.perform(post("/api/v1/elections/" + election + "/registrations").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("votingDistrictId", secondDistrict))))
+                .andExpect(status().isUnprocessableEntity());
+        register(election); JsonNode rows = ballots(election);
+        for (int i = 0; i < rows.size(); i++) assertThat(rows.get(i).get("eligible").asBoolean()).isEqualTo(i < 4);
+    }
+
     static class MutableClock extends Clock {
         volatile Instant now = NOW;
         public ZoneId getZone() { return ZoneOffset.UTC; }

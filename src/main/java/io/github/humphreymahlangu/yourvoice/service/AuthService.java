@@ -113,7 +113,7 @@ public class AuthService {
             throw new DuplicateResourceException(DUPLICATE_ACCOUNT_MESSAGE);
         }
 
-        VotingDistrict votingDistrict = votingDistrictRepository.findById(request.votingDistrictId())
+        VotingDistrict votingDistrict = request.votingDistrictId() == null ? null : votingDistrictRepository.findById(request.votingDistrictId())
                 .orElseThrow(() -> new ResourceNotFoundException("Voting district not found"));
 
         UserAccount userAccount = new UserAccount(

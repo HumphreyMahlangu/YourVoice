@@ -16,6 +16,8 @@ interface AdminContestFormProps {
 
 function getAllowedContestTypes(electionType: ElectionType) {
   switch (electionType) {
+    case 'MIXED':
+      return ['NATIONAL', 'PROVINCIAL', 'MUNICIPAL_PR', 'MUNICIPAL_WARD'] satisfies ContestType[]
     case 'NATIONAL':
       return ['NATIONAL', 'PROVINCIAL'] satisfies ContestType[]
     case 'PROVINCIAL':

@@ -411,6 +411,7 @@ public class AdminElectionManagementService {
 
     private void validateContestTypeForElection(ElectionType electionType, ContestType contestType) {
         boolean allowed = switch (electionType) {
+            case MIXED -> true;
             case NATIONAL -> contestType == ContestType.NATIONAL || contestType == ContestType.PROVINCIAL;
             case PROVINCIAL -> contestType == ContestType.PROVINCIAL;
             case MUNICIPAL -> contestType == ContestType.MUNICIPAL_PR || contestType == ContestType.MUNICIPAL_WARD;

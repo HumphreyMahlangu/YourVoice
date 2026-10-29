@@ -42,6 +42,7 @@ import io.github.humphreymahlangu.yourvoice.repository.VotingRightRepository;
 import io.github.humphreymahlangu.yourvoice.security.IdentityHashService;
 import io.github.humphreymahlangu.yourvoice.support.BlindBallotClient;
 import io.github.humphreymahlangu.yourvoice.support.DatabaseCleaner;
+import io.github.humphreymahlangu.yourvoice.support.TrustedTestProfiles;
 import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import java.time.Clock;
 import java.time.Instant;
@@ -350,6 +351,7 @@ class ConcurrentVotingIntegrationTest extends PostgreSqlTestContainerSupport {
                 RegistrationStatus.ACTIVE,
                 FIXED_NOW.minusSeconds(86_400)
         ));
+        TrustedTestProfiles.verify(jdbcTemplate);
         return account.getId();
     }
 

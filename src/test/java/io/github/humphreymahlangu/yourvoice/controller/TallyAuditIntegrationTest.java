@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.humphreymahlangu.yourvoice.support.DatabaseCleaner;
+import io.github.humphreymahlangu.yourvoice.support.TrustedTestProfiles;
 import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import io.github.humphreymahlangu.yourvoice.entity.AccountRole;
 import io.github.humphreymahlangu.yourvoice.entity.BallotLedgerEntry;
@@ -453,6 +454,7 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
                 RegistrationStatus.ACTIVE,
                 FIXED_NOW.minusSeconds(10_000)
         ));
+        TrustedTestProfiles.verify(jdbcTemplate);
     }
 
     private BallotLedgerEntry appendVote(Contest contest, ContestOption contestOption, long secondsBeforeNow) {

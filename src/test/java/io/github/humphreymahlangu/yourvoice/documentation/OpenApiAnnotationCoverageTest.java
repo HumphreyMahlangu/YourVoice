@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.humphreymahlangu.yourvoice.controller.AdminAccountController;
 import io.github.humphreymahlangu.yourvoice.controller.ProfileVerificationController;
+import io.github.humphreymahlangu.yourvoice.controller.VoterBallotController;
 import io.github.humphreymahlangu.yourvoice.controller.AdminProfileVerificationController;
 import io.github.humphreymahlangu.yourvoice.controller.GeographicRecordController;
 import io.github.humphreymahlangu.yourvoice.controller.AdminBootstrapController;
@@ -34,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 class OpenApiAnnotationCoverageTest {
 
     private static final List<Class<?>> CONTROLLERS = List.of(
-                ProfileVerificationController.class, AdminProfileVerificationController.class, GeographicRecordController.class,
+                VoterBallotController.class, ProfileVerificationController.class, AdminProfileVerificationController.class, GeographicRecordController.class,
             AdminAccountController.class,
             AdminBootstrapController.class,
             AdminElectionManagementController.class,

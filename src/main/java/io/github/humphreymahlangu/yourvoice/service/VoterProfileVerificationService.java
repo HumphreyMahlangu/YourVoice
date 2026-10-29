@@ -51,6 +51,7 @@ public class VoterProfileVerificationService {
         this.profiles = profiles; this.verifications = verifications; this.corrections = corrections; this.records = records;
         this.audit = audit; this.source = source; this.geography = geography; this.hashes = hashes; this.ids = ids; this.clock = clock; this.entityManager = entityManager;
     }
+    private static String normalisedName(String name) { return name == null ? "" : name.trim().replaceAll("\\s+", " ").toLowerCase(java.util.Locale.ROOT); }
     public boolean sourceAvailable() { return source.available(); }
     public void requireSource() { if (!source.available()) throw new VerificationUnavailableException(); }
     /** Global lock order: profile -> verification -> correction. Serialises registration, checking and review across instances. */
@@ -80,13 +81,15 @@ public class VoterProfileVerificationService {
         VoterVerification state = lockState(userId); Instant now = Instant.now(clock);
         if (!source.available()) return ProfileVerificationResponse.from(state, false);
         VoterProfile profile = state.getVoterProfile();
-        Optional<SimulationVoterRecord> match = source.find(profile.getIdNumberHash());
+        Optional<SimulationVoterRecord> match;
+        try { match = source.find(profile.getIdNumberHash()); }
+        catch (VerificationUnavailableException unavailable) { return ProfileVerificationResponse.from(state, false); }
         if (match.isEmpty()) {
             state.recordOutcome(VerificationStatus.PENDING, VerificationStatus.PENDING, null, null,
                     "No matching fictional record is configured yet. Ask a simulation administrator to review your details, then retry.", now);
         } else {
             SimulationVoterRecord record = match.get();
-            if (!record.getFullName().trim().equalsIgnoreCase(profile.getFullName() == null ? "" : profile.getFullName().trim())) {
+            if (!normalisedName(record.getFullName()).equals(normalisedName(profile.getFullName()))) {
                 state.recordOutcome(VerificationStatus.REJECTED, VerificationStatus.UNVERIFIED, record.getReference(), null,
                         "Your details do not match the fictional source. Ask a simulation administrator to review the record.", now);
             } else {
@@ -145,7 +148,7 @@ public class VoterProfileVerificationService {
             requireSource();
             SimulationVoterRecord record = source.find(state.getVoterProfile().getIdNumberHash()).orElseThrow(() -> new EligibilityException("A matching fictional source record is required for approval"));
             if (!record.getReference().equals(review.sourceReference()) || record.getIdentityStatus() != VerificationStatus.VERIFIED
-                    || !record.getFullName().trim().equalsIgnoreCase(state.getVoterProfile().getFullName().trim())
+                    || !normalisedName(record.getFullName()).equals(normalisedName(state.getVoterProfile().getFullName()))
                     || !request.getLocation().sameAs(record.getLocation())
                     || (request.getLocation().getProvince() != null && record.getLocationStatus() != VerificationStatus.VERIFIED))
                 throw new EligibilityException("The latest fictional source must verify this voter and the exact requested area");

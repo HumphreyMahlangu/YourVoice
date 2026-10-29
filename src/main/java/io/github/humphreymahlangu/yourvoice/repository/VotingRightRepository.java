@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface VotingRightRepository extends JpaRepository<VotingRight, UUID> {
 
+    boolean existsByVoterProfileIdAndContestIdAndCredentialIssuedTrue(UUID voterProfileId, UUID contestId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<VotingRight> findByVoterProfileIdAndContestId(UUID voterProfileId, UUID contestId);
 

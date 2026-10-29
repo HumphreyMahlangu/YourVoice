@@ -57,6 +57,10 @@ public class VotingService {
     private final VoteHashChainService voteHashChainService;
     private final YourVoiceMetrics metrics;
     private final Clock clock;
+    private final VoterProfileVerificationService verification;
+    private final VoterEligibilityService eligibility;
+    private final io.github.humphreymahlangu.yourvoice.repository.ElectionRepository elections;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public VotingService(
             ContestRepository contestRepository,
@@ -69,7 +73,11 @@ public class VotingService {
             BallotSigningKeyService ballotSigningKeyService,
             VoteHashChainService voteHashChainService,
             YourVoiceMetrics metrics,
-            Clock clock
+            Clock clock,
+            VoterProfileVerificationService verification,
+            VoterEligibilityService eligibility,
+            io.github.humphreymahlangu.yourvoice.repository.ElectionRepository elections,
+            jakarta.persistence.EntityManager entityManager
     ) {
         this.contestRepository = contestRepository;
         this.contestOptionRepository = contestOptionRepository;
@@ -81,7 +89,8 @@ public class VotingService {
         this.ballotSigningKeyService = ballotSigningKeyService;
         this.voteHashChainService = voteHashChainService;
         this.metrics = metrics;
-        this.clock = clock;
+        this.clock = clock; this.verification = verification; this.eligibility = eligibility;
+        this.elections = elections; this.entityManager = entityManager;
     }
 
     /**
@@ -118,6 +127,9 @@ public class VotingService {
             UUID contestId,
             VotingCredentialRequest request
     ) {
+        var trusted = verification.lockState(userAccountId);
+        Election lockedElection = elections.findByIdForUpdate(electionId).orElseThrow(() -> new ResourceNotFoundException("Election not found"));
+        entityManager.refresh(lockedElection);
         Contest contest = findContest(electionId, contestId);
         Election election = contest.getElection();
         assertVotingOpen(contest, election);
@@ -131,7 +143,9 @@ public class VotingService {
                 .orElseThrow(() -> new EligibilityException("Voter is not registered for this election"));
         VoterProfile voterProfile = registration.getVoterProfile();
         assertOldEnoughToVote(voterProfile, election);
-        assertVotingDistrictEligible(contest, registration.getVotingDistrict());
+        eligibility.requireIdentity(trusted, election);
+        String eligibilityProblem = eligibility.contestProblem(contest, trusted, registration);
+        if (eligibilityProblem != null) throw new EligibilityException(eligibilityProblem);
 
         ContestSigningKey signingKey = ballotSigningKeyService.getOrCreate(contestId);
         BigInteger modulus = BlindSignatureService.decodeInteger(signingKey.getModulus());
@@ -226,7 +240,7 @@ public class VotingService {
     private void assertVotingOpen(Contest contest, Election election) {
         Instant now = Instant.now(clock);
         boolean withinVotingWindow = !now.isBefore(election.getVotingStartAt())
-                && !now.isAfter(election.getVotingEndAt());
+                && now.isBefore(election.getVotingEndAt());
 
         if (election.getStatus() != ElectionStatus.VOTING_OPEN
                 || contest.getStatus() != ContestStatus.OPEN

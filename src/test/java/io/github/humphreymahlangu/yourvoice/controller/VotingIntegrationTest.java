@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import io.github.humphreymahlangu.yourvoice.support.BlindBallotClient;
 import io.github.humphreymahlangu.yourvoice.support.DatabaseCleaner;
+import io.github.humphreymahlangu.yourvoice.support.TrustedTestProfiles;
 import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import io.github.humphreymahlangu.yourvoice.entity.AccountRole;
 import io.github.humphreymahlangu.yourvoice.entity.AnonymousVotingCredential;
@@ -254,7 +255,7 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
 
         requestCredential(fixture, PLACEHOLDER_BLINDED_TOKEN)
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.message").value("Voter is not eligible for this contest based on registered voting district"));
+                .andExpect(jsonPath("$.message").value("This ballot requires a verified matching province, municipality and ward. Request an area correction if needed."));
     }
 
     @Test
@@ -529,6 +530,7 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
                 FIXED_NOW.minusSeconds(3600)
         ));
 
+        TrustedTestProfiles.verify(jdbcTemplate);
         return new VotingFixture(election, district, contest, optionA, optionB, jwt);
     }
 
@@ -558,6 +560,7 @@ class VotingIntegrationTest extends PostgreSqlTestContainerSupport {
         ));
 
         List<ContestOption> options = contestOptionRepository.findByContestIdOrderByDisplayOrderAscNameAsc(contest.getId());
+        TrustedTestProfiles.verify(jdbcTemplate);
         return new VotingFixture(election, district, contest, options.get(0), options.get(1), jwt);
     }
 

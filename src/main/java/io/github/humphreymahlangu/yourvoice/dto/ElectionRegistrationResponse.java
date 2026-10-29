@@ -37,7 +37,12 @@ public record ElectionRegistrationResponse(
         String votingDistrictName,
 
         @Schema(description = "Registered province", example = "Western Cape")
-        String province
+        String province,
+        String municipality,
+        Integer wardNumber,
+        boolean identityVerified,
+        String verificationSource,
+        String sourceReference
 ) {
 
     public static ElectionRegistrationResponse from(ElectionRegistration registration) {
@@ -50,10 +55,15 @@ public record ElectionRegistrationResponse(
                 election.getType().name(),
                 registration.getStatus().name(),
                 registration.getRegisteredAt(),
-                votingDistrict.getId(),
-                votingDistrict.getCode(),
-                votingDistrict.getName(),
-                votingDistrict.getProvince()
+                registration.getRegisteredWardNumber() == null || votingDistrict == null ? null : votingDistrict.getId(),
+                registration.getRegisteredWardNumber() == null || votingDistrict == null ? null : votingDistrict.getCode(),
+                registration.getRegisteredWardNumber() == null || votingDistrict == null ? null : votingDistrict.getName(),
+                registration.getRegisteredProvince(),
+                registration.getRegisteredMunicipality(),
+                registration.getRegisteredWardNumber(),
+                registration.isIdentityVerified(),
+                registration.isIdentityVerified() ? "FICTIONAL_SIMULATION" : null,
+                registration.getSourceReference()
         );
     }
 }

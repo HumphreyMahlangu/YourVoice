@@ -17,6 +17,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface ElectionRepository extends JpaRepository<Election, UUID> {
 
+    List<Election> findByStatusInOrderByRegistrationStartAtDesc(Collection<ElectionStatus> statuses);
+
     Page<Election> findAllByOrderByRegistrationStartAtDesc(Pageable pageable);
 
     Page<Election> findAllByStatusInOrderByRegistrationStartAtDesc(

@@ -1,4 +1,4 @@
-export type ElectionType = 'NATIONAL' | 'PROVINCIAL' | 'MUNICIPAL'
+export type ElectionType = 'NATIONAL' | 'PROVINCIAL' | 'MUNICIPAL' | 'MIXED'
 
 export type ElectionStatus =
   | 'DRAFT'

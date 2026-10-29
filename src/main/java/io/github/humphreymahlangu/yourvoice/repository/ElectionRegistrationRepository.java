@@ -31,21 +31,23 @@ public interface ElectionRegistrationRepository extends JpaRepository<ElectionRe
 
     @Query("""
             select new io.github.humphreymahlangu.yourvoice.dto.DistrictRegistrationCount(
-                district.province,
-                district.municipality,
-                district.wardNumber,
+                registration.registeredProvince,
+                registration.registeredMunicipality,
+                registration.registeredWardNumber,
                 count(registration.id)
             )
             from ElectionRegistration registration
-            join registration.votingDistrict district
             where registration.election.id = :electionId
               and registration.status = :status
-            group by district.province, district.municipality, district.wardNumber
+              and registration.identityVerified = true
+            group by registration.registeredProvince, registration.registeredMunicipality, registration.registeredWardNumber
             """)
     List<DistrictRegistrationCount> countByDistrict(
             @Param("electionId") UUID electionId,
             @Param("status") RegistrationStatus status
     );
+
+    Optional<ElectionRegistration> findByVoterProfileUserAccountIdAndElectionId(UUID userAccountId, UUID electionId);
 
     boolean existsByVotingDistrictId(UUID votingDistrictId);
 }

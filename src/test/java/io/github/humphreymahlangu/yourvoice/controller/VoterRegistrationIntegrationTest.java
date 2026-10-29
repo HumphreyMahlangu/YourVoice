@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.humphreymahlangu.yourvoice.support.DatabaseCleaner;
+import io.github.humphreymahlangu.yourvoice.support.TrustedTestProfiles;
 import io.github.humphreymahlangu.yourvoice.support.PostgreSqlTestContainerSupport;
 import io.github.humphreymahlangu.yourvoice.entity.Election;
 import io.github.humphreymahlangu.yourvoice.entity.ElectionStatus;
@@ -172,7 +173,7 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registrationBody(otherDistrict)))
                 .andExpect(status().isUnprocessableEntity())
-                .andExpect(jsonPath("$.message").value("Voting district must match the district on your voter profile"));
+                .andExpect(jsonPath("$.message").value("Voting district must match the district on your verified simulation profile"));
 
         assertThat(electionRegistrationRepository.count()).isZero();
     }
@@ -298,7 +299,7 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
     }
 
     private Election createElection(ElectionStatus status, Instant registrationStartAt, Instant registrationEndAt) {
-        return electionRepository.save(new Election(
+        Election fixture = electionRepository.save(new Election(
                 "2026 Local Government Election",
                 ElectionType.MUNICIPAL,
                 registrationStartAt,
@@ -307,6 +308,10 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
                 Instant.parse("2026-10-01T21:00:00Z"),
                 status
         ));
+        contestRepository.save(new io.github.humphreymahlangu.yourvoice.entity.Contest(fixture, "Fictional registration contest",
+                io.github.humphreymahlangu.yourvoice.entity.ContestType.NATIONAL,
+                io.github.humphreymahlangu.yourvoice.entity.ContestStatus.DRAFT, 1, null, null, null));
+        return fixture;
     }
 
     private VotingDistrict createVotingDistrict() {
@@ -325,7 +330,7 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
                   "fullName": "Registration Test Voter",
                   "email": "%s",
                   "password": "VeryStrongPassword1",
-                  "southAfricanIdNumber": "1001015000083",
+                  "southAfricanIdNumber": "8001015009087",
                   "idDocumentType": "SMART_ID_CARD",
                   "votingDistrictId": "%s"
                 }
@@ -337,6 +342,7 @@ class VoterRegistrationIntegrationTest extends PostgreSqlTestContainerSupport {
                 .andExpect(status().isCreated())
                 .andReturn();
 
+        TrustedTestProfiles.verify(jdbcTemplate);
         return JsonPath.read(result.getResponse().getContentAsString(), "$.accessToken");
     }
 

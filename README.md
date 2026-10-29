@@ -379,3 +379,20 @@ ballot choices, tokens or signatures. The registry retains only the synthetic na
 identity, configured geography and decision needed to repeat a simulation check. Set
 `yourvoice.simulation-verification.enabled=false` to represent an unavailable source; this
 must never silently grant verification.
+
+
+Verified election registrations save an immutable copy of the verified attributes used when joining.
+Approved location corrections apply to future registrations, including corrections made before voting
+or after a credential is issued. They never add contests to an existing registration. Existing anonymous
+credentials remain contest-bound and can still be cast within their original voting window.
+Legacy registrations are not automatically verified: while registration is open the voter must explicitly
+confirm them against the fictional source. Confirmation can only retain or narrow their original area.
+After registration closes, an unconfirmed legacy registration cannot receive a voting credential.
+
+National ballots require verified fictional identity and the existing age/registration/stage checks,
+with no local area requirement. Provincial ballots require a verified province; municipal PR also needs
+a municipality; ward ballots additionally need a ward in that municipality. MIXED elections contain
+independently scoped contests. GET /api/v1/me/ballots returns the authenticated voter's server-derived
+eligibility, registration actions, voting actions and reasons. A credential-issued flag is never proof
+that a ballot was cast. The fictional source must be available for registration and new/retried issuance;
+anonymous casting does not consult identity records.

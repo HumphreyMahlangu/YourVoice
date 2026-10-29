@@ -40,8 +40,7 @@ public record RegisterRequest(
         @Schema(description = "Identity document type supplied during voter onboarding", example = "SMART_ID_CARD")
         IdDocumentType idDocumentType,
 
-        @NotNull
-        @Schema(description = "Voter's current voting district", example = "11111111-1111-1111-1111-111111111111")
+        @Schema(description = "Optional self-reported area; never verification. National-only onboarding needs no area", example = "11111111-1111-1111-1111-111111111111")
         UUID votingDistrictId
 ) {
 }
