@@ -52,6 +52,30 @@ describe('RegisterPage password controls', () => {
     }])
   })
 
+  it('announces loading separately from an empty list', async () => {
+    let finish!: (value: []) => void
+    vi.mocked(districtApi.getVotingDistricts).mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    renderPage()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading areas...')
+    expect(screen.getByLabelText('Your province, municipality and ward')).toBeDisabled()
+    finish([])
+    expect(await screen.findByText(/Registration areas haven't been set up yet/)).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('retries failures without losing entered details or displaying an empty result', async () => {
+    vi.mocked(districtApi.getVotingDistricts).mockRejectedValueOnce(new Error('offline'))
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(screen.getByLabelText('Full legal name'), 'Fictional voter')
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't load the areas")
+    expect(screen.queryByText(/Registration areas haven't/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Retry loading areas' }))
+    expect(await screen.findByRole('option', { name: /WC001-0001/ })).toBeVisible()
+    expect(screen.getByLabelText('Full legal name')).toHaveValue('Fictional voter')
+    expect(screen.getByLabelText('Your province, municipality and ward')).toBeEnabled()
+  })
+
   it('updates the strength bar and reveals each password independently', async () => {
     const user = userEvent.setup()
     renderPage()

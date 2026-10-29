@@ -62,6 +62,7 @@ function RegisterPage() {
   const [districts, setDistricts] = useState<VotingDistrict[]>([])
   const [isLoadingDistricts, setIsLoadingDistricts] = useState(true)
   const [districtLoadError, setDistrictLoadError] = useState<unknown>(null)
+  const [districtLoadAttempt, setDistrictLoadAttempt] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [fieldErrors, setFieldErrors] = useState<
@@ -73,6 +74,8 @@ function RegisterPage() {
 
     async function loadDistricts() {
       setDistrictLoadError(null)
+      setDistricts([])
+      setVotingDistrictId('')
       setIsLoadingDistricts(true)
 
       try {
@@ -99,7 +102,7 @@ function RegisterPage() {
 
     void loadDistricts()
     return () => abortController.abort()
-  }, [])
+  }, [districtLoadAttempt])
 
   if (session) {
     return (
@@ -190,9 +193,12 @@ function RegisterPage() {
       )}
 
       {districtLoadError !== null && (
-        <p role="alert">
-          We couldn't load the area list. Please refresh and try again.
-        </p>
+        <div>
+          <p role="alert">We couldn't load the areas. Try again.</p>
+          <button type="button" onClick={() => setDistrictLoadAttempt((attempt) => attempt + 1)}>
+            Retry loading areas
+          </button>
+        </div>
       )}
 
       <form className="register-form" onSubmit={handleSubmit}>
@@ -316,6 +322,7 @@ function RegisterPage() {
               <select
                 id="register-voting-district"
                 name="votingDistrictId"
+                disabled={isLoadingDistricts || districtLoadError !== null || districts.length === 0}
                 required
                 value={votingDistrictId}
                 aria-invalid={votingDistrictError ? true : undefined}
@@ -345,8 +352,9 @@ function RegisterPage() {
                 This decides which provincial and local contests you can vote in.
                 Your ballot is still cast online.
               </p>
+              {isLoadingDistricts && <p role="status">Loading areas...</p>}
               {!isLoadingDistricts && districtLoadError === null && districts.length === 0 && (
-                <p>No areas are currently available.</p>
+                <p role="status">Registration areas haven't been set up yet. Please try again later or contact support.</p>
               )}
             </div>
           </div>
@@ -439,7 +447,7 @@ function RegisterPage() {
           <button
             type="submit"
             disabled={
-              isSubmitting || isLoadingDistricts || districts.length === 0
+              isSubmitting || isLoadingDistricts || districtLoadError !== null || districts.length === 0
             }
           >
             {isSubmitting ? 'Creating account...' : 'Create account'}
