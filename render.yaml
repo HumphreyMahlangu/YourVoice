@@ -47,7 +47,7 @@ services:
       - key: YOURVOICE_CORS_ALLOWED_ORIGINS
         sync: false
       - key: YOURVOICE_ADMIN_BOOTSTRAP_ENABLED
-        value: false
+        value: "false"
 
 databases:
   - name: votetrust-db
