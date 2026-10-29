@@ -96,12 +96,13 @@ export default function AdminProfileVerificationPage() {
         <label htmlFor="source-name">Fictional full name</label><input id="source-name" required maxLength={160} value={name} onChange={(e) => setName(e.target.value)} disabled={busy} />
         <label htmlFor="source-identity">Synthetic South African ID number</label><input id="source-identity" required pattern="[0-9]{13}" minLength={13} maxLength={13} inputMode="numeric" autoComplete="off" value={identity} onChange={(e) => setIdentity(e.target.value)} disabled={busy} />
         <p>The server immediately protects this value; it is never returned by the source API.</p>
-        <label htmlFor="source-identity-status">Fictional identity decision</label><select id="source-identity-status" value={identityStatus} onChange={(e) => setIdentityStatus(e.target.value as VerificationStatus)} disabled={busy}>{statuses.map((s) => <option key={s} value={s}>{formatEnumLabel(s)}</option>)}</select>
+        <label htmlFor="source-identity-status">Fictional identity decision</label><select id="source-identity-status" value={identityStatus} onChange={(e) => { const status = e.target.value as VerificationStatus; setIdentityStatus(status); if (status !== 'VERIFIED') { setLocationStatus('UNVERIFIED'); setLocation({}) } }} disabled={busy}>{statuses.map((s) => <option key={s} value={s}>{formatEnumLabel(s)}</option>)}</select>
         <label htmlFor="source-location-status">Fictional location decision</label><select id="source-location-status" value={locationStatus} onChange={(e) => { setLocationStatus(e.target.value as VerificationStatus); setLocation({}) }} disabled={busy}>{statuses.map((s) => <option key={s} value={s}>{formatEnumLabel(s)}</option>)}</select>
+        {locationStatus === 'VERIFIED' && identityStatus !== 'VERIFIED' && <p role="status">A verified fictional location requires verified fictional identity. Change the identity or location decision before saving.</p>}
         {locationStatus === 'VERIFIED' && <LocationFields key={`source-${attempt}`} id="source" value={location} onChange={setLocation} disabled={busy} />}
         <label htmlFor="source-reason">Decision reason shown to voter</label><textarea id="source-reason" required maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} disabled={busy} />
         <label className="check-label"><input type="checkbox" required checked={fictional} onChange={(e) => setFictional(e.target.checked)} disabled={busy} />I confirm these are fictional simulation details.</label>
-        <button type="submit" disabled={busy || !fictional || (locationStatus === 'VERIFIED' && !location.provinceId)}>{busy ? 'Saving...' : 'Create fictional source record'}</button>
+        <button type="submit" disabled={busy || !fictional || (locationStatus === 'VERIFIED' && (!location.provinceId || identityStatus !== 'VERIFIED'))}>{busy ? 'Saving...' : 'Create fictional source record'}</button>
       </form>
     </section>
     <section aria-labelledby="review-heading"><h2 id="review-heading">Area correction reviews</h2>

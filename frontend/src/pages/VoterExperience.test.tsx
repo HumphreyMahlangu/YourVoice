@@ -117,4 +117,15 @@ describe('voter experience', () => {
     expect(api.reviewCorrection).toHaveBeenCalledWith('fictional-token', 'review', expect.objectContaining({ approve: true, sourceReference: 'SIM-REVIEW', reason: 'Matched fictional evidence' }))
   })
 
+  it('cannot save a verified fictional location while identity remains pending', async () => {
+    const user = userEvent.setup(); view(<AdminProfileVerificationPage />, '/', true)
+    await screen.findByText('No fictional verification records configured.')
+    await user.click(screen.getByLabelText('I confirm these are fictional simulation details.'))
+    await user.selectOptions(screen.getByLabelText('Fictional identity decision'), 'PENDING')
+    await user.selectOptions(screen.getByLabelText('Fictional location decision'), 'VERIFIED')
+    expect(screen.getByRole('button', { name: 'Create fictional source record' })).toBeDisabled()
+    expect(screen.getByText(/A verified fictional location requires verified fictional identity/)).toBeVisible()
+    expect(api.createSourceRecord).not.toHaveBeenCalled()
+  })
+
 })

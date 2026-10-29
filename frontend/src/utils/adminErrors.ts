@@ -4,6 +4,7 @@ import ApiError from '../api/ApiError'
 // internal states. Keep that detail in ApiError for program logic, but present
 // instructions that make sense to someone managing an election in the app.
 const ADMIN_MESSAGES: Record<string, string> = {
+  'A verified fictional location requires verified fictional identity': 'Verify the fictional identity before marking its location verified.',
   'A matching fictional source record is required for approval': 'Configure a matching fictional source record for this voter before approving the request.',
   'The latest fictional source must verify this voter and the exact requested area': 'Check the latest source reference, fictional name and requested area. They must match exactly before approval.',
   'Approval requires an effective date at or after the current time': 'Choose an effective date and time in the future, then try again.',

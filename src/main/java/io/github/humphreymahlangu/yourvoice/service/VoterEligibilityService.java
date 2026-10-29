@@ -34,6 +34,9 @@ public class VoterEligibilityService {
             return "This election registration is not active.";
         if (registration != null && !registration.isIdentityVerified())
             return "Confirm this existing registration against your fictional verification while registration is open.";
+        if (contest.getType() != io.github.humphreymahlangu.yourvoice.entity.ContestType.NATIONAL
+                && state.getLocationStatus() != VerificationStatus.VERIFIED)
+            return "Local verification is not currently confirmed. Check your fictional profile or request an area correction. National ballots use identity verification independently.";
         boolean matches = registration == null
                 ? ContestEligibility.isEligible(contest, RegistrationLocationPolicy.forRegistration(state, null))
                 : ContestEligibility.isEligible(contest, registration);

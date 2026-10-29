@@ -426,3 +426,15 @@ POST `/corrections/{requestId}/review`. Public `/api/v1/geography/{provinces,mun
 returns stable hierarchy IDs; administrator POST routes under `/api/v1/admin/geography/` create parents.
 Source records never return identity hashes or raw numbers. Reviews record actor, decision, reason,
 source and effective date separately from all ballot records; closed reasons are redacted after 90 days.
+
+A later rejected, pending, unavailable or unverified **local** decision blocks new local credential
+issuance even for a saved election area; verified identity can still permit a national ballot. A reviewed
+correction can restore local verification, while the saved election boundaries remain fixed. Moving to
+national identity only therefore suspends new local issuance. Signatures already held remain anonymous
+and valid within their original contest window. A location decision never upgrades identity verification.
+
+Negative source decisions are applied on profile/eligibility access under the same profile lock used
+for registration and issuance; avoiding the check button cannot preserve revoked permission. Positive
+source records still never silently verify a profile or change its established area. Source changes for
+an existing identity are serialised against registration/issuance. Missing source evidence becomes
+pending; source failure becomes unavailable until an explicit successful recheck.

@@ -59,9 +59,18 @@ public class VoterVerification {
         this.effectiveAt = effectiveAt;
         this.message = "Approved fictional area correction is effective. Existing registrations keep their saved area. Review your identity status before registering or voting.";
     }
+    public void confirmIdentityOnly(String reference, Instant now) {
+        this.identityStatus = VerificationStatus.VERIFIED;
+        this.established = true;
+        this.sourceReference = reference;
+        this.checkedAt = now;
+        this.message = "Fictional identity is verified. Request an area correction to review the different registered area; no local attributes were granted.";
+    }
     public void recordOutcome(VerificationStatus identity, VerificationStatus area, String reference,
             RegisteredLocation location, String message, Instant now) {
-        this.identityStatus = identity; this.locationStatus = area; this.sourceReference = reference;
+        this.identityStatus = identity;
+        this.locationStatus = identity != VerificationStatus.VERIFIED && area == VerificationStatus.VERIFIED ? VerificationStatus.UNVERIFIED : area;
+        this.sourceReference = reference;
         if (identity == VerificationStatus.VERIFIED) {
             this.established = true;
             this.location = area == VerificationStatus.VERIFIED ? location : RegisteredLocation.nationalOnly();

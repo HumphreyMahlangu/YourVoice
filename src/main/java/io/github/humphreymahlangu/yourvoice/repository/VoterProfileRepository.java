@@ -13,6 +13,8 @@ public interface VoterProfileRepository extends JpaRepository<VoterProfile, UUID
     @org.springframework.data.jpa.repository.Query("select p from VoterProfile p where p.userAccount.id = :userAccountId")
     Optional<VoterProfile> findByUserAccountIdForUpdate(UUID userAccountId);
 
+    Optional<VoterProfile> findByIdNumberHash(String idNumberHash);
+
     boolean existsByIdNumberHash(String idNumberHash);
 
     boolean existsByVotingDistrictId(UUID votingDistrictId);

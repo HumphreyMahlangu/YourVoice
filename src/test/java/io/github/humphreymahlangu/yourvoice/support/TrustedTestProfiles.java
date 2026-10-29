@@ -18,6 +18,14 @@ public final class TrustedTestProfiles {
             on conflict(province_id,normalised_name) do nothing
             """);
         jdbc.update("""
+            insert into simulation_voter_records(id,reference,id_number_hash,full_name,identity_status,location_status,province_id,municipality_id,district_id,reason,recorded_at)
+            select gen_random_uuid(), 'SIM-SECURITY-' || upper(replace(v.id::text,'-','')),v.id_number_hash,v.full_name,'VERIFIED','VERIFIED',p.id,m.id,d.id,'Explicit fictional security fixture',now()
+            from voter_profiles v join voting_districts d on d.id=v.voting_district_id
+            join geographic_provinces p on p.normalised_name=lower(trim(d.province))
+            join geographic_municipalities m on m.province_id=p.id and m.normalised_name=lower(trim(d.municipality))
+            on conflict(reference) do nothing
+            """);
+        jdbc.update("""
             insert into voter_verifications(id,voter_profile_id,identity_status,location_status,established,source_reference,province_id,municipality_id,district_id,message)
             select gen_random_uuid(), v.id, 'VERIFIED','VERIFIED',true,'SIM-SECURITY-FIXTURE',p.id,m.id,d.id,'Explicit fictional security fixture'
             from voter_profiles v join voting_districts d on d.id = v.voting_district_id

@@ -71,7 +71,36 @@ public class VoterProfileVerificationService {
             correction.markApplied();
             audit.save(new ProfileVerificationAudit(profile.getId(), correction.getReviewedBy(), correction.getId(), "CORRECTION_APPLIED", correction.getSourceReference(), "Approved correction became effective", Instant.now(clock), correction.getEffectiveAt()));
         }
+        refreshRestrictions(state);
         return state;
+    }
+    /** Source restrictions take effect on use; positive decisions still need an explicit check/review. */
+    private void refreshRestrictions(VoterVerification state) {
+        if (!state.isEstablished() || !source.available()) return;
+        VerificationStatus identity = state.getIdentityStatus(), area;
+        String reference;
+        try {
+            Optional<SimulationVoterRecord> match = source.find(state.getVoterProfile().getIdNumberHash());
+            if (match.isEmpty()) { identity = VerificationStatus.PENDING; area = VerificationStatus.PENDING; reference = null; }
+            else {
+                SimulationVoterRecord record = match.get(); reference = record.getReference();
+                if (!normalisedName(record.getFullName()).equals(normalisedName(state.getVoterProfile().getFullName()))) {
+                    identity = VerificationStatus.REJECTED; area = VerificationStatus.UNVERIFIED;
+                } else if (record.getIdentityStatus() != VerificationStatus.VERIFIED) {
+                    identity = record.getIdentityStatus(); area = VerificationStatus.UNVERIFIED;
+                } else if (record.getLocationStatus() != VerificationStatus.VERIFIED) area = record.getLocationStatus();
+                else return;
+            }
+        } catch (VerificationUnavailableException unavailable) {
+            identity = VerificationStatus.UNAVAILABLE; area = VerificationStatus.UNAVAILABLE; reference = state.getSourceReference();
+        }
+        if (identity == state.getIdentityStatus() && area == state.getLocationStatus()
+                && java.util.Objects.equals(reference, state.getSourceReference())) return;
+        Instant now = Instant.now(clock);
+        state.recordOutcome(identity, area, reference, null,
+                "The fictional source no longer confirms the required details. Ask a simulation administrator to review the source, then check again.", now);
+        audit.save(new ProfileVerificationAudit(state.getVoterProfile().getId(), state.getVoterProfile().getUserAccount().getId(), null,
+                "SOURCE_RESTRICTION", reference, "Fictional source restricted verification", now, state.getEffectiveAt()));
     }
     @Transactional
     public ProfileVerificationResponse profile(UUID userId) { return ProfileVerificationResponse.from(lockState(userId), source.available()); }
@@ -97,9 +126,12 @@ public class VoterProfileVerificationService {
                         "Your details do not match the fictional source. Ask a simulation administrator to review the record.", now);
             } else {
                 if (state.isEstablished() && record.getIdentityStatus() == VerificationStatus.VERIFIED
-                        && !state.getLocation().sameAs(record.getLocation()))
-                    throw new DuplicateResourceException("Request an area correction to change an established location. Existing election registrations will keep their saved area.");
-                state.recordOutcome(record.getIdentityStatus(), record.getLocationStatus(), record.getReference(), record.getLocation(), record.getReason(), now);
+                        && record.getLocationStatus() == VerificationStatus.VERIFIED
+                        && !state.getLocation().sameAs(record.getLocation())) {
+                    if (state.getIdentityStatus() == VerificationStatus.VERIFIED)
+                        throw new DuplicateResourceException("Request an area correction to change an established location. Existing election registrations will keep their saved area.");
+                    state.confirmIdentityOnly(record.getReference(), now);
+                } else state.recordOutcome(record.getIdentityStatus(), record.getLocationStatus(), record.getReference(), record.getLocation(), record.getReason(), now);
             }
         }
         audit.save(new ProfileVerificationAudit(profile.getId(), userId, null, "VERIFICATION_CHECK", state.getSourceReference(),
@@ -112,12 +144,16 @@ public class VoterProfileVerificationService {
         if (request.identityStatus() == VerificationStatus.UNAVAILABLE || request.locationStatus() == VerificationStatus.UNAVAILABLE)
             throw new EligibilityException("Unavailable describes the source service, not a fictional record");
         if (records.existsByReference(request.reference())) throw new DuplicateResourceException("Fictional source reference already exists");
+        if (request.locationStatus() == VerificationStatus.VERIFIED && request.identityStatus() != VerificationStatus.VERIFIED)
+            throw new EligibilityException("A verified fictional location requires verified fictional identity");
         RegisteredLocation location = geography.resolve(request.location());
         if (request.locationStatus() == VerificationStatus.VERIFIED && location.getProvince() == null)
             throw new EligibilityException("A verified local area requires a configured province; use unverified location for national-only identity records");
         if (request.locationStatus() != VerificationStatus.VERIFIED && location.getProvince() != null)
             throw new EligibilityException("Only verified fictional source locations may carry geographic attributes");
         String protectedIdentity = hashes.hashSouthAfricanIdNumber(ids.validateForVoterRegistration(request.southAfricanIdNumber()).normalizedIdNumber());
+        // Serialise source changes with this identity's registration/issuance and correction decisions.
+        profiles.findByIdNumberHash(protectedIdentity).ifPresent(profile -> profiles.findByUserAccountIdForUpdate(profile.getUserAccount().getId()));
         SimulationVoterRecord saved = records.saveAndFlush(new SimulationVoterRecord(request.reference(), protectedIdentity, request.fullName().trim().replaceAll("\\s+", " "),
                 request.identityStatus(), request.locationStatus(), location, request.reason().trim(), Instant.now(clock)));
         audit.save(new ProfileVerificationAudit(null, actor, null, "FICTIONAL_RECORD_CREATED", saved.getReference(), "Fictional source configured", Instant.now(clock), null));

@@ -403,6 +403,45 @@ class SimulationProfileIntegrationTest extends PostgreSqlTestContainerSupport {
                 .andExpect(status().isUnprocessableEntity());
     }
 
+    @Test void aLocationRejectionBlocksLocalIssuanceWithoutBlockingNationalIdentity() throws Exception {
+        record("SIM-LOCATION-OLD", district); verify(); String election = mixedElection(); register(election);
+        recordAt("SIM-LOCATION-REJECTED", Map.of(), "VERIFIED", "REJECTED");
+        // No voluntary recheck is needed for a negative source decision to restrict access.
+        assertThat(ballots(election).get(3).get("eligible").asBoolean()).isFalse();
+        mvc.perform(post("/api/v1/me/profile/verification").header("Authorization", "Bearer " + voter)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.identityStatus").value("VERIFIED")).andExpect(jsonPath("$.locationStatus").value("REJECTED"));
+        clock.now = NOW.plusSeconds(121); lifecycle.advanceElection(UUID.fromString(election));
+        JsonNode rows = ballots(election); assertThat(rows.get(0).get("canVote").asBoolean()).isTrue();
+        assertThat(rows.get(3).get("canVote").asBoolean()).isFalse();
+        String ward = rows.get(3).get("contest").get("id").asText();
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + ward + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Ag\"}")).andExpect(status().isUnprocessableEntity());
+        record("SIM-LOCATION-RESTORED", district); approve(correction(district), "SIM-LOCATION-RESTORED");
+        assertThat(ballots(election).get(3).get("canVote").asBoolean()).isTrue();
+        assertThat(jdbc.queryForObject("select registered_ward_number from election_registrations", Integer.class)).isEqualTo(1);
+    }
+    @Test void sourceCannotClaimVerifiedLocationWithoutVerifiedIdentity() throws Exception {
+        mvc.perform(post("/api/v1/admin/profile-verification/records").header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON)
+                .content(json.writeValueAsString(Map.of("reference", "SIM-INVALID-TRUST", "fictional", true, "fullName", "Fictional Voter", "southAfricanIdNumber", "8001015009087",
+                        "identityStatus", "REJECTED", "locationStatus", "VERIFIED", "location", Map.of("votingDistrictId", district), "reason", "Invalid fictional decision"))))
+                .andExpect(status().isUnprocessableEntity());
+        assertThat(jdbc.queryForObject("select count(*) from simulation_voter_records", Integer.class)).isZero();
+    }
+
+    @Test void identityCanRecoverWithoutSilentlyGrantingADifferentArea() throws Exception {
+        record("SIM-RESTORE-OLD", district); verify();
+        recordAt("SIM-RESTORE-REJECTED", Map.of(), "REJECTED", "UNVERIFIED");
+        mvc.perform(get("/api/v1/me/profile").header("Authorization", "Bearer " + voter)).andExpect(jsonPath("$.identityStatus").value("REJECTED"));
+        record("SIM-RESTORE-NEW", secondDistrict);
+        mvc.perform(get("/api/v1/me/profile").header("Authorization", "Bearer " + voter)).andExpect(jsonPath("$.identityStatus").value("REJECTED"));
+        mvc.perform(post("/api/v1/me/profile/verification").header("Authorization", "Bearer " + voter))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.identityStatus").value("VERIFIED"))
+                .andExpect(jsonPath("$.locationStatus").value("UNVERIFIED")).andExpect(jsonPath("$.location.wardNumber").value(1));
+        approve(correction(secondDistrict), "SIM-RESTORE-NEW");
+        mvc.perform(get("/api/v1/me/profile").header("Authorization", "Bearer " + voter)).andExpect(jsonPath("$.locationStatus").value("VERIFIED"))
+                .andExpect(jsonPath("$.location.wardNumber").value(2));
+    }
+
     static class MutableClock extends Clock {
         volatile Instant now = NOW;
         public ZoneId getZone() { return ZoneOffset.UTC; }
