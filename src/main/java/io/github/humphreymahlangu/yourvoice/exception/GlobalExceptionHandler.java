@@ -59,6 +59,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, exception.getMessage(), request.getRequestURI());
     }
 
+    @ExceptionHandler(VerificationUnavailableException.class)
+    ResponseEntity<ApiErrorResponse> handleVerificationUnavailable(VerificationUnavailableException exception, HttpServletRequest request) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage(), request.getRequestURI());
+    }
+
     @ExceptionHandler(EligibilityException.class)
     ResponseEntity<ApiErrorResponse> handleEligibility(
             EligibilityException exception,

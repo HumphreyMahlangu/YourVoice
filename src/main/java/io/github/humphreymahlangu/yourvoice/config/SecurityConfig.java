@@ -82,7 +82,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/v1/elections/**",
-                                "/api/v1/voting-districts/**"
+                                "/api/v1/voting-districts/**",
+                                "/api/v1/geography/**"
                         ).permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,

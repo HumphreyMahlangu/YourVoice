@@ -50,8 +50,8 @@ public class VoterProfile {
     @Column(name = "date_of_birth", nullable = false)
     private LocalDate dateOfBirth;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "voting_district_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "voting_district_id")
     private VotingDistrict votingDistrict;
 
     @CreationTimestamp

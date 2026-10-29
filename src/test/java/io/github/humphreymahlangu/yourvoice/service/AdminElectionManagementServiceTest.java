@@ -70,6 +70,9 @@ class AdminElectionManagementServiceTest {
     @Mock
     private ElectionRegistrationRepository electionRegistrationRepository;
 
+    @Mock
+    private GeographicRecordService geography;
+
     private AdminElectionManagementService adminElectionManagementService;
 
     @BeforeEach
@@ -82,7 +85,8 @@ class AdminElectionManagementServiceTest {
                 electionLifecycleService,
                 voterProfileRepository,
                 electionRegistrationRepository,
-                Clock.fixed(FIXED_NOW, ZoneOffset.UTC)
+                Clock.fixed(FIXED_NOW, ZoneOffset.UTC),
+                geography
         );
     }
 

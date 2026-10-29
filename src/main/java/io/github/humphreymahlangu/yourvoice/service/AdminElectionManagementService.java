@@ -46,6 +46,7 @@ public class AdminElectionManagementService {
     private final VoterProfileRepository voterProfileRepository;
     private final ElectionRegistrationRepository electionRegistrationRepository;
     private final Clock clock;
+    private final GeographicRecordService geography;
 
     public AdminElectionManagementService(
             VotingDistrictRepository votingDistrictRepository,
@@ -55,7 +56,8 @@ public class AdminElectionManagementService {
             ElectionLifecycleService electionLifecycleService,
             VoterProfileRepository voterProfileRepository,
             ElectionRegistrationRepository electionRegistrationRepository,
-            Clock clock
+            Clock clock,
+            GeographicRecordService geography
     ) {
         this.votingDistrictRepository = votingDistrictRepository;
         this.electionRepository = electionRepository;
@@ -65,6 +67,7 @@ public class AdminElectionManagementService {
         this.voterProfileRepository = voterProfileRepository;
         this.electionRegistrationRepository = electionRegistrationRepository;
         this.clock = clock;
+        this.geography = geography;
     }
 
     @Transactional
@@ -74,6 +77,7 @@ public class AdminElectionManagementService {
             throw new DuplicateResourceException("A voting district with this code already exists");
         }
 
+        geography.ensureParents(request.province(), request.municipality());
         VotingDistrict votingDistrict = votingDistrictRepository.save(new VotingDistrict(
                 code,
                 request.name().trim(),
@@ -347,6 +351,7 @@ public class AdminElectionManagementService {
             );
         }
 
+        geography.ensureParents(province, municipality);
         votingDistrict.updateDetails(code, request.name().trim(), province, municipality, request.wardNumber());
         return VotingDistrictResponse.from(votingDistrict);
     }
@@ -362,7 +367,8 @@ public class AdminElectionManagementService {
     }
 
     private boolean isVotingDistrictInUse(UUID votingDistrictId) {
-        return voterProfileRepository.existsByVotingDistrictId(votingDistrictId)
+        return votingDistrictRepository.isUsedByVerification(votingDistrictId)
+                || voterProfileRepository.existsByVotingDistrictId(votingDistrictId)
                 || electionRegistrationRepository.existsByVotingDistrictId(votingDistrictId);
     }
 

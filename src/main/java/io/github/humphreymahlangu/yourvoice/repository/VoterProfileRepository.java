@@ -9,6 +9,10 @@ public interface VoterProfileRepository extends JpaRepository<VoterProfile, UUID
 
     Optional<VoterProfile> findByUserAccountId(UUID userAccountId);
 
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select p from VoterProfile p where p.userAccount.id = :userAccountId")
+    Optional<VoterProfile> findByUserAccountIdForUpdate(UUID userAccountId);
+
     boolean existsByIdNumberHash(String idNumberHash);
 
     boolean existsByVotingDistrictId(UUID votingDistrictId);

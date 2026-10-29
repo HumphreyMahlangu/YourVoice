@@ -354,3 +354,28 @@ Online voting requires legal authorization, independent security assessment, ope
 
 ## License
 This project is licensed under the MIT License. See [`LICENSE`](LICENSE) for the full license text.
+
+## Fictional profile verification
+
+Authentication creates an account; it does not verify identity or a registered location.
+The simulation registry is explicitly fictional and has no IEC, government or official voter-roll
+connection. An administrator configures synthetic source records; the voter then requests a
+check against the protected identity and name on their account. Existing profiles are never
+silently verified. Raw identity numbers are hashed immediately, not stored in the registry.
+No identity-document uploads or supporting images are collected.
+
+`GET /api/v1/me/profile` separates identity and location status. The voter can retry
+`POST /api/v1/me/profile/verification`, or request an area correction through
+`/api/v1/me/profile/corrections`. A correction requires administrator review against the latest
+matching fictional source, a reason and an effective date. An established area cannot be changed
+by repeatedly checking the source. Geographic identifiers have validated province/municipality
+parents; a national-only fictional identity needs neither a municipality nor a ward.
+
+Administration is under `/api/v1/admin/profile-verification` (records, corrections and private
+audit) and `/api/v1/admin/geography` (provinces and municipalities). Correction reasons and audit
+reasons are redacted after 90 days once closed; pending requests retain the information needed
+for review. The audit records the actor, decision, fictional source and effective date, never
+ballot choices, tokens or signatures. The registry retains only the synthetic name, protected
+identity, configured geography and decision needed to repeat a simulation check. Set
+`yourvoice.simulation-verification.enabled=false` to represent an unavailable source; this
+must never silently grant verification.
