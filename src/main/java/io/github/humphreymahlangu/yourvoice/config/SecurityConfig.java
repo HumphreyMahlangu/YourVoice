@@ -95,6 +95,7 @@ public class SecurityConfig {
                                 "/login",
                                 "/register",
                                 "/dashboard",
+                                "/profile",
                                 "/elections",
                                 "/elections/**",
                                 "/admin",

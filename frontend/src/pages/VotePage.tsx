@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useBlocker, useParams } from 'react-router'
 import ApiError from '../api/ApiError'
-import { getElectionContests } from '../api/contests'
-import { getElection } from '../api/elections'
+import { getMyBallots } from '../api/profiles'
 import {
   castBallot,
   getBallotKey,
@@ -22,6 +21,7 @@ import {
 } from '../utils/blindSignature'
 import { formatEnumLabel } from '../utils/formatters'
 import { getErrorMessage } from '../utils/getErrorMessage'
+import { getVoterErrorMessage } from '../utils/voterErrors'
 
 type VotingPhase =
   | 'selecting'
@@ -34,6 +34,9 @@ type VotingPhase =
 interface VotingPageData {
   election: Election
   contest: Contest
+  canVote: boolean
+  credentialIssued: boolean
+  message: string
 }
 
 // Lives only in a ref: the blinded ballot (so issuance can be retried with
@@ -59,6 +62,7 @@ function VotePage() {
   const [hasIssuedCredential, setHasIssuedCredential] = useState(false)
   const [acceptance, setAcceptance] = useState<BallotCastResponse | null>(null)
   const [keyFingerprint, setKeyFingerprint] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [pageError, setPageError] = useState<unknown>(null)
   const [submissionError, setSubmissionError] = useState<unknown>(null)
@@ -79,7 +83,9 @@ function VotePage() {
   }, [hasIssuedCredential])
 
   useEffect(() => {
-    if (!electionId || !contestId) {
+    // A token refresh must not discard the in-memory anonymous credential or its retry state.
+    if (credentialRef.current) return
+    if (!electionId || !contestId || !session) {
       setPageError(new Error('Election or contest identifier is missing.'))
       setIsLoading(false)
       return
@@ -95,20 +101,14 @@ function VotePage() {
       setIsLoading(true)
 
       try {
-        const [election, contests] = await Promise.all([
-          getElection(requestedElectionId, abortController.signal),
-          getElectionContests(requestedElectionId, abortController.signal),
-        ])
-        const contest = contests.find(
-          (candidate) => candidate.id === requestedContestId,
-        )
-
-        if (!contest) {
+        const rows = await getMyBallots(session!.accessToken, abortController.signal, requestedElectionId)
+        const row = rows.find((candidate) => candidate.contest.id === requestedContestId)
+        if (!row) {
           throw new Error('Contest not found.')
         }
 
         if (!abortController.signal.aborted) {
-          setPageData({ election, contest })
+          setPageData({ election: row.election, contest: row.contest, canVote: row.canVote, credentialIssued: row.credentialIssued, message: row.message })
         }
       } catch (requestError) {
         if (!abortController.signal.aborted) {
@@ -124,7 +124,7 @@ function VotePage() {
     void loadVotingPage()
 
     return () => abortController.abort()
-  }, [contestId, electionId])
+  }, [contestId, electionId, session, loadAttempt])
 
   const selectedOption = pageData?.contest.options.find(
     (option) => option.id === selectedOptionId,
@@ -271,8 +271,7 @@ function VotePage() {
 
   const electionPath = electionId ? `/elections/${electionId}` : '/elections'
   const votingIsOpen =
-    pageData?.election.status === 'VOTING_OPEN' &&
-    pageData.contest.status === 'OPEN'
+    pageData?.canVote === true && (!pageData.credentialIssued || hasIssuedCredential)
 
   return (
     <section className="page voting-page" aria-labelledby="vote-heading">
@@ -284,8 +283,9 @@ function VotePage() {
         <>
           <h1 id="vote-heading">Ballot unavailable</h1>
           <p role="alert">
-            {getErrorMessage(pageError, 'Unable to load this ballot.')}
+            {getVoterErrorMessage(pageError, 'Unable to load this ballot. Try again.')}
           </p>
+          <button type="button" onClick={() => setLoadAttempt((n) => n + 1)}>Retry ballot availability</button>
         </>
       )}
 
@@ -316,7 +316,7 @@ function VotePage() {
           )}
 
           {!votingIsOpen && (
-            <p>Voting is not currently open for this contest.</p>
+            <p role="status">{pageData.message} <Link to="/profile">Review your simulation profile</Link>.</p>
           )}
 
           {votingIsOpen && phase === 'selecting' && (

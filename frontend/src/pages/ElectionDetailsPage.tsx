@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router'
 import { getElectionContests } from '../api/contests'
 import { getElection } from '../api/elections'
 import { useAuth } from '../auth/useAuth'
+import EligibleBallots from '../components/EligibleBallots'
 import ElectionMetadata from '../components/ElectionMetadata'
 import type { Contest } from '../types/contest'
 import type { Election } from '../types/election'
@@ -108,6 +109,8 @@ function ElectionDetailsPage() {
             </section>
           )}
 
+          <EligibleBallots electionId={electionId} />
+
           <section className="contest-directory" aria-labelledby="contests-heading">
             <h2 id="contests-heading">Contests</h2>
 
@@ -186,13 +189,7 @@ function ElectionDetailsPage() {
                             contest.
                           </p>
                         ) : session.role === 'VOTER' ? (
-                          <p>
-                            <Link
-                              to={`/elections/${details.election.id}/contests/${contest.id}/vote`}
-                            >
-                              Open ballot
-                            </Link>
-                          </p>
+                          <p>See Your ballots above for your registration and eligibility.</p>
                         ) : (
                           <p>Administrator accounts cannot cast ballots.</p>
                         ))}

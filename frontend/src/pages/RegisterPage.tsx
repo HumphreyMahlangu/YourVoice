@@ -58,9 +58,10 @@ function RegisterPage() {
   const [southAfricanIdNumber, setSouthAfricanIdNumber] = useState('')
   const [idDocumentType, setIdDocumentType] =
     useState<IdDocumentType>('SMART_ID_CARD')
+  const [includeArea, setIncludeArea] = useState(false)
   const [votingDistrictId, setVotingDistrictId] = useState('')
   const [districts, setDistricts] = useState<VotingDistrict[]>([])
-  const [isLoadingDistricts, setIsLoadingDistricts] = useState(true)
+  const [isLoadingDistricts, setIsLoadingDistricts] = useState(false)
   const [districtLoadError, setDistrictLoadError] = useState<unknown>(null)
   const [districtLoadAttempt, setDistrictLoadAttempt] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -70,6 +71,7 @@ function RegisterPage() {
   >({})
 
   useEffect(() => {
+    if (!includeArea) { setIsLoadingDistricts(false); setDistrictLoadError(null); setVotingDistrictId(''); return }
     const abortController = new AbortController()
 
     async function loadDistricts() {
@@ -102,7 +104,7 @@ function RegisterPage() {
 
     void loadDistricts()
     return () => abortController.abort()
-  }, [districtLoadAttempt])
+  }, [districtLoadAttempt, includeArea])
 
   if (session) {
     return (
@@ -139,7 +141,7 @@ function RegisterPage() {
         password,
         southAfricanIdNumber,
         idDocumentType,
-        votingDistrictId,
+        votingDistrictId: includeArea ? votingDistrictId : undefined,
       })
       navigate(
         authenticatedSession.role === 'VOTER' ? '/dashboard' : '/admin',
@@ -181,7 +183,7 @@ function RegisterPage() {
           <h1 id="register-heading">Create your voter account.</h1>
         </div>
         <p className="register-intro__aside">
-          Set up your profile to take part in elections. Your identity stays
+          Create a simulation account, then check the fictional verification source. Your identity stays
           separate from the ballot you cast.
         </p>
       </header>
@@ -206,7 +208,7 @@ function RegisterPage() {
           <div className="register-form__section-intro">
             <span className="register-form__number">01 / Personal details</span>
             <h2>Your details.</h2>
-            <p>Use the details shown on your identity document.</p>
+            <p>Use fictional demonstration details only. Creating an account does not verify them.</p>
           </div>
           <div className="register-form__fields">
             <div>
@@ -283,7 +285,7 @@ function RegisterPage() {
                 <p id="register-id-number-error" className="field-error">{idNumberError}</p>
               )}
               <p id="register-id-number-help">
-                Enter the 13-digit number shown on your South African ID document.
+                Use a synthetic 13-digit demonstration number. This simulation does not verify government identity documents.
               </p>
             </div>
 
@@ -318,6 +320,9 @@ function RegisterPage() {
             </div>
 
             <div className="register-form__field--wide">
+              <label className="check-label"><input type="checkbox" checked={includeArea} onChange={(event) => setIncludeArea(event.target.checked)} />Add a self-reported local area (optional)</label>
+              <p>National-only onboarding does not need local geography. Self-entered areas never grant eligibility: the fictional source must verify the attributes needed for your ballots.</p>
+              {includeArea && <>
               <label htmlFor="register-voting-district">Your province, municipality and ward</label>
               <select
                 id="register-voting-district"
@@ -349,13 +354,13 @@ function RegisterPage() {
                 <p id="register-voting-district-error">{votingDistrictError}</p>
               )}
               <p id="register-voting-district-help">
-                This decides which provincial and local contests you can vote in.
-                Your ballot is still cast online.
+                This is an unverified claim. We use your verified registered area to show the ballots you can vote in. You cast your ballot online.
               </p>
               {isLoadingDistricts && <p role="status">Loading areas...</p>}
               {!isLoadingDistricts && districtLoadError === null && districts.length === 0 && (
                 <p role="status">Registration areas haven't been set up yet. Please try again later or contact support.</p>
               )}
+              </>}
             </div>
           </div>
         </div>
@@ -447,7 +452,7 @@ function RegisterPage() {
           <button
             type="submit"
             disabled={
-              isSubmitting || isLoadingDistricts || districtLoadError !== null || districts.length === 0
+              isSubmitting || (includeArea && (isLoadingDistricts || districtLoadError !== null || districts.length === 0))
             }
           >
             {isSubmitting ? 'Creating account...' : 'Create account'}

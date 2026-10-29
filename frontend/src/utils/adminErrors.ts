@@ -4,6 +4,15 @@ import ApiError from '../api/ApiError'
 // internal states. Keep that detail in ApiError for program logic, but present
 // instructions that make sense to someone managing an election in the app.
 const ADMIN_MESSAGES: Record<string, string> = {
+  'A matching fictional source record is required for approval': 'Configure a matching fictional source record for this voter before approving the request.',
+  'The latest fictional source must verify this voter and the exact requested area': 'Check the latest source reference, fictional name and requested area. They must match exactly before approval.',
+  'Approval requires an effective date at or after the current time': 'Choose an effective date and time in the future, then try again.',
+  'Fictional source reference already exists': 'That fictional reference is already used. Choose a new reference for a new source decision.',
+  'The fictional verification source is unavailable. Please try again later.': 'The fictional verification source is unavailable. Please try again later.',
+  'Configure this province before using it as a contest scope': 'Add this province in geographic administration before creating the contest.',
+  'The contest municipality must belong to its configured province': 'Choose a municipality configured under the contest province.',
+  'Configure this ward within the selected province and municipality before using it as a contest scope': 'Configure the ward under the matching province and municipality before creating the contest.',
+
   'Request validation failed': 'Check the highlighted fields and try again.',
   'Request conflicts with existing persisted data':
     'This information is already in use. Check your entries and try again.',

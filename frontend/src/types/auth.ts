@@ -24,7 +24,7 @@ export interface RegistrationDetails {
   password: string
   southAfricanIdNumber: string
   idDocumentType: IdDocumentType
-  votingDistrictId: string
+  votingDistrictId?: string
 }
 
 export interface UserAccount {

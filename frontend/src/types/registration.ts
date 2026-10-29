@@ -19,8 +19,13 @@ export interface ElectionRegistration {
   electionType: ElectionType
   status: RegistrationStatus
   registeredAt: string
-  votingDistrictId: string
-  votingDistrictCode: string
-  votingDistrictName: string
-  province: string
+  votingDistrictId: string | null
+  votingDistrictCode: string | null
+  votingDistrictName: string | null
+  province: string | null
+  municipality: string | null
+  wardNumber: number | null
+  identityVerified: boolean
+  verificationSource: string | null
+  sourceReference: string | null
 }

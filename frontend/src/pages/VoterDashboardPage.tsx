@@ -4,6 +4,8 @@ import ApiError from '../api/ApiError'
 import { getCurrentAccount } from '../api/auth'
 import { getMyRegistrations } from '../api/registrations'
 import { useAuth } from '../auth/useAuth'
+import EligibleBallots from '../components/EligibleBallots'
+import RegisteredArea from '../components/RegisteredArea'
 import type { UserAccount } from '../types/auth'
 import type { ElectionRegistration } from '../types/registration'
 import { formatDateTime, formatEnumLabel } from '../utils/formatters'
@@ -73,6 +75,9 @@ function VoterDashboardPage() {
         <p>Keep track of your account and election registrations in one place.</p>
       </header>
 
+      <p><Link className="button" to="/profile">Your simulation profile and verification</Link></p>
+      <EligibleBallots />
+
       {isLoading && <p role="status">Loading your voter account...</p>}
 
       {!isLoading && error !== null && (
@@ -133,13 +138,11 @@ function VoterDashboardPage() {
 
                         <dt>Voting district</dt>
                         <dd>
-                          {registration.votingDistrictName} ({
-                            registration.votingDistrictCode
-                          })
+                          <RegisteredArea province={registration.province} municipality={registration.municipality} wardNumber={registration.wardNumber} />
                         </dd>
 
-                        <dt>Province</dt>
-                        <dd>{registration.province}</dd>
+                        <dt>Verification</dt>
+                        <dd>{registration.identityVerified ? 'Verified fictional registration' : 'Needs explicit confirmation while registration is open'}</dd>
                       </dl>
                     </article>
                   </li>

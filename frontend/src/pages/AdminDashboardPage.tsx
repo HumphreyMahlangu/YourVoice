@@ -73,6 +73,7 @@ function AdminDashboardPage() {
         <p>Configure elections, monitor their stages, and review operations.</p>
       </header>
 
+      <p><Link className="button" to="/admin/profile-verification">Fictional verification, corrections and geographic parents</Link></p>
       {isLoading && <p role="status">Loading administration summary...</p>}
 
       {!isLoading && error !== null && (

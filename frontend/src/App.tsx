@@ -76,6 +76,7 @@ function App() {
                   My dashboard
                 </NavLink>
               )}
+              {session?.role === 'VOTER' && <NavLink className={navigationClass} to="/profile">Your profile</NavLink>}
               {session?.role === 'ADMIN' && (
                 <>
                   <NavLink className={navigationClass} to="/admin" end>
@@ -133,7 +134,7 @@ function App() {
           <div className="app-footer__brand">
             <div>
               <strong>YourVoice</strong>
-              <p>Exploring digital voting in South Africa.</p>
+              <p>Educational South African voting simulation.</p>
             </div>
           </div>
           <p className="app-footer__note">

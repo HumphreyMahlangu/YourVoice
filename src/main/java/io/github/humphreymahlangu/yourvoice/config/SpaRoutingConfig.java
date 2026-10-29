@@ -11,6 +11,7 @@ public class SpaRoutingConfig implements WebMvcConfigurer {
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addViewController("/login").setViewName("forward:/index.html");
         registry.addViewController("/register").setViewName("forward:/index.html");
+        registry.addViewController("/profile").setViewName("forward:/index.html");
         registry.addViewController("/dashboard").setViewName("forward:/index.html");
         registry.addViewController("/elections").setViewName("forward:/index.html");
         registry.addViewController("/elections/**").setViewName("forward:/index.html");

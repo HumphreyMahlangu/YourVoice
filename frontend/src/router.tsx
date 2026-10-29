@@ -1,5 +1,7 @@
 import { createBrowserRouter } from 'react-router'
 import App from './App'
+import ProfilePage from './pages/ProfilePage'
+import AdminProfileVerificationPage from './pages/AdminProfileVerificationPage'
 import RequireAdmin from './auth/RequireAdmin'
 import RequireVoter from './auth/RequireVoter'
 import AdminAccountsPage from './pages/AdminAccountsPage'
@@ -66,6 +68,9 @@ const router = createBrowserRouter([
         element: <RequireVoter />,
         children: [
           {
+            path: 'profile', element: <ProfilePage />,
+          },
+          {
             path: 'dashboard',
             element: <VoterDashboardPage />,
           },
@@ -82,6 +87,9 @@ const router = createBrowserRouter([
       {
         element: <RequireAdmin />,
         children: [
+          {
+            path: 'admin/profile-verification', element: <AdminProfileVerificationPage />,
+          },
           {
             path: 'admin',
             element: <AdminDashboardPage />,

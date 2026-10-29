@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -20,7 +20,7 @@ const voterSession: AuthSession = {
   refreshTokenExpiresAt: '2099-01-01T00:00:00Z',
 }
 
-function renderPage(register = vi.fn(async (_details: RegistrationDetails) => voterSession)) {
+function renderPage(register = vi.fn(async (_details: RegistrationDetails) => voterSession), localArea = true) {
   const contextValue: AuthContextValue = {
     session: null,
     isInitializing: false,
@@ -37,6 +37,7 @@ function renderPage(register = vi.fn(async (_details: RegistrationDetails) => vo
     </AuthContext.Provider>,
   )
 
+  if (localArea) fireEvent.click(screen.getByLabelText('Add a self-reported local area (optional)'))
   return register
 }
 
@@ -51,6 +52,28 @@ describe('RegisterPage', () => {
       municipality: 'Cape Town',
       wardNumber: 1,
     }])
+  })
+
+  it('creates a national-only account without requesting local geography', async () => {
+    const user = userEvent.setup()
+    const register = renderPage(undefined, false)
+    expect(screen.queryByLabelText('Your province, municipality and ward')).not.toBeInTheDocument()
+    expect(districtApi.getVotingDistricts).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled()
+    for (const [label, value] of [['Full legal name', 'Fictional National Voter'], ['Email address', 'national@example.test'], ['South African ID number', '8001015009087'], ['Password', 'FictionalPassword2026!'], ['Confirm password', 'FictionalPassword2026!']]) await user.type(screen.getByLabelText(label), value)
+    await user.click(screen.getByRole('button', { name: 'Create account' }))
+    await waitFor(() => expect(register).toHaveBeenCalledWith(expect.objectContaining({ votingDistrictId: undefined })))
+  })
+
+  it('allows national onboarding after an optional area request fails', async () => {
+    vi.mocked(districtApi.getVotingDistricts).mockRejectedValueOnce(new Error('offline'))
+    const user = userEvent.setup(); renderPage()
+    await screen.findByRole('alert')
+    await user.type(screen.getByLabelText('Full legal name'), 'Fictional voter')
+    await user.click(screen.getByLabelText('Add a self-reported local area (optional)'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Full legal name')).toHaveValue('Fictional voter')
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled()
   })
 
   it('announces loading separately from an empty list', async () => {
