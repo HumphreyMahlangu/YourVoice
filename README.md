@@ -396,3 +396,33 @@ independently scoped contests. GET /api/v1/me/ballots returns the authenticated 
 eligibility, registration actions, voting actions and reasons. A credential-issued flag is never proof
 that a ballot was cast. The fictional source must be available for registration and new/retried issuance;
 anonymous casting does not consult identity records.
+
+Historical anonymous ballots remain counted after migration. Existing registrations are unverified
+until explicitly confirmed, and are never silently added to the verified turnout denominator. If an
+election still has active unverified legacy registrations, final results report their count separately
+and leave turnout unavailable rather than inventing a verified denominator. Results and audit remain
+subject to the existing completion, contest closure and voting-end checks.
+
+The default fictional source is an empty administrator-managed registry. Set
+`YOURVOICE_SIMULATION_VERIFICATION_ENABLED=false` (property `yourvoice.simulation-verification.enabled`)
+to make it unavailable; the voter sees that state and cannot obtain new registration/issuance permission.
+No government integration is configured. Source records are immutable, keyed by the existing protected
+identity hash, and latest sequence wins. Administrators configure an exact fictional name and approved
+location hierarchy. Never seed real identity data. Record creation does not verify an account until its
+owner explicitly checks. Once a location is established, changing it requires reviewed correction.
+Scheduled location approval never reverses a later rejected/pending identity decision.
+
+Voter journey: create a fictional account (local area optional), open **Your profile**, check fictional
+verification, request an area correction if necessary, and use **Your ballots** on the dashboard.
+An identity-only record can register nationally; missing local attributes affect only contests needing
+them. Administration's **Fictional verification, corrections and geographic parents** screen manages
+source decisions and effective correction reviews. Existing ballot options represent parties and
+independent candidates within a contest; no separate candidate register is implied.
+
+New authenticated API routes include GET/POST `/api/v1/me/profile/corrections`,
+POST `/api/v1/me/profile/verification`, GET `/api/v1/me/profile`, GET `/api/v1/me/ballots`,
+and administrator-only `/api/v1/admin/profile-verification/{records,corrections,audit}` with
+POST `/corrections/{requestId}/review`. Public `/api/v1/geography/{provinces,municipalities}`
+returns stable hierarchy IDs; administrator POST routes under `/api/v1/admin/geography/` create parents.
+Source records never return identity hashes or raw numbers. Reviews record actor, decision, reason,
+source and effective date separately from all ballot records; closed reasons are redacted after 90 days.

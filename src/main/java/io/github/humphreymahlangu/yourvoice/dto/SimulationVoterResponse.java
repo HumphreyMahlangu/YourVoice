@@ -13,4 +13,7 @@ public record SimulationVoterResponse(UUID id, String reference, String fictiona
                 record.getIdentityStatus(), record.getLocationStatus(), RegisteredLocationResponse.from(record.getLocation()),
                 record.getReason(), record.getRecordedAt());
     }
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "SimulationVoterResponse[redacted]"; }
 }

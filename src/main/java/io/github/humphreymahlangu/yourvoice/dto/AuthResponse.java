@@ -30,4 +30,7 @@ public record AuthResponse(
         @Schema(description = "UTC expiry timestamp for the refresh token", example = "2026-08-07T22:15:00Z")
         Instant refreshTokenExpiresAt
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "AuthResponse[redacted]"; }
 }

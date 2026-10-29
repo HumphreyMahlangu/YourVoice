@@ -80,6 +80,7 @@ public class TallyAuditService {
         long spoiltBallots = countVotesByOptionType(tallyRows, ContestOptionType.SPOILT_BALLOT);
         long ballotsCast = ballotLedgerEntryRepository.countByContestId(contestId);
         long registeredVoterCount = countEligibleRegisteredVoters(contest);
+        long unverifiedRegistrationCount = electionRegistrationRepository.countByElectionIdAndStatusAndIdentityVerifiedFalse(electionId, RegistrationStatus.ACTIVE);
         long highestVoteCount = tallyRows.stream()
                 .filter(tallyRow -> tallyRow.optionType().isValidVote())
                 .mapToLong(ContestOptionTallyRow::voteCount)
@@ -96,11 +97,12 @@ public class TallyAuditService {
                 contest.getName(),
                 contest.getType(),
                 registeredVoterCount,
+                unverifiedRegistrationCount,
                 ballotsCast,
                 validVotes,
                 blankBallots,
                 spoiltBallots,
-                percentage(ballotsCast, registeredVoterCount),
+                unverifiedRegistrationCount == 0 ? percentage(ballotsCast, registeredVoterCount) : null,
                 ledgerState.getPublishedHeadHash(),
                 Instant.now(clock),
                 optionResults

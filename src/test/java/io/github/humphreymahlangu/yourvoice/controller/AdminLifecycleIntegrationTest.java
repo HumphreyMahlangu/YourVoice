@@ -480,7 +480,13 @@ class AdminLifecycleIntegrationTest extends PostgreSqlTestContainerSupport {
         return JsonPath.read(result.getResponse().getContentAsString(), "$.id");
     }
 
+    @Autowired io.github.humphreymahlangu.yourvoice.service.GeographicRecordService geography;
+
     private String createContestAndReturnId(String adminToken, String electionId) throws Exception {
+        geography.ensureParents("Western Cape", "City of Cape Town");
+        if (!votingDistrictRepository.existsInHierarchy("Western Cape", "City of Cape Town", 1)) mockMvc.perform(post("/api/v1/admin/voting-districts")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken).contentType(MediaType.APPLICATION_JSON)
+                .content(votingDistrictBody())).andExpect(status().isCreated());
         MvcResult result = mockMvc.perform(post("/api/v1/admin/elections/{electionId}/contests", electionId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -101,4 +101,20 @@ describe('voter experience', () => {
     expect(submit).toBeEnabled()
     expect(screen.queryByLabelText('Province (optional)')).not.toBeInTheDocument()
   })
+  it('keeps review fields after a failed approval and requires matching evidence and an effective date', async () => {
+    const pending = { id: 'review', voterName: 'Fictional Voter', requestedLocation: location, reason: 'Fictional correction', status: 'PENDING' as const, requestedAt: '2026-10-29T12:00:00Z', reviewedAt: null, reviewReason: null, sourceReference: null, effectiveAt: null }
+    vi.mocked(api.getAdminCorrections).mockResolvedValue([pending])
+    vi.mocked(api.reviewCorrection).mockRejectedValueOnce(new TypeError('offline'))
+    const user = userEvent.setup(); view(<AdminProfileVerificationPage />, '/', true)
+    await user.selectOptions(await screen.findByLabelText('Decision'), 'approve')
+    await user.type(screen.getByLabelText('Latest matching fictional source reference'), 'SIM-REVIEW')
+    fireEvent.change(screen.getByLabelText('Effective date and time (your local time)'), { target: { value: '2099-01-01T12:00' } })
+    await user.type(screen.getByLabelText('Review reason shown to voter'), 'Matched fictional evidence')
+    await user.click(screen.getByRole('button', { name: 'Save review' }))
+    expect(await screen.findByRole('alert')).toBeVisible()
+    expect(screen.getByLabelText('Review reason shown to voter')).toHaveValue('Matched fictional evidence')
+    expect(screen.getByLabelText('Latest matching fictional source reference')).toHaveValue('SIM-REVIEW')
+    expect(api.reviewCorrection).toHaveBeenCalledWith('fictional-token', 'review', expect.objectContaining({ approve: true, sourceReference: 'SIM-REVIEW', reason: 'Matched fictional evidence' }))
+  })
+
 })

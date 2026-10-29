@@ -170,6 +170,8 @@ class SimulationProfileIntegrationTest extends PostgreSqlTestContainerSupport {
     }
     @Autowired io.github.humphreymahlangu.yourvoice.service.ElectionLifecycleService lifecycle;
     String mixedElection() throws Exception {
+        if (jdbc.queryForObject("select count(*) from voting_districts where code='SIM-OTHER-1'", Integer.class) == 0) area("SIM-OTHER-1", "Demo A", "Demo Other Town", 1);
+        if (jdbc.queryForObject("select count(*) from voting_districts where code='SIM-B-1'", Integer.class) == 0) area("SIM-B-1", "Demo B", "Demo Third Town", 1);
         Instant at = clock.now;
         String id = body(mvc.perform(post("/api/v1/admin/elections").header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(Map.of("name", "Fictional Mixed " + UUID.randomUUID(), "type", "MIXED",
@@ -273,6 +275,132 @@ class SimulationProfileIntegrationTest extends PostgreSqlTestContainerSupport {
                 .andExpect(status().isUnprocessableEntity());
         register(election); JsonNode rows = ballots(election);
         for (int i = 0; i < rows.size(); i++) assertThat(rows.get(i).get("eligible").asBoolean()).isEqualTo(i < 4);
+    }
+
+    @Test void provinceOnlyAndMunicipalityOnlyVerificationGrantOnlyTheirOwnTiers() throws Exception {
+        String province = jdbc.queryForObject("select id::text from geographic_provinces where name='Demo A'", String.class);
+        String municipality = jdbc.queryForObject("select id::text from geographic_municipalities where name='Demo Town'", String.class);
+        recordAt("SIM-PROVINCE", Map.of("provinceId", province), "VERIFIED", "VERIFIED"); verify();
+        String election = mixedElection();
+        JsonNode rows = ballots(election);
+        for (int n = 0; n < rows.size(); n++) assertThat(rows.get(n).get("eligible").asBoolean()).isEqualTo(n < 2);
+        recordAt("SIM-MUNICIPALITY", Map.of("provinceId", province, "municipalityId", municipality), "VERIFIED", "VERIFIED");
+        String request = body(mvc.perform(post("/api/v1/me/profile/corrections").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("location", Map.of("municipalityId", municipality), "reason", "Fictional municipality evidence now available"))))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString()).get("id").asText();
+        approve(request, "SIM-MUNICIPALITY");
+        rows = ballots(election);
+        for (int n = 0; n < rows.size(); n++) assertThat(rows.get(n).get("eligible").asBoolean()).isEqualTo(n < 3);
+        register(election);
+        clock.now = NOW.plusSeconds(121); lifecycle.advanceElection(UUID.fromString(election));
+        String municipal = rows.get(2).get("contest").get("id").asText(), ward = rows.get(3).get("contest").get("id").asText();
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + municipal + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Ag\"}")).andExpect(status().isCreated());
+        mvc.perform(post("/api/v1/elections/" + election + "/contests/" + ward + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"blindedToken\":\"Ag\"}")).andExpect(status().isUnprocessableEntity());
+    }
+    void recordAt(String reference, Map<String,String> area, String identity, String location) throws Exception {
+        mvc.perform(post("/api/v1/admin/profile-verification/records").header("Authorization", "Bearer " + admin)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("reference", reference, "fictional", true,
+                        "fullName", "Fictional Voter", "southAfricanIdNumber", "8001015009087", "identityStatus", identity,
+                        "locationStatus", location, "location", area, "reason", "Fictional test source decision")))).andExpect(status().isOk());
+    }
+    @Test void pendingRejectedAndFailedSourceChecksNeverGrantIdentity() throws Exception {
+        String election = mixedElection();
+        for (String decision : List.of("PENDING", "REJECTED")) {
+            recordAt("SIM-" + decision, Map.of(), decision, "UNVERIFIED");
+            mvc.perform(post("/api/v1/me/profile/verification").header("Authorization", "Bearer " + voter)).andExpect(status().isOk()).andExpect(jsonPath("$.identityStatus").value(decision));
+            mvc.perform(get("/api/v1/me/profile").header("Authorization", "Bearer " + voter)).andExpect(jsonPath("$.identityStatus").value(decision));
+            mvc.perform(post("/api/v1/elections/" + election + "/registrations").header("Authorization", "Bearer " + voter).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isUnprocessableEntity());
+        }
+        org.mockito.Mockito.doThrow(new io.github.humphreymahlangu.yourvoice.exception.VerificationUnavailableException()).when(source).find(org.mockito.ArgumentMatchers.anyString());
+        mvc.perform(post("/api/v1/me/profile/verification").header("Authorization", "Bearer " + voter))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.identityStatus").value("UNAVAILABLE")).andExpect(jsonPath("$.sourceAvailable").value(false));
+        assertThat(jdbc.queryForObject("select identity_status from voter_verifications", String.class)).isEqualTo("UNAVAILABLE");
+        mvc.perform(post("/api/v1/elections/" + election + "/registrations").header("Authorization", "Bearer " + voter).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isServiceUnavailable());
+    }
+    @Test void legacyRegistrationConfirmationCanOnlyNarrowItsOriginalClaimAndClosesAtTheCutoff() throws Exception {
+        record("SIM-CURRENT", secondDistrict); verify(); String election = mixedElection();
+        UUID profileId = jdbc.queryForObject("select id from voter_profiles", UUID.class);
+        jdbc.update("insert into election_registrations(id,voter_profile_id,election_id,voting_district_id,status,registered_at) values (?,?,?,?,'ACTIVE',now())", UUID.randomUUID(), profileId, UUID.fromString(election), UUID.fromString(district));
+        assertThat(ballots(election).get(3).get("eligible").asBoolean()).isFalse();
+        register(election);
+        JsonNode rows = ballots(election);
+        assertThat(rows.get(2).get("eligible").asBoolean()).isTrue();
+        assertThat(rows.get(3).get("eligible").asBoolean()).isFalse(); assertThat(rows.get(4).get("eligible").asBoolean()).isFalse();
+        assertThat(jdbc.queryForObject("select registered_ward_number from election_registrations", Integer.class)).isNull();
+        String next = mixedElection();
+        jdbc.update("insert into election_registrations(id,voter_profile_id,election_id,voting_district_id,status,registered_at) values (?,?,?,?,'ACTIVE',now())", UUID.randomUUID(), profileId, UUID.fromString(next), UUID.fromString(district));
+        clock.now = NOW.plusSeconds(60);
+        mvc.perform(post("/api/v1/elections/" + next + "/registrations").header("Authorization", "Bearer " + voter).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject("select identity_verified from election_registrations where election_id=?", Boolean.class, UUID.fromString(next))).isFalse();
+    }
+    @Test void approvedCorrectionAndSourceOutageDoNotInvalidateAnExistingAnonymousSignature() throws Exception {
+        record("SIM-CAST-OLD", district); verify(); String election = mixedElection(); register(election);
+        clock.now = NOW.plusSeconds(121); lifecycle.advanceElection(UUID.fromString(election));
+        JsonNode contest = ballots(election).get(3).get("contest"); String contestId = contest.get("id").asText();
+        JsonNode key = body(mvc.perform(get("/api/v1/elections/" + election + "/contests/" + contestId + "/ballot-key"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        var blinded = io.github.humphreymahlangu.yourvoice.support.BlindBallotClient.blind(UUID.fromString(contestId), key.get("modulus").asText(), key.get("publicExponent").asText());
+        JsonNode credential = body(mvc.perform(post("/api/v1/elections/" + election + "/contests/" + contestId + "/credentials").header("Authorization", "Bearer " + voter)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("blindedToken", blinded.blindedToken()))))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        record("SIM-CAST-NEW", secondDistrict); approve(correction(secondDistrict), "SIM-CAST-NEW");
+        doReturn(false).when(source).available();
+        String ballot = json.writeValueAsString(Map.of("contestId", contestId, "contestOptionId", contest.get("options").get(0).get("id").asText(),
+                "ballotToken", blinded.ballotToken(), "signature", blinded.unblind(credential.get("blindSignature").asText())));
+        mvc.perform(post("/api/v1/ballots").contentType(MediaType.APPLICATION_JSON).content(ballot)).andExpect(status().isCreated()).andExpect(jsonPath("$.accepted").value(true));
+        mvc.perform(post("/api/v1/ballots").contentType(MediaType.APPLICATION_JSON).content(ballot)).andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject("select count(*) from ballot_ledger_entries", Integer.class)).isEqualTo(1);
+    }
+    @Test void concurrentReviewAndRegistrationAlwaysFreezeOneConsistentArea() throws Exception {
+        record("SIM-RACE-OLD", district); verify(); String election = mixedElection();
+        record("SIM-RACE-NEW", secondDistrict); String request = correction(secondDistrict);
+        var ready = new java.util.concurrent.CountDownLatch(2); var start = new java.util.concurrent.CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var join = executor.submit(() -> { ready.countDown(); start.await(); register(election); return true; });
+            var review = executor.submit(() -> { ready.countDown(); start.await(); approve(request, "SIM-RACE-NEW"); return true; });
+            assertThat(ready.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue(); start.countDown();
+            assertThat(join.get(30, java.util.concurrent.TimeUnit.SECONDS)).isTrue(); assertThat(review.get(30, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        }
+        Integer ward = jdbc.queryForObject("select registered_ward_number from election_registrations", Integer.class);
+        assertThat(ward).isIn(1,2);
+        JsonNode rows = ballots(election);
+        assertThat(rows.get(3).get("eligible").asBoolean()).isEqualTo(ward == 1);
+        assertThat(rows.get(4).get("eligible").asBoolean()).isEqualTo(ward == 2);
+    }
+    @Test void contestAdministrationRejectsForgedParentsAndUnconfiguredWards() throws Exception {
+        String election = mixedElection();
+        for (Map<String,Object> scope : List.<Map<String,Object>>of(
+                Map.of("scopeProvince", "Unknown", "scopeMunicipality", "Demo Town", "scopeWardNumber", 1),
+                Map.of("scopeProvince", "Demo B", "scopeMunicipality", "Demo Town", "scopeWardNumber", 1),
+                Map.of("scopeProvince", "Demo A", "scopeMunicipality", "Demo Town", "scopeWardNumber", 999))) {
+            // A separate future draft is needed because the lifecycle has opened the complete fixture.
+            jdbc.update("update elections set status='DRAFT' where id=?", UUID.fromString(election));
+            Map<String,Object> fields = new java.util.HashMap<>(scope); fields.put("name", "Forged Scope"); fields.put("type", "MUNICIPAL_WARD"); fields.put("displayOrder", 90);
+            mvc.perform(post("/api/v1/admin/elections/" + election + "/contests").header("Authorization", "Bearer " + admin).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(fields)))
+                    .andExpect(status().isUnprocessableEntity());
+        }
+        mvc.perform(get("/profile")).andExpect(status().isOk()).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl("/index.html"));
+        mvc.perform(get("/api/v1/me/profile")).andExpect(status().isUnauthorized());
+    }
+
+    @Test void scheduledLocationApprovalDoesNotReverseALaterIdentityRejection() throws Exception {
+        record("SIM-SCHEDULE-OLD", district); verify();
+        record("SIM-SCHEDULE-NEW", secondDistrict); String request = correction(secondDistrict);
+        mvc.perform(post("/api/v1/admin/profile-verification/corrections/" + request + "/review").header("Authorization", "Bearer " + admin)
+                .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(Map.of("approve", true, "reason", "Fictional future area", "sourceReference", "SIM-SCHEDULE-NEW", "effectiveAt", NOW.plusSeconds(30).toString())))).andExpect(status().isOk());
+        recordAt("SIM-IDENTITY-REJECTED", Map.of(), "REJECTED", "UNVERIFIED");
+        mvc.perform(post("/api/v1/me/profile/verification").header("Authorization", "Bearer " + voter)).andExpect(jsonPath("$.identityStatus").value("REJECTED"));
+        clock.now = NOW.plusSeconds(31);
+        mvc.perform(get("/api/v1/me/profile").header("Authorization", "Bearer " + voter)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.identityStatus").value("REJECTED")).andExpect(jsonPath("$.location.wardNumber").value(2));
+        String election = mixedElection();
+        mvc.perform(post("/api/v1/elections/" + election + "/registrations").header("Authorization", "Bearer " + voter).contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isUnprocessableEntity());
     }
 
     static class MutableClock extends Clock {

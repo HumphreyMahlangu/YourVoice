@@ -24,6 +24,9 @@ public record ContestResultResponse(
         @Schema(description = "Number of registered voters eligible for this contest", example = "1000")
         long registeredVoterCount,
 
+        @Schema(description = "Active legacy registrations in this election without explicit fictional verification; their eligibility is unknown")
+        long unverifiedRegistrationCount,
+
         @Schema(description = "Number of accepted ballots cast, including valid, blank, and spoilt ballots", example = "645")
         long ballotsCast,
 
@@ -36,7 +39,7 @@ public record ContestResultResponse(
         @Schema(description = "Number of explicit spoilt ballots", example = "0")
         long spoiltBallots,
 
-        @Schema(description = "Turnout as a percentage of registered voters eligible for this contest", example = "64.50")
+        @Schema(description = "Turnout as a percentage of verified registered voters eligible for this contest; null while legacy registrations make eligibility uncertain", example = "64.50")
         BigDecimal turnoutPercentage,
 
         @Schema(description = "Head hash of the published ledger, verifiable by anyone from the public ledger entries")

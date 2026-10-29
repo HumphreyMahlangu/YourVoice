@@ -66,4 +66,7 @@ public record ElectionRegistrationResponse(
                 registration.getSourceReference()
         );
     }
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "ElectionRegistrationResponse[redacted]"; }
 }

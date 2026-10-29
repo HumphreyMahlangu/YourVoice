@@ -9,4 +9,7 @@ public record ProfileAuditResponse(UUID id, UUID voterProfileId, UUID actorUserI
         return new ProfileAuditResponse(entry.getId(), entry.getVoterProfileId(), entry.getActorUserId(), entry.getCorrectionRequestId(),
                 entry.getAction(), entry.getSourceReference(), entry.getReason(), entry.getOccurredAt(), entry.getEffectiveAt());
     }
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "ProfileAuditResponse[redacted]"; }
 }

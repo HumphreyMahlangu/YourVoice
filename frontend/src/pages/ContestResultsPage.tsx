@@ -87,7 +87,8 @@ function ContestResultsPage() {
 
           <dl>
             <dt>Registered voters eligible for this contest</dt>
-            <dd>{formatNumber(result.registeredVoterCount)}</dd>
+<dd>{formatNumber(result.registeredVoterCount)} verified for this contest</dd>
+            {result.unverifiedRegistrationCount > 0 && <><dt>Unverified legacy registrations in this election</dt><dd>{formatNumber(result.unverifiedRegistrationCount)}. Eligibility and turnout cannot be established for these records. Existing anonymous ballots remain counted.</dd></>}
 
             <dt>Ballots cast</dt>
             <dd>{formatNumber(result.ballotsCast)}</dd>
@@ -102,7 +103,7 @@ function ContestResultsPage() {
             <dd>{formatNumber(result.spoiltBallots)}</dd>
 
             <dt>Turnout</dt>
-            <dd>{formatPercentage(result.turnoutPercentage)}</dd>
+            <dd>{result.turnoutPercentage === null ? 'Unavailable: legacy registrations need verification' : formatPercentage(result.turnoutPercentage)}</dd>
 
             <dt>Results generated</dt>
             <dd>

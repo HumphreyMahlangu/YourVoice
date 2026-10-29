@@ -21,4 +21,7 @@ public record VotingCredentialResponse(
         @Schema(description = "UTC time after which ballots for this contest are no longer accepted", example = "2026-08-07T20:00:00Z")
         Instant expiresAt
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "VotingCredentialResponse[redacted]"; }
 }

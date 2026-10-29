@@ -16,4 +16,7 @@ public record VotingCredentialRequest(
         )
         String blindedToken
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "VotingCredentialRequest[redacted]"; }
 }

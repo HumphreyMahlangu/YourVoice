@@ -161,6 +161,17 @@ class TallyAuditIntegrationTest extends PostgreSqlTestContainerSupport {
     }
 
     @Test
+    void historicalAnonymousBallotsRemainCountedWithoutPretendingLegacyProfilesAreVerified() throws Exception {
+        ClosedContestFixture fixture = createClosedContestFixture();
+        appendVote(fixture.contest(), fixture.optionA(), 399);
+        jdbcTemplate.update("update election_registrations set identity_verified=false,location_verified=false,source_reference=null,registered_province_id=null,registered_municipality_id=null,registered_province=null,registered_municipality=null,registered_ward_number=null");
+        mockMvc.perform(get("/api/v1/elections/{electionId}/contests/{contestId}/results", fixture.election().getId(), fixture.contest().getId()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.ballotsCast").value(1))
+                .andExpect(jsonPath("$.registeredVoterCount").value(0)).andExpect(jsonPath("$.unverifiedRegistrationCount").value(3))
+                .andExpect(jsonPath("$.turnoutPercentage").doesNotExist());
+    }
+
+    @Test
     void turnoutCountsOnlyVotersEligibleForTheWardContest() throws Exception {
         ClosedContestFixture fixture = createClosedContestFixture();
         VotingDistrict otherWard = votingDistrictRepository.save(new VotingDistrict(

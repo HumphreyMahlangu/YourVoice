@@ -51,6 +51,14 @@ public class VoterVerification {
     public String getMessage() { return message; }
     public Instant getCheckedAt() { return checkedAt; }
     public Instant getEffectiveAt() { return effectiveAt; }
+    /** Location review never re-grants identity after a subsequent rejected or pending check. */
+    public void applyApprovedLocation(RegisteredLocation location, String reference, Instant effectiveAt) {
+        this.location = location;
+        this.locationStatus = location.getProvince() == null ? VerificationStatus.UNVERIFIED : VerificationStatus.VERIFIED;
+        if (identityStatus == VerificationStatus.VERIFIED) this.sourceReference = reference;
+        this.effectiveAt = effectiveAt;
+        this.message = "Approved fictional area correction is effective. Existing registrations keep their saved area. Review your identity status before registering or voting.";
+    }
     public void recordOutcome(VerificationStatus identity, VerificationStatus area, String reference,
             RegisteredLocation location, String message, Instant now) {
         this.identityStatus = identity; this.locationStatus = area; this.sourceReference = reference;

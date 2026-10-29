@@ -7,6 +7,7 @@ public record ProfileVerificationResponse(String fullName, String source, String
         VerificationStatus identityStatus, VerificationStatus locationStatus, boolean sourceAvailable,
         RegisteredLocationResponse location, String message, Instant checkedAt, Instant effectiveAt) {
     public static ProfileVerificationResponse from(VoterVerification state, boolean available) {
+        available = available && state.getIdentityStatus() != VerificationStatus.UNAVAILABLE;
         return new ProfileVerificationResponse(state.getVoterProfile().getFullName(), "FICTIONAL_SIMULATION", state.getSourceReference(),
                 available ? state.getIdentityStatus() : VerificationStatus.UNAVAILABLE,
                 available ? state.getLocationStatus() : VerificationStatus.UNAVAILABLE, available,
@@ -14,4 +15,7 @@ public record ProfileVerificationResponse(String fullName, String source, String
                 available ? state.getMessage() : "The fictional verification source is unavailable. Try again later; your existing registrations keep their saved area.",
                 state.getCheckedAt(), state.getEffectiveAt());
     }
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "ProfileVerificationResponse[redacted]"; }
 }

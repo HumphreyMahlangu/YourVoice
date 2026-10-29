@@ -12,4 +12,7 @@ public record LocationCorrectionResponse(UUID id, String voterName, RegisteredLo
                 RegisteredLocationResponse.from(request.getLocation()), request.getRequestReason(), request.getStatus(),
                 request.getRequestedAt(), request.getReviewedAt(), request.getReviewReason(), request.getSourceReference(), request.getEffectiveAt());
     }
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "LocationCorrectionResponse[redacted]"; }
 }

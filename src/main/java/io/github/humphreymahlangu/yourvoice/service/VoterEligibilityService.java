@@ -15,7 +15,7 @@ public class VoterEligibilityService {
     private final VoterProfileVerificationService profiles;
     public VoterEligibilityService(VoterProfileVerificationService profiles) { this.profiles = profiles; }
     public String identityProblem(VoterVerification state, Election election) {
-        if (!profiles.sourceAvailable()) return "The fictional verification source is unavailable. Try again later.";
+        if (!profiles.sourceAvailable() || state.getIdentityStatus() == VerificationStatus.UNAVAILABLE) return "The fictional verification source is unavailable. Try again later.";
         if (state.getIdentityStatus() != VerificationStatus.VERIFIED) return "Complete your fictional identity check in Your profile before registering or voting.";
         LocalDate votingDay = LocalDate.ofInstant(election.getVotingStartAt(), ZoneOffset.UTC);
         if (state.getVoterProfile().getDateOfBirth().plusYears(18).isAfter(votingDay)) return "You must be 18 by voting day for this election.";
@@ -23,6 +23,7 @@ public class VoterEligibilityService {
     }
     public void requireIdentity(VoterVerification state, Election election) {
         profiles.requireSource();
+        if (state.getIdentityStatus() == VerificationStatus.UNAVAILABLE) throw new io.github.humphreymahlangu.yourvoice.exception.VerificationUnavailableException();
         String problem = identityProblem(state, election);
         if (problem != null) throw new EligibilityException(problem);
     }

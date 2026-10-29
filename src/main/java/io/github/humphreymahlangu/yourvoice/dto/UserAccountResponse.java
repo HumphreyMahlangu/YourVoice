@@ -17,4 +17,7 @@ public record UserAccountResponse(
         @Schema(description = "Whether the account may authenticate", example = "true")
         boolean enabled
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "UserAccountResponse[redacted]"; }
 }

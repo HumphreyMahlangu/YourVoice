@@ -26,6 +26,8 @@ public interface ElectionRegistrationRepository extends JpaRepository<ElectionRe
 
     long countByElectionIdAndStatus(UUID electionId, RegistrationStatus status);
 
+    long countByElectionIdAndStatusAndIdentityVerifiedFalse(UUID electionId, RegistrationStatus status);
+
     @EntityGraph(attributePaths = {"election", "votingDistrict"})
     Page<ElectionRegistration> findByVoterProfileUserAccountIdOrderByRegisteredAtDesc(UUID userAccountId, Pageable pageable);
 

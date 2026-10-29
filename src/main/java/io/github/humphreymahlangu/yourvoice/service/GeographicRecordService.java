@@ -54,6 +54,16 @@ public class GeographicRecordService {
         return municipalities.findByProvinceIdAndNormalisedName(parent.getId(), key).orElseThrow();
     }
     @Transactional(readOnly = true)
+    public void validateContestScope(io.github.humphreymahlangu.yourvoice.entity.ContestType type, String provinceName, String municipalityName, Integer ward) {
+        if (type == io.github.humphreymahlangu.yourvoice.entity.ContestType.NATIONAL) return;
+        GeographicProvince province = provinces.findByNormalisedName(provinceName.trim().toLowerCase(Locale.ROOT))
+                .orElseThrow(() -> new EligibilityException("Configure this province before using it as a contest scope"));
+        if (municipalityName != null) municipalities.findByProvinceIdAndNormalisedName(province.getId(), municipalityName.trim().toLowerCase(Locale.ROOT))
+                .orElseThrow(() -> new EligibilityException("The contest municipality must belong to its configured province"));
+        if (ward != null && !districts.existsInHierarchy(provinceName, municipalityName, ward))
+            throw new EligibilityException("Configure this ward within the selected province and municipality before using it as a contest scope");
+    }
+    @Transactional(readOnly = true)
     public RegisteredLocation resolve(LocationSelection selection) {
         if (selection == null) return RegisteredLocation.nationalOnly();
         VotingDistrict district = selection.votingDistrictId() == null ? null : districts.findById(selection.votingDistrictId())

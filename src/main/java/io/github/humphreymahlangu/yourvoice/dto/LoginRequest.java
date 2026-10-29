@@ -18,4 +18,7 @@ public record LoginRequest(
         @Schema(description = "Account password", example = "StrongPass123", format = "password")
         String password
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "LoginRequest[redacted]"; }
 }

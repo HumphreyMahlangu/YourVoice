@@ -13,4 +13,8 @@ public record CreateSimulationVoterRequest(
         @NotBlank @Size(max = 160) String fullName,
         @NotBlank @Pattern(regexp = "[0-9]{13}") String southAfricanIdNumber,
         @NotNull VerificationStatus identityStatus, @NotNull VerificationStatus locationStatus,
-        @Valid LocationSelection location, @NotBlank @Size(max = 500) String reason) { }
+        @Valid LocationSelection location, @NotBlank @Size(max = 500) String reason) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "CreateSimulationVoterRequest[redacted]"; }
+}

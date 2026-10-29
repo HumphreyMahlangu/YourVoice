@@ -136,6 +136,7 @@ public class AdminElectionManagementService {
         String scopeMunicipality = normalizeOptional(request.scopeMunicipality());
         Integer scopeWardNumber = request.scopeWardNumber();
         validateContestScope(request.type(), scopeProvince, scopeMunicipality, scopeWardNumber);
+        geography.validateContestScope(request.type(), scopeProvince, scopeMunicipality, scopeWardNumber);
 
         if (contestRepository.existsByElectionIdAndNameIgnoreCase(electionId, name)) {
             throw new DuplicateResourceException("A contest with this name already exists for this election");
@@ -266,6 +267,7 @@ public class AdminElectionManagementService {
         String scopeMunicipality = normalizeOptional(request.scopeMunicipality());
         Integer scopeWardNumber = request.scopeWardNumber();
         validateContestScope(request.type(), scopeProvince, scopeMunicipality, scopeWardNumber);
+        geography.validateContestScope(request.type(), scopeProvince, scopeMunicipality, scopeWardNumber);
 
         if (contestRepository.existsByElectionIdAndNameIgnoreCaseAndIdNot(electionId, name, contestId)) {
             throw new DuplicateResourceException("A contest with this name already exists for this election");

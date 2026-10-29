@@ -11,4 +11,7 @@ public record RefreshTokenRequest(
         @Schema(description = "Refresh token from the latest AuthResponse")
         String refreshToken
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "RefreshTokenRequest[redacted]"; }
 }

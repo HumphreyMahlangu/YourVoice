@@ -43,4 +43,7 @@ public record RegisterRequest(
         @Schema(description = "Optional self-reported area; never verification. National-only onboarding needs no area", example = "11111111-1111-1111-1111-111111111111")
         UUID votingDistrictId
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "RegisterRequest[redacted]"; }
 }

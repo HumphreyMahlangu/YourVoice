@@ -66,9 +66,7 @@ public class VoterProfileVerificationService {
         if (due.isPresent() && !Instant.now(clock).isBefore(due.get().getEffectiveAt())) {
             LocationCorrectionRequest correction = corrections.findForUpdate(due.get().getId()).orElseThrow();
             entityManager.refresh(correction);
-            state.recordOutcome(VerificationStatus.VERIFIED,
-                    correction.getLocation().getProvince() == null ? VerificationStatus.UNVERIFIED : VerificationStatus.VERIFIED,
-                    correction.getSourceReference(), correction.getLocation(), "Approved fictional area correction is effective. Existing registrations keep their saved area.", correction.getEffectiveAt());
+            state.applyApprovedLocation(correction.getLocation(), correction.getSourceReference(), correction.getEffectiveAt());
             correction.markApplied();
             audit.save(new ProfileVerificationAudit(profile.getId(), correction.getReviewedBy(), correction.getId(), "CORRECTION_APPLIED", correction.getSourceReference(), "Approved correction became effective", Instant.now(clock), correction.getEffectiveAt()));
         }
@@ -83,7 +81,11 @@ public class VoterProfileVerificationService {
         VoterProfile profile = state.getVoterProfile();
         Optional<SimulationVoterRecord> match;
         try { match = source.find(profile.getIdNumberHash()); }
-        catch (VerificationUnavailableException unavailable) { return ProfileVerificationResponse.from(state, false); }
+        catch (VerificationUnavailableException unavailable) {
+            state.recordOutcome(VerificationStatus.UNAVAILABLE, VerificationStatus.UNAVAILABLE, state.getSourceReference(), null,
+                    "The fictional verification source is unavailable. Please try checking again later.", now);
+            return ProfileVerificationResponse.from(state, false);
+        }
         if (match.isEmpty()) {
             state.recordOutcome(VerificationStatus.PENDING, VerificationStatus.PENDING, null, null,
                     "No matching fictional record is configured yet. Ask a simulation administrator to review your details, then retry.", now);

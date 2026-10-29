@@ -23,4 +23,7 @@ public record AdminBootstrapRequest(
         @Schema(description = "Strong admin password", example = "StrongPass123", format = "password")
         String password
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "AdminBootstrapRequest[redacted]"; }
 }

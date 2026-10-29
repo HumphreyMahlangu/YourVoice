@@ -23,4 +23,7 @@ public record CreateAdminAccountRequest(
         @Schema(description = "Initial password, shared with the new administrator out of band", example = "VeryStrongPassword1")
         String password
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "CreateAdminAccountRequest[redacted]"; }
 }

@@ -16,11 +16,12 @@ export interface ContestResult {
   contestName: string
   contestType: ContestType
   registeredVoterCount: number
+  unverifiedRegistrationCount: number
   ballotsCast: number
   validVotes: number
   blankBallots: number
   spoiltBallots: number
-  turnoutPercentage: number
+  turnoutPercentage: number | null
   ledgerHeadHash: string
   generatedAt: string
   options: ContestOptionResult[]

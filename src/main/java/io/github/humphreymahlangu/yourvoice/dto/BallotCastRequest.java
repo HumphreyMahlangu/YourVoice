@@ -28,4 +28,7 @@ public record BallotCastRequest(
         @Schema(description = "Unblinded signature H(ballotToken)^d mod n as unpadded base64url. Not a JWT.")
         String signature
 ) {
+    /** Prevent framework debug tracing from serialising sensitive record components into logs. */
+    @Override
+    public String toString() { return "BallotCastRequest[redacted]"; }
 }
