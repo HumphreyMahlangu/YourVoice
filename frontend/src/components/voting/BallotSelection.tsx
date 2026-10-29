@@ -25,7 +25,7 @@ function BallotSelection({
       <fieldset>
         <legend>Select one ballot option</legend>
         {options.map((option) => (
-          <div key={option.id}>
+          <label key={option.id} htmlFor={`option-${option.id}`}>
             <input
               id={`option-${option.id}`}
               name="contestOption"
@@ -35,10 +35,8 @@ function BallotSelection({
               checked={selectedOptionId === option.id}
               onChange={(event) => onSelect(event.target.value)}
             />
-            <label htmlFor={`option-${option.id}`}>
-              {option.name} ({formatEnumLabel(option.optionType)})
-            </label>
-          </div>
+            <span>{option.name} ({formatEnumLabel(option.optionType)})</span>
+          </label>
         ))}
       </fieldset>
       {options.length === 0 ? (
