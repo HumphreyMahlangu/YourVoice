@@ -1,3 +1,5 @@
+# Historical Render configuration; the active deployment is Heroku.
+# Do not apply this Blueprint for the current deployment.
 # The service and database keep their original "votetrust" names on purpose: renaming them would make Render
 # create a new service (new URL) and a new, empty database.
 services:

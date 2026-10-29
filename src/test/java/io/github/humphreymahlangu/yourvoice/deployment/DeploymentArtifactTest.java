@@ -94,27 +94,23 @@ class DeploymentArtifactTest {
         assertThat(deployment).contains("SPRING_DATASOURCE_URL");
         assertThat(deployment).contains("YOURVOICE_JWT_SECRET");
         assertThat(deployment).contains("docker compose --env-file .env config");
-        assertThat(deployment).contains("Render Backend Deployment");
+        assertThat(deployment).contains("Heroku Backend Deployment");
         assertThat(deployment).contains("YOURVOICE_CORS_ALLOWED_ORIGINS");
         assertThat(deployment).contains("/actuator/health/readiness");
         assertThat(deployment).contains("CI Deployment Gates");
     }
 
     @Test
-    void renderBlueprintDeploysDockerImageWithDashboardManagedSecretsAndGatedAutoDeploy() throws IOException {
-        String blueprint = read("render.yaml");
-
-        assertThat(blueprint).contains("runtime: docker");
-        assertThat(blueprint).contains("healthCheckPath: /actuator/health/readiness");
-        assertThat(blueprint).contains("autoDeployTrigger: checksPass");
-        assertThat(blueprint).contains("fromDatabase:");
-        assertThat(blueprint).containsSubsequence(
-                "- key: YOURVOICE_JWT_SECRET", "sync: false",
-                "- key: YOURVOICE_ID_HASH_PEPPER", "sync: false",
-                "- key: YOURVOICE_VOTE_CREDENTIAL_PEPPER", "sync: false");
-        assertThat(blueprint).doesNotContain("generateValue");
-        assertThat(blueprint).containsSubsequence("- key: YOURVOICE_CORS_ALLOWED_ORIGINS", "sync: false");
-        assertThat(blueprint).containsSubsequence("- key: YOURVOICE_ADMIN_BOOTSTRAP_ENABLED", "value: \"false\"");
+    void herokuUsesJava21AndDocumentsCiGatedAutomaticDeployment() throws IOException {
+        assertThat(read("system.properties").trim()).isEqualTo("java.runtime.version=21");
+        String deployment = read("README.md");
+        assertThat(deployment).contains("Wait for CI to pass before deploy");
+        assertThat(deployment).contains("Enable Automatic Deploys");
+        assertThat(deployment).contains("DATABASE_URL");
+        assertThat(deployment).contains("BUILD_FRONTEND=true");
+        assertThat(deployment).contains("Heroku serves both");
+        assertThat(deployment).contains("Leave `VITE_API_BASE_URL` unset");
+        assertThat(read(".github/workflows/keep-alive.yml")).doesNotContain("schedule:");
     }
 
     private String read(String relativePath) throws IOException {

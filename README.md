@@ -146,18 +146,18 @@ The vision of YourVoice is a secure, maintainable, full-stack platform that demo
 | API documentation | Springdoc OpenAPI and Swagger UI |
 | Backend quality | JUnit 5, Mockito, Spring Security Test, Testcontainers |
 | Operations | Spring Boot Actuator, Micrometer and Prometheus, ShedLock, Docker, Docker Compose |
-| Hosting and CI | Vercel (frontend), Render (API and database), GitHub Actions |
+| Hosting and CI | Heroku (bundled frontend, API and PostgreSQL), GitHub Actions |
 
 ## Architecture
 
 ```text
-                Browser (React SPA, hosted on Vercel)
+                Browser (React SPA, bundled on Heroku)
                 ├─ pages for voters, administrators, observers
                 ├─ blinds and unblinds ballot tokens (Web Crypto + BigInt)
                 └─ re-verifies the published ledger
                                 │  HTTPS + JSON, JWT bearer tokens
                                 ▼
-                Spring Boot REST API (Docker, hosted on Render)
+                Spring Boot REST API (Java buildpack, hosted on Heroku)
                 ├─ security filters: request IDs, rate limiting, JWT
                 ├─ controllers with validated DTOs
                 ├─ transactional services: auth, eligibility, lifecycle scheduler,
@@ -186,8 +186,9 @@ The backend follows a layered design (controllers → services → repositories)
 ├── src/test/                 unit, integration, concurrency, and artifact tests
 ├── postman/                  verified end-to-end Postman collection
 ├── compose.yaml, Dockerfile  local stack and production image
-├── render.yaml               Render Blueprint (API + PostgreSQL)
-└── .github/workflows/        CI and an optional Render keep-alive
+├── system.properties         Heroku Java 21 runtime selection
+├── render.yaml               historical Render Blueprint (not the active deployment)
+└── .github/workflows/        backend and frontend CI
 ```
 
 ## Getting Started
@@ -270,19 +271,28 @@ cd frontend && npm run lint && npm test && npm run build   # frontend
 
 ## Deployment
 
-* **API and database: Render.** The [`render.yaml`](render.yaml) Blueprint builds the Docker image, provisions PostgreSQL, and deploys only after CI passes. Secrets are set once in the Render dashboard.
-* **Frontend: Vercel**, with `frontend` as the project root. `VITE_API_BASE_URL` points at the API, and the Vercel origin must be allowed in the API's `YOURVOICE_CORS_ALLOWED_ORIGINS`.
+* **API and database: Heroku.** The existing app is deployed on Heroku. Automatic GitHub deploys from `main` are enabled, with **Wait for GitHub checks to pass before deploy** checked (dashboard verified 2026-10-29). A subsequent automatic release has not yet been observed.
+* **Frontend and API:** Heroku serves both at `https://yourvoice-08c4a385f94e.herokuapp.com` (confirmed 2026-10-29), with `BUILD_FRONTEND=true` and same-origin API requests. Vercel is not the intended frontend; leave its settings and deployments unchanged.
+
 ### Local Compose Smoke Test
 
 Copy `.env.example` to `.env`, set the required secrets, then run `docker compose --env-file .env config` and `docker compose --env-file .env up --build`. Check `/actuator/health/readiness` and `/swagger-ui.html` on port 8080.
 
-### Render Backend Deployment
+### Heroku Backend Deployment
 
-The Render Blueprint in `render.yaml` creates the API and PostgreSQL database. Set three independent secrets of at least 32 characters (`YOURVOICE_JWT_SECRET`, `YOURVOICE_ID_HASH_PEPPER`, and `YOURVOICE_VOTE_CREDENTIAL_PEPPER`) plus `YOURVOICE_CORS_ALLOWED_ORIGINS` in the Render dashboard. Keep the existing `votetrust-api` and `votetrust-db` service names to preserve the deployed service and database. After deployment, check `/actuator/health/readiness`. To create the first administrator, temporarily enable `YOURVOICE_ADMIN_BOOTSTRAP_ENABLED` and set a strong `YOURVOICE_ADMIN_BOOTSTRAP_TOKEN`, call `POST /api/v1/admin/bootstrap`, then disable bootstrap again.
+Keep the existing Heroku app and Postgres database. The Java buildpack uses root `pom.xml`; `system.properties` pins `java.runtime.version=21`. Heroku provides `PORT` and Postgres supplies `DATABASE_URL`, from which the Java buildpack derives Spring datasource values. Do not set old Render connection values or recreate the database.
+
+Keep three independent secrets of at least 32 characters (`YOURVOICE_JWT_SECRET`, `YOURVOICE_ID_HASH_PEPPER`, and `YOURVOICE_VOTE_CREDENTIAL_PEPPER`) in Heroku Config Vars. Preserve both peppers after registration. Keep `BUILD_FRONTEND=true` for the confirmed bundled frontend. Leave `VITE_API_BASE_URL` unset for Heroku builds so the browser uses the same origin; never point it at the retired Render API. Preserve existing `YOURVOICE_CORS_ALLOWED_ORIGINS` configuration; same-origin requests need no new CORS origin.
+
+After deployment, check `/actuator/health/readiness`, the homepage and a direct `/elections` refresh. Bootstrap is only for initial admin creation: temporarily enable `YOURVOICE_ADMIN_BOOTSTRAP_ENABLED` and set a strong `YOURVOICE_ADMIN_BOOTSTRAP_TOKEN`, call `POST /api/v1/admin/bootstrap`, then disable bootstrap and remove the token.
 
 ### CI Deployment Gates
 
-CI runs the backend tests with PostgreSQL, validates Compose, builds the container, and runs frontend lint, tests, and build. Render deploys only after those checks pass. Vercel uses `frontend/vercel.json`; set `VITE_API_BASE_URL` to the Render API origin and allow the Vercel origin in `YOURVOICE_CORS_ALLOWED_ORIGINS`.
+CI runs backend tests with PostgreSQL, validates Compose, builds the container, and runs frontend lint, tests, and build on `main`. In the existing Heroku app's **Deploy → GitHub** settings, connect `HumphreyMahlangu/YourVoice`, confirm the production branch (`main` if using the current CI triggers), select **Wait for CI to pass before deploy**, and click **Enable Automatic Deploys**. Verify the dashboard confirms both the branch and CI gating. A repository edit alone does not enable this setting.
+
+After the next authorised push, both **Maven Test** and **Frontend Checks** must pass for the same commit before Heroku deploys it. Verify the release in Heroku Activity and repeat the readiness/UI checks. No separate GitHub Actions deployment job or Heroku API key is needed for the existing GitHub integration. See [Heroku's GitHub integration documentation](https://devcenter.heroku.com/articles/github-integration).
+
+`render.yaml` is retained for historical compatibility, not used for current deployment. The legacy Render keep-alive workflow has no schedule. Do not provision Render resources or use its old API URL for the active frontend.
 
 ## REST API
 
@@ -322,7 +332,7 @@ List endpoints accept optional `page` and `size` parameters and return the total
 ## Project Status
 YourVoice is a functional full-stack portfolio MVP. It covers voter onboarding, controlled election registration, geographic eligibility, blind-signature ballot credentials, concurrency-tested duplicate-vote prevention, automatic election lifecycles, per-contest tallying, shuffled and publicly verifiable ledgers, administrator tooling, session security, observability, and automated tests across the backend and frontend.
 
-The API and PostgreSQL database deploy to Render through the `render.yaml` Blueprint, and the React frontend deploys to Vercel. The project should not be presented as a certified or operational public-election platform.
+The React frontend, API and PostgreSQL database are deployed on Heroku; the frontend and API share one origin. The project should not be presented as a certified or operational public-election platform.
 
 ## Roadmap
 * Add email verification and stronger account recovery.

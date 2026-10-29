@@ -1,14 +1,8 @@
 name: Keep Render API Awake
 
-# Render's free plan suspends idle web services, which also pauses the election lifecycle scheduler.
-# This optional workflow pings the readiness probe every 10 minutes while an election is running.
-# It only runs when the repository variable RENDER_KEEPALIVE_URL is set, for example to
-# https://votetrust-api.onrender.com/actuator/health/readiness. Delete the variable to stop it.
-# A single always-on free instance fits within Render's monthly free hours.
-
+# Historical Render utility. Heroku is the active deployment target.
+# Scheduling is disabled; this is retained for explicit legacy maintenance only.
 on:
-  schedule:
-    - cron: "*/10 * * * *"
   workflow_dispatch:
 
 permissions: {}
